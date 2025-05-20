@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Course Directory</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <h1>AI Course Directory</h1>
+  <div>
+    <label for="filter">Filter by provider:</label>
+    <select id="filter">
+      <option value="all">All</option>
+      <option value="MIT">MIT</option>
+      <option value="Stanford">Stanford</option>
+      <option value="Coursera">Coursera</option>
+      <option value="Fast.ai">Fast.ai</option>
+    </select>
+
+    <label for="sort">Sort by:</label>
+    <select id="sort">
+      <option value="title">Title</option>
+      <option value="provider">Provider</option>
+    </select>
+  </div>
+
+  <ul id="course-list"></ul>
+
+  <script src="app.js"></script>
+</body>
+</html>
