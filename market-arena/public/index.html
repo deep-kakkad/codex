@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Market Arena — see who'd actually buy it</title>
-<meta name="description" content="Write real ad copy. Twelve synthetic customers judge it side by side and decide what to buy, or nothing. Facilitate a live class, or test your own product idea solo.">
+<meta name="description" content="Write real ad copy. Twelve AI-judged customers react to it side by side and decide what to buy, or nothing. Facilitate a live class, or test your own product idea solo, free, no signup.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%231A1A17' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23C6E84A'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,35 +12,84 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div class="wrap">
+  <nav class="topnav">
+    <a class="brandmark" href="./"><span id="logoSlot"></span><b>Market Arena</b></a>
+    <div class="navlinks">
+      <a class="ghost" href="facilitate.html">Facilitate</a>
+      <a class="ghost" href="practice.html">Practice</a>
+    </div>
+  </nav>
+</div>
+
 <header class="hero">
   <div class="wrap">
-    <span class="kicker">Market simulation, judged by AI customers</span>
-    <a class="brandmark" href="./" style="margin-bottom:8px"><span id="logoSlot"></span></a>
+    <span class="kicker">Marketing simulation</span>
     <h1><span>Market</span><span>Arena</span></h1>
-    <p class="lede">Write a headline, a value proposition and a price. Twelve synthetic customers across four segments see every brand's ad side by side and decide what to buy — or buy nothing. A round takes under a second and costs a fraction of a paisa.</p>
+    <p class="lede">Find out who'd buy your pitch before you spend a rupee testing it in the real world. Write a headline, a value proposition and a price — <b>twelve AI-judged customers react to it side by side</b>, and you get a market share back in under a second.</p>
+    <div class="ctarow">
+      <a class="cta-btn" href="practice.html">Try it yourself →</a>
+      <a class="cta-btn secondary" href="facilitate.html">Facilitate a session</a>
+    </div>
+    <p class="riskline">No signup for Practice mode. No credit card, ever. A round costs a fraction of a paisa.</p>
+  </div>
+</header>
 
+<section class="proof">
+  <div class="wrap">
+    <figure>
+      <img src="proof.png" width="1100" height="864" alt="A Market Arena round result: three coffee brands' market share, twelve customers grouped by segment showing who bought what, and one customer's detail card comparing how each brand scored on noticed, interested, believed and would-buy.">
+      <figcaption>A real round. Three brands, twelve customers, one market share — this is the actual product, not a mockup.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<section class="narrative">
+  <div class="wrap">
+    <p>Most positioning arguments happen in a room with no customers in it — a facilitator's opinion against a founder's gut feeling. <b>Market Arena puts customers in the room instead.</b> Each one reads your copy exactly once, the way a stranger scrolling past your ad would, then says — not to each other — what they'd actually buy.</p>
+  </div>
+</section>
+
+<section class="steps">
+  <div class="wrap">
+    <h2>How a round works</h2>
+    <div class="stepgrid">
+      <div class="step">
+        <span class="stepno">01</span>
+        <h3>Write your ad</h3>
+        <p>Brand name, headline, value proposition, price. Two to four brands compete for the same market at once.</p>
+      </div>
+      <div class="step">
+        <span class="stepno">02</span>
+        <h3>Customers judge it blind</h3>
+        <p>Every customer reads every ad independently — no group discussion — and answers whether they noticed it, believed it, and would buy it.</p>
+      </div>
+      <div class="step">
+        <span class="stepno">03</span>
+        <h3>You get a market, not a score</h3>
+        <p>Share of purchases, a funnel showing exactly where you lost people, and each customer's stated objection to your copy.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Pick how you'll use it</h2>
     <div class="cta-grid">
       <a class="cta-card" href="facilitate.html">
         <span class="kicker">For classrooms & workshops</span>
         <h2>Facilitate a live session</h2>
-        <p>Run a 45-minute exercise for a room. Teams compete for the same market over several rounds, gated by a class code so only your group spends your credits.</p>
+        <p>Run a 45-minute exercise for a room. Teams compete over several rounds, gated by a class code so only your group spends your credits.</p>
         <span class="cta-arrow">Start facilitating →</span>
       </a>
       <a class="cta-card" href="practice.html">
         <span class="kicker">For anyone testing an idea</span>
         <h2>Try it yourself</h2>
-        <p>Pick an industry — SaaS, retail, fintech, or your own — rewrite the customers, and see who'd actually buy your pitch. No code needed, nothing to set up.</p>
+        <p>Pick an industry — SaaS, retail, fintech, or your own — rewrite the customers, and see who'd actually buy your pitch. No code, nothing to set up.</p>
         <span class="cta-arrow">Start practicing →</span>
       </a>
     </div>
-  </div>
-</header>
-
-<section class="features">
-  <div class="wrap features">
-    <div class="feature"><h3>Real customers, not a survey</h3><p>Each of twelve personas judges every brand's ad independently — noticed, interested, believed, bought — then picks one product or none.</p></div>
-    <div class="feature"><h3>Built to be rewritten</h3><p>See the biggest drop in your funnel and the top objection, rewrite your copy, and run it again. Share moves in seconds, not weeks.</p></div>
-    <div class="feature"><h3>Catches you cheating</h3><p>Copy that talks to the judges instead of the customer gets flagged automatically — and tends to lose the market anyway.</p></div>
   </div>
 </section>
 
@@ -53,7 +102,7 @@
 
 <script type="module">
 import { LOGO_MARK } from "./icons.js";
-document.getElementById("logoSlot").innerHTML = LOGO_MARK(56);
+document.getElementById("logoSlot").innerHTML = LOGO_MARK(26);
 </script>
 </body>
 </html>

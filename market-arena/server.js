@@ -15,7 +15,7 @@ const { scenario, templates, round } = await import("./lib/handlers.js");
 if (!process.env.TYPESAFE_API_KEY) { console.error("Set TYPESAFE_API_KEY in your shell or a .env file, then start again."); process.exit(1); }
 
 const PUBLIC = fileURLToPath(new URL("./public", import.meta.url));
-const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml" };
+const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".png": "image/png" };
 const send = (res, [code, body]) => { res.writeHead(code, { "Content-Type": "application/json" }); res.end(JSON.stringify(body)); };
 
 http.createServer(async (req, res) => {
