@@ -3,454 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Market Arena</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>">
+<title>Market Arena — see who'd actually buy it</title>
+<meta name="description" content="Write real ad copy. Twelve synthetic customers judge it side by side and decide what to buy, or nothing. Facilitate a live class, or test your own product idea solo.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%231A1A17' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23C6E84A'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<style>
-:root{
-  --cream:#F2EEE3; --paper:#FBF9F3; --ink:#1A1A17; --muted:#6B6858; --line:#D9D3C2; --lime:#C6E84A;
-  --b1:#2F4BD1; --b2:#9A3F7A; --b3:#1E7F72; --b4:#D9A21B; --none:#CFC8B6;
-  --display:"Fraunces",Georgia,serif; --body:"DM Sans",system-ui,-apple-system,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
-  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
-}
-*,*::before,*::after{box-sizing:inherit}
-html{scroll-padding-top:env(safe-area-inset-top,0px)}
-body{margin:0;background:var(--cream);color:var(--ink);font:16px/1.55 var(--body);-webkit-font-smoothing:antialiased}
-.wrap{max-width:1180px;margin:0 auto;padding:0 24px}
-button,input,textarea{font:inherit;color:inherit}
-:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
-
-/* Masthead */
-header{padding:40px 0 28px;border-bottom:2px solid var(--ink)}
-.mast{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:20px}
-h1{font:800 clamp(52px,9vw,112px)/.88 var(--display);letter-spacing:-.035em;margin:0;font-variation-settings:"opsz" 144}
-h1 span{display:block}
-.brief{max-width:44ch;margin:0;color:var(--muted)}
-.brief strong{color:var(--ink);font-weight:500;display:block;font-family:var(--display);font-size:22px;margin-bottom:4px}
-.toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
-.ghost{background:none;border:1.5px solid var(--ink);border-radius:999px;padding:7px 16px;cursor:pointer;font-size:14px;font-weight:500}
-.ghost:hover{background:var(--ink);color:var(--cream)}
-
-/* Customers directory */
-#directory{display:none;padding:22px 0 6px;border-bottom:1px solid var(--line)}
-#directory.open{display:block}
-.dir-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px 28px}
-.dir-seg h3{font:600 17px var(--display);margin:0 0 6px}
-.dir-seg p{margin:0 0 8px;font-size:14px;color:var(--muted)}
-.dir-seg b{color:var(--ink);font-weight:500}
-
-/* Section heads */
-section{padding:34px 0}
-h2{font:600 30px/1.1 var(--display);margin:0 0 4px;letter-spacing:-.01em}
-.sub{margin:0 0 20px;color:var(--muted);max-width:62ch}
-
-/* Brand editor */
-.brands{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px}
-.brand{background:var(--paper);border:1.5px solid var(--ink);border-top:10px solid var(--c);padding:16px 16px 12px;position:relative}
-.brand label{display:block;font-size:13px;font-weight:500;margin:10px 0 4px}
-.brand label:first-of-type{margin-top:0}
-.brand input,.brand textarea{width:100%;border:1px solid var(--line);background:#fff;padding:8px 10px;border-radius:3px;font-size:15px}
-.brand textarea{resize:vertical;min-height:84px;line-height:1.4}
-.brand input:focus,.brand textarea:focus{border-color:var(--ink);outline:none;box-shadow:0 0 0 2px var(--lime)}
-.brand .name{font:600 20px var(--display);border:none;border-bottom:1.5px dashed var(--line);border-radius:0;padding:2px 0 6px;background:transparent}
-.count{float:right;font:400 11px var(--mono);color:var(--muted)}
-.count.over{color:#B3261E;font-weight:600}
-.remove{display:block;margin:12px 0 0 auto;border:none;background:none;cursor:pointer;color:var(--muted);font-size:13px;text-decoration:underline;padding:2px 0}
-.remove:hover{color:var(--ink)}
-.add{border:1.5px dashed var(--ink);background:transparent;cursor:pointer;min-height:180px;font:600 18px var(--display)}
-.add:hover{background:var(--paper)}
-.run-row{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:22px}
-.run{background:var(--ink);color:var(--lime);border:none;padding:16px 30px;font:700 18px var(--body);cursor:pointer;border-radius:999px;letter-spacing:.01em}
-.run:hover{background:#000}
-.run[disabled]{opacity:.55;cursor:progress}
-.status{color:var(--muted);font-size:14px}
-.error{color:#B3261E;font-weight:500}
-
-/* The market reveal */
-.market{background:var(--ink);color:var(--cream);padding:40px 0 44px}
-.market h2{color:var(--cream)}
-.market .sub{color:#B9B5A6}
-.sharebar{display:flex;height:72px;border:2px solid var(--cream);margin:10px 0 8px;overflow:hidden}
-.sharebar div{height:100%;transition:flex-grow .9s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;justify-content:center;font:600 15px var(--mono);min-width:0;overflow:hidden;white-space:nowrap}
-.sharebar .none{background:repeating-linear-gradient(135deg,#3A3934 0 8px,#2A2925 8px 16px);color:#B9B5A6}
-.legend{display:flex;flex-wrap:wrap;gap:8px 26px;margin-bottom:34px}
-.legend div{display:flex;align-items:baseline;gap:8px}
-.sw{width:12px;height:12px;display:inline-block;flex:none;transform:translateY(1px)}
-.legend .pct{font:600 26px var(--mono)}
-.delta{font:500 13px var(--mono);padding:1px 6px;border-radius:3px}
-.up{background:var(--lime);color:var(--ink)}
-.down{background:#5C2A2A;color:#FFD9D4}
-.flat{color:#8E8A7B}
-.flag{background:#5C2A2A;color:#FFD9D4;padding:10px 14px;margin:0 0 22px;border-left:4px solid #FF8A7A}
-
-.segments{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}
-.seg h3{font:400 15px var(--body);color:#B9B5A6;margin:0 0 12px;border-bottom:1px solid #3A3934;padding-bottom:6px}
-.people{display:flex;flex-direction:column;gap:10px}
-.person{display:grid;grid-template-columns:46px 1fr;gap:12px;align-items:center;background:none;border:1px solid transparent;padding:6px;text-align:left;cursor:pointer;border-radius:6px;color:inherit}
-.person:hover,.person[aria-expanded="true"]{border-color:#55534A;background:#23231F}
-.token{width:46px;height:46px;border-radius:50%;background:var(--tc);display:grid;place-items:center;font:600 16px var(--display);color:var(--tt);transition:background .6s ease;transition-delay:var(--d)}
-.token.undecided{box-shadow:0 0 0 3px var(--ink),0 0 0 5px var(--lime)}
-.pname{font-weight:500;line-height:1.2}
-.pchoice{font-size:13px;color:#B9B5A6}
-.conf{display:block;height:3px;background:#3A3934;margin-top:5px;width:100%}
-.conf i{display:block;height:100%;background:var(--cream)}
-.tag{display:inline-block;background:var(--lime);color:var(--ink);font-size:11px;font-weight:700;padding:0 6px;border-radius:3px;margin-left:4px}
-.detail{background:var(--paper);color:var(--ink);padding:18px 20px;margin-top:22px;border-radius:4px;border-left:8px solid var(--lime)}
-.detail h3{font:600 20px var(--display);margin:0 0 2px}
-.detail .x{float:right;border:none;background:none;cursor:pointer;text-decoration:underline;font-size:13px;color:var(--muted)}
-.detail p{margin:0 0 12px;font-size:14px;color:var(--muted);max-width:70ch}
-.detail table{width:100%;min-width:560px;border-collapse:collapse;font-size:14px}
-.detail th,.detail td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line)}
-.detail td.num,.detail th.n{text-align:right}
-
-/* Analysis */
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:40px}
-.funnel{margin-bottom:22px}
-.funnel h3{font:600 19px var(--display);margin:0 0 8px;display:flex;align-items:center;gap:8px}
-.frow{display:grid;grid-template-columns:92px 1fr 48px;align-items:center;gap:10px;font-size:14px;margin:4px 0}
-.track{height:14px;background:#E6E0D0;position:relative}
-.track i{position:absolute;inset:0 auto 0 0;background:var(--c);transition:width .8s ease}
-.frow .num{text-align:right;font-size:13px}
-.drop{font-size:13px;color:var(--muted);margin:6px 0 0}
-.tablewrap{overflow-x:auto}
-table.heat{border-collapse:collapse;width:100%;min-width:420px;font-size:14px}
-.heat th{font-weight:500;text-align:left;padding:8px;border-bottom:1.5px solid var(--ink)}
-.heat td{padding:10px 8px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:13px}
-.heat td.cell{text-align:center}
-.heat td:first-child{font-family:var(--body);font-size:14px}
-.obj{margin-bottom:16px}
-.obj h3{font:600 17px var(--display);margin:0 0 4px}
-.obj p{margin:0;font-size:14px;color:var(--muted)}
-.obj p b{color:var(--ink);font-weight:500}
-svg.history text{font:12px var(--mono);fill:var(--muted)}
-footer{border-top:2px solid var(--ink);padding:20px 0 40px;font-size:13px;color:var(--muted)}
-footer .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
-.hidden{display:none!important}
-
-@media (max-width:900px){.segments{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr;gap:10px}}
-@media (max-width:540px){.wrap{padding:0 16px}.segments{grid-template-columns:1fr}.sharebar{height:56px}.legend .pct{font-size:20px}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header>
+<header class="hero">
   <div class="wrap">
-    <div class="mast">
-      <h1><span>Market</span><span>Arena</span></h1>
-      <p class="brief"><strong id="scTitle">Loading the market…</strong><span id="scBrief"></span></p>
-    </div>
-    <div class="toolbar">
-      <button class="ghost" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the customers</button>
-      <button class="ghost" id="csv" disabled>Download results (CSV)</button>
-      <button class="ghost" id="reset">Start a new game</button>
+    <span class="kicker">Market simulation, judged by AI customers</span>
+    <a class="brandmark" href="./" style="margin-bottom:8px"><span id="logoSlot"></span></a>
+    <h1><span>Market</span><span>Arena</span></h1>
+    <p class="lede">Write a headline, a value proposition and a price. Twelve synthetic customers across four segments see every brand's ad side by side and decide what to buy — or buy nothing. A round takes under a second and costs a fraction of a paisa.</p>
+
+    <div class="cta-grid">
+      <a class="cta-card" href="facilitate.html">
+        <span class="kicker">For classrooms & workshops</span>
+        <h2>Facilitate a live session</h2>
+        <p>Run a 45-minute exercise for a room. Teams compete for the same market over several rounds, gated by a class code so only your group spends your credits.</p>
+        <span class="cta-arrow">Start facilitating →</span>
+      </a>
+      <a class="cta-card" href="practice.html">
+        <span class="kicker">For anyone testing an idea</span>
+        <h2>Try it yourself</h2>
+        <p>Pick an industry — SaaS, retail, fintech, or your own — rewrite the customers, and see who'd actually buy your pitch. No code needed, nothing to set up.</p>
+        <span class="cta-arrow">Start practicing →</span>
+      </a>
     </div>
   </div>
 </header>
-<div id="directory"><div class="wrap"><div class="dir-grid" id="dirGrid"></div></div></div>
 
-<main>
-  <section>
-    <div class="wrap">
-      <h2 id="editorTitle">Launch your brands</h2>
-      <p class="sub">Each brand gets a name, a headline, a value proposition and a price. Every customer sees all the ads side by side, then decides what to buy, or buys nothing.</p>
-      <div class="brands" id="brands"></div>
-      <div class="run-row">
-        <button class="run" id="run">Run round 1</button>
-        <span class="status" id="status" role="status" aria-live="polite"></span>
-      </div>
-    </div>
-  </section>
-
-  <div id="results" class="hidden">
-    <div class="market">
-      <div class="wrap">
-        <h2 id="marketTitle">The market decided</h2>
-        <p class="sub">Share of purchases across all twelve customers, including those who bought nothing.</p>
-        <div id="flags"></div>
-        <div class="sharebar" id="sharebar" aria-hidden="true"></div>
-        <div class="legend" id="legend"></div>
-        <div class="segments" id="segments"></div>
-        <div class="detail hidden" id="detail" aria-live="polite"></div>
-      </div>
-    </div>
-
-    <section>
-      <div class="wrap grid2">
-        <div>
-          <h2>Where each brand leaks</h2>
-          <p class="sub">Average across customers. The biggest drop between two stages is where to work next round.</p>
-          <div id="funnels"></div>
-        </div>
-        <div>
-          <h2>Who buys what</h2>
-          <p class="sub">Purchase share within each segment.</p>
-          <div class="tablewrap"><table class="heat" id="heat"></table></div>
-          <h2 style="margin-top:36px">What's holding them back</h2>
-          <p class="sub">The most likely objection to each brand, averaged across all customers.</p>
-          <div id="objections"></div>
-        </div>
-      </div>
-    </section>
-
-    <section id="historySec" class="hidden">
-      <div class="wrap">
-        <h2>Share over the rounds</h2>
-        <p class="sub">Each line is one brand. Rewrites that land push the line up; the rest of the market pays for it.</p>
-        <div class="tablewrap" id="history"></div>
-      </div>
-    </section>
+<section class="features">
+  <div class="wrap features">
+    <div class="feature"><h3>Real customers, not a survey</h3><p>Each of twelve personas judges every brand's ad independently — noticed, interested, believed, bought — then picks one product or none.</p></div>
+    <div class="feature"><h3>Built to be rewritten</h3><p>See the biggest drop in your funnel and the top objection, rewrite your copy, and run it again. Share moves in seconds, not weeks.</p></div>
+    <div class="feature"><h3>Catches you cheating</h3><p>Copy that talks to the judges instead of the customer gets flagged automatically — and tends to lose the market anyway.</p></div>
   </div>
-</main>
+</section>
 
 <footer>
   <div class="wrap row">
-    <span>Customers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
-    <span id="meta" class="num"></span>
+    <span>Customers are simulated by TypeSafe's Jev model. Treat results as a teaching mirror, not market research.</span>
   </div>
+  <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
 </footer>
 
-<script>
-const COLORS = ["var(--b1)","var(--b2)","var(--b3)","var(--b4)"];
-const INK_ON = [false,false,false,true]; // text colour on each brand swatch
-const HEX = ["#2F4BD1","#9A3F7A","#1E7F72","#D9A21B"];
-const STAGES = [["attention","Noticed"],["interest","Interested"],["belief","Believed"],["purchase","Bought"]];
-const OBJ_LABEL = {price:"price feels too high",trust:"doesn't believe the claims",relevance:"doesn't fit their needs or habits",unclear:"doesn't understand the offer",none:"no real objection"};
-const STORE = "market-arena-v1", CODE = "market-arena-code";
-const getCode = () => { try { return localStorage.getItem(CODE) || ""; } catch { return ""; } };
-
-let config, state = {teams: [], rounds: []}, open = null;
-const $ = (s) => document.querySelector(s);
-const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const pct = (x) => Math.round(x * 100) + "%";
-const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} };
-
-async function init() {
-  try {
-    config = await (await fetch("/api/scenario")).json();
-  } catch { $("#scTitle").textContent = "The server isn't running. Start it with: node server.js"; return; }
-  $("#scTitle").textContent = config.scenario.title;
-  $("#scBrief").textContent = config.scenario.brief;
-  renderDirectory();
-  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s?.teams?.length) state = s; } catch {}
-  if (!state.teams.length) state.teams = config.defaults.map((t, i) => ({...t, slot: i}));
-  renderEditor();
-  if (state.rounds.length) renderResults(false);
-}
-
-function renderDirectory() {
-  const bySeg = {};
-  config.personas.forEach((p) => (bySeg[p.segment] ??= []).push(p));
-  $("#dirGrid").innerHTML = Object.entries(bySeg).map(([s, ps]) =>
-    `<div class="dir-seg"><h3>${esc(s)}</h3>${ps.map((p) => `<p><b>${esc(p.name)}</b>, ${esc(p.profile)}</p>`).join("")}</div>`).join("");
-}
-
-const FIELDS = [["headline","Headline","input"],["valueProp","Value proposition","textarea"],["price","Price","input"]];
-function renderEditor() {
-  const L = config.limits;
-  $("#brands").innerHTML = state.teams.map((t, i) => `
-    <div class="brand" style="--c:${COLORS[t.slot]}">
-      <label for="brand-${i}">Brand name <span class="count" data-for="brand-${i}"></span></label>
-      <input id="brand-${i}" class="name" data-i="${i}" data-f="brand" maxlength="${L.brand + 20}" value="${esc(t.brand)}">
-      ${FIELDS.map(([f, lab, tag]) => `
-        <label for="${f}-${i}">${lab} <span class="count" data-for="${f}-${i}"></span></label>
-        ${tag === "input"
-          ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
-          : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
-      ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this brand")}</button>` : ""}
-    </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a brand</button>` : "");
-  document.querySelectorAll("#brands [data-f]").forEach(updateCount);
-  $("#run").textContent = `Run round ${state.rounds.length + 1}`;
-  $("#editorTitle").textContent = state.rounds.length ? `Rework your brands for round ${state.rounds.length + 1}` : "Launch your brands";
-}
-function updateCount(el) {
-  const max = config.limits[el.dataset.f], n = el.value.trim().length;
-  const c = document.querySelector(`.count[data-for="${el.id}"]`);
-  if (c) { c.textContent = `${n}/${max}`; c.classList.toggle("over", n > max); }
-}
-$("#brands").addEventListener("input", (e) => {
-  const el = e.target; if (!el.dataset.f) return;
-  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateCount(el); save();
-});
-$("#brands").addEventListener("click", (e) => {
-  if (e.target.dataset.rm !== undefined) { state.teams.splice(+e.target.dataset.rm, 1); save(); renderEditor(); }
-  if (e.target.id === "addBrand") {
-    const used = new Set(state.teams.map((t) => t.slot));
-    const slot = [0,1,2,3].find((s) => !used.has(s));
-    state.teams.push({brand: "", headline: "", valueProp: "", price: "", slot}); save(); renderEditor();
-    document.getElementById(`brand-${state.teams.length - 1}`).focus();
-  }
-});
-
-$("#run").addEventListener("click", async () => {
-  const btn = $("#run"), status = $("#status");
-  btn.disabled = true; status.className = "status"; status.textContent = "Showing your ads to twelve customers…";
-  try {
-    if (config.needsCode && !getCode()) {
-      const c = prompt("Enter the class code from your facilitator");
-      if (!c) throw new Error("Enter the class code to run a round.");
-      try { localStorage.setItem(CODE, c.trim()); } catch {}
-    }
-    const res = await fetch("/api/round", {method: "POST", headers: {"Content-Type": "application/json", "X-Arena-Code": getCode()},
-      body: JSON.stringify({teams: state.teams.map(({brand, headline, valueProp, price}) => ({brand, headline, valueProp, price}))})});
-    const data = await res.json();
-    if (res.status === 401) { try { localStorage.removeItem(CODE); } catch {} }
-    if (!res.ok) throw new Error(data.error || "The round didn't run. Try again.");
-    data.slots = state.teams.map((t) => t.slot);
-    state.rounds.push(data); save();
-    status.textContent = ""; open = null;
-    renderEditor(); renderResults(true);
-    $("#results").scrollIntoView({behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
-  } catch (err) { status.className = "status error"; status.textContent = err.message; }
-  btn.disabled = false;
-});
-
-function prevShare(slot) {
-  if (state.rounds.length < 2) return null;
-  const prev = state.rounds[state.rounds.length - 2];
-  const i = prev.slots.indexOf(slot);
-  return i < 0 ? null : prev.brands[i].share;
-}
-function deltaChip(now, before) {
-  if (before == null) return "";
-  const d = Math.round((now - before) * 100);
-  if (d === 0) return `<span class="delta flat">±0</span>`;
-  return `<span class="delta ${d > 0 ? "up" : "down"}">${d > 0 ? "+" : "−"}${Math.abs(d)} pts</span>`;
-}
-
-function renderResults(animate) {
-  const r = state.rounds[state.rounds.length - 1];
-  const n = state.rounds.length;
-  $("#results").classList.remove("hidden");
-  $("#csv").disabled = false;
-  $("#marketTitle").textContent = `Round ${n}: the market decided`;
-  const col = (id) => r.slots[r.brands.findIndex((b) => b.id === id)];
-  const color = (id) => id === "none" ? "#3A3934" : COLORS[col(id)];
-  const inkOn = (id) => id !== "none" && INK_ON[col(id)];
-  const nameOf = (id) => id === "none" ? "nothing" : r.brands.find((b) => b.id === id).brand;
-
-  // Integrity flags
-  $("#flags").innerHTML = r.brands.filter((b) => b.flagged).map((b) =>
-    `<p class="flag"><b>${esc(b.brand)}</b>'s ad reads like it's talking to the judges, not to customers. Rewrite it as real marketing copy.</p>`).join("");
-
-  // Share bar, grown from zero for the reveal
-  const parts = [...r.brands.map((b, i) => ({id: b.id, share: b.share, c: COLORS[r.slots[i]], ink: INK_ON[r.slots[i]]})),
-                 {id: "none", share: r.noPurchase.share}];
-  $("#sharebar").innerHTML = parts.map((p) =>
-    `<div class="${p.id === "none" ? "none" : ""}" style="flex-grow:${animate ? 0.0001 : p.share};${p.c ? `background:${p.c};color:${p.ink ? "var(--ink)" : "#fff"}` : ""}">${p.share >= .07 ? pct(p.share) : ""}</div>`).join("");
-  if (animate) requestAnimationFrame(() => requestAnimationFrame(() =>
-    [...$("#sharebar").children].forEach((el, i) => el.style.flexGrow = parts[i].share)));
-
-  $("#legend").innerHTML = r.brands.map((b, i) => `
-    <div><span class="sw" style="background:${COLORS[r.slots[i]]}"></span><span>${esc(b.brand)}</span>
-    <span class="pct">${pct(b.share)}</span>${deltaChip(b.share, prevShare(r.slots[i]))}</div>`).join("") +
-    `<div><span class="sw" style="background:repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"></span><span>Bought nothing</span><span class="pct">${pct(r.noPurchase.share)}</span></div>`;
-
-  // Customers, grouped by segment
-  $("#segments").innerHTML = r.segments.map((s) => `
-    <div class="seg"><h3>${esc(s)}</h3><div class="people">
-      ${r.customers.filter((c) => c.segment === s).map((c, k) => {
-        const undecided = c.confidence < .5;
-        return `<button class="person" data-p="${c.id}" aria-expanded="${open === c.id}">
-          <span class="token ${undecided ? "undecided" : ""}" style="--tc:${animate ? "#3A3934" : color(c.purchase)};--tt:${inkOn(c.purchase) ? "var(--ink)" : "#fff"};--d:${k * 120 + r.segments.indexOf(s) * 60}ms" data-final="${color(c.purchase)}">${esc(c.name[0])}</span>
-          <span><span class="pname">${esc(c.name)}</span>${undecided ? `<span class="tag">Undecided</span>` : ""}
-          <span class="pchoice" style="display:block">Bought ${esc(nameOf(c.purchase))}</span>
-          <span class="conf" aria-label="Confidence ${pct(c.confidence)}"><i style="width:${pct(c.confidence)}"></i></span></span>
-        </button>`;
-      }).join("")}</div></div>`).join("");
-  if (animate) requestAnimationFrame(() => requestAnimationFrame(() =>
-    document.querySelectorAll(".token").forEach((t) => t.style.setProperty("--tc", t.dataset.final))));
-
-  // Funnels
-  $("#funnels").innerHTML = r.brands.map((b, i) => {
-    const vals = STAGES.map(([k]) => b.funnel[k]);
-    let worst = 0, gap = -1;
-    for (let j = 1; j < vals.length; j++) if (vals[j - 1] - vals[j] > gap) { gap = vals[j - 1] - vals[j]; worst = j; }
-    return `<div class="funnel" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3>
-      ${STAGES.map(([k, lab]) => `<div class="frow"><span>${lab}</span><span class="track"><i style="width:${pct(b.funnel[k])}"></i></span><span class="num">${pct(b.funnel[k])}</span></div>`).join("")}
-      <p class="drop">Biggest drop: ${STAGES[worst - 1][1].toLowerCase()} → ${STAGES[worst][1].toLowerCase()}.</p></div>`;
-  }).join("");
-
-  // Segment heat table
-  const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
-  $("#heat").innerHTML = `<thead><tr><th>Segment</th>${r.brands.map((b) => `<th>${esc(b.brand)}</th>`).join("")}<th>Nothing</th></tr></thead><tbody>` +
-    r.segments.map((s) => `<tr><td>${esc(s)}</td>${r.brands.map((b, i) => `<td class="cell" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell" style="${heat(r.noPurchase.bySegment[s], "#8E8A7B")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
-
-  // Objections
-  $("#objections").innerHTML = r.brands.map((b) => {
-    const top = Object.entries(b.objections).filter(([k]) => k !== "none").sort((a, c) => c[1] - a[1]).slice(0, 2);
-    return `<div class="obj"><h3>${esc(b.brand)}</h3><p>${top.map(([k, v]) => `<b>${pct(v)}</b> ${OBJ_LABEL[k]}`).join("; ")}.</p></div>`;
-  }).join("");
-
-  showDetail();
-  renderHistory();
-  $("#meta").textContent = `${r.model}, ${r.tokens.toLocaleString()} tokens, ${(r.ms / 1000).toFixed(1)}s`;
-}
-
-function detailHtml(c, r) {
-  return `<button class="x" id="closeDetail">Close</button><h3>${esc(c.name)}, ${esc(c.segment.toLowerCase())}</h3><p>${esc(c.profile)}</p><div class="tablewrap"><table><thead><tr><th>Brand</th><th class="n">Noticed</th><th class="n">Interested</th><th class="n">Believed</th><th class="n">Would buy</th><th>Main objection</th></tr></thead><tbody>` +
-    r.brands.map((b) => { const x = c.byBrand[b.id];
-      return `<tr><td>${esc(b.brand)}</td><td class="num">${pct(x.attention)}</td><td class="num">${pct(x.appeal)}</td><td class="num">${pct(x.belief)}</td><td class="num">${pct(c.purchaseProbs[b.id] || 0)}</td><td>${OBJ_LABEL[x.objection]}</td></tr>`; }).join("") +
-    `</tbody></table></div>`;
-}
-function showDetail() {
-  const r = state.rounds[state.rounds.length - 1], d = $("#detail");
-  document.querySelectorAll(".person").forEach((x) => x.setAttribute("aria-expanded", String(x.dataset.p === open)));
-  const c = r.customers.find((x) => x.id === open);
-  d.classList.toggle("hidden", !c);
-  d.innerHTML = c ? detailHtml(c, r) : "";
-}
-$("#detail").addEventListener("click", (e) => { if (e.target.id === "closeDetail") { open = null; showDetail(); } });
-$("#segments").addEventListener("click", (e) => {
-  const btn = e.target.closest(".person"); if (!btn) return;
-  open = open === btn.dataset.p ? null : btn.dataset.p;
-  showDetail();
-});
-
-function renderHistory() {
-  const R = state.rounds;
-  $("#historySec").classList.toggle("hidden", R.length < 2);
-  if (R.length < 2) return;
-  const W = 760, H = 260, P = {l: 44, r: 120, t: 14, b: 30};
-  const x = (i) => P.l + (i * (W - P.l - P.r)) / (R.length - 1);
-  const max = Math.max(.5, ...R.flatMap((r) => r.brands.map((b) => b.share)));
-  const y = (v) => H - P.b - (v / max) * (H - P.t - P.b);
-  const slots = [...new Set(R.flatMap((r) => r.slots))];
-  let svg = `<svg class="history" viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px;max-width:860px;display:block" role="img" aria-label="Market share by round">`;
-  [0, .25, .5, .75, 1].filter((v) => v <= max).forEach((v) => svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="#D9D3C2"/><text x="${P.l - 8}" y="${y(v) + 4}" text-anchor="end">${pct(v)}</text>`);
-  R.forEach((_, i) => svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">R${i + 1}</text>`);
-  slots.forEach((s) => {
-    const pts = R.map((r, i) => { const k = r.slots.indexOf(s); return k < 0 ? null : [x(i), y(r.brands[k].share), r.brands[k].brand]; });
-    const segs = pts.filter(Boolean);
-    svg += `<polyline fill="none" stroke="${HEX[s]}" stroke-width="3" points="${segs.map((p) => p[0] + "," + p[1]).join(" ")}"/>`;
-    segs.forEach((p) => svg += `<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="${HEX[s]}"/>`);
-    const last = segs[segs.length - 1];
-    if (last) svg += `<text x="${last[0] + 10}" y="${last[1] + 4}" style="fill:${HEX[s]};font-weight:600">${esc(last[2])}</text>`;
-  });
-  $("#history").innerHTML = svg + "</svg>";
-}
-
-$("#toggleDir").addEventListener("click", (e) => {
-  const d = $("#directory"), o = d.classList.toggle("open");
-  e.target.setAttribute("aria-expanded", o); e.target.textContent = o ? "Hide the customers" : "Meet the customers";
-});
-$("#reset").addEventListener("click", () => {
-  open = null;
-  if (!confirm("Start a new game? This clears every round and resets the brands.")) return;
-  state = {teams: config.defaults.map((t, i) => ({...t, slot: i})), rounds: []}; save();
-  $("#results").classList.add("hidden"); $("#csv").disabled = true; renderEditor();
-});
-$("#csv").addEventListener("click", () => {
-  const rows = [["round","brand","headline","value_proposition","price","market_share","noticed","interested","believed",...state.rounds[0].segments.map((s) => "share_" + s)]];
-  state.rounds.forEach((r, i) => r.brands.forEach((b) => rows.push([i + 1, b.brand, b.headline, b.valueProp, b.price, b.share, b.funnel.attention, b.funnel.interest, b.funnel.belief, ...r.segments.map((s) => b.bySegment[s])])));
-  const csv = rows.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const a = Object.assign(document.createElement("a"), {href: URL.createObjectURL(new Blob([csv], {type: "text/csv"})), download: "market-arena-results.csv"});
-  a.click(); URL.revokeObjectURL(a.href);
-});
-
-init();
+<script type="module">
+import { LOGO_MARK } from "./icons.js";
+document.getElementById("logoSlot").innerHTML = LOGO_MARK(56);
 </script>
 </body>
 </html>

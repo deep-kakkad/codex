@@ -5,6 +5,7 @@ import { PERSONAS, OBJECTIONS } from "./scenario.js";
 const API = "https://api.typesafe.ai/v1/systemone";
 const MODEL = process.env.TYPESAFE_MODEL || "jev-latest";
 export const LIMITS = { brand: 30, headline: 90, valueProp: 280, price: 50, minTeams: 2, maxTeams: 4 };
+export const PERSONA_LIMITS = { minPersonas: 4, maxPersonas: 16, name: 30, segment: 40, profile: 260 };
 
 async function ask(state, questions, attempt = 0) {
   const res = await fetch(API, {
@@ -36,6 +37,30 @@ export function validateTeams(teams) {
     seen.add(key);
   }
   return null;
+}
+
+const PFIELD = { name: "name", segment: "segment", profile: "profile" };
+export function validatePersonas(personas) {
+  if (personas == null) return null;
+  const L = PERSONA_LIMITS;
+  if (!Array.isArray(personas) || personas.length < L.minPersonas || personas.length > L.maxPersonas)
+    return `Enter between ${L.minPersonas} and ${L.maxPersonas} customers.`;
+  const seen = new Set();
+  for (const [i, p] of personas.entries()) {
+    for (const f of Object.keys(PFIELD)) {
+      const v = typeof p?.[f] === "string" ? p[f].trim() : "";
+      if (!v) return `Customer ${i + 1} is missing a ${PFIELD[f]}.`;
+      if (v.length > L[f]) return `Customer ${i + 1}'s ${PFIELD[f]} is over ${L[f]} characters.`;
+    }
+    const key = String(p.id ?? i);
+    if (seen.has(key)) return `Two customers share the same id.`;
+    seen.add(key);
+  }
+  return null;
+}
+
+function normalizePersonas(personas) {
+  return personas.map((p, i) => ({ id: p.id || `c${i + 1}`, name: p.name.trim(), segment: p.segment.trim(), profile: p.profile.trim() }));
 }
 
 function customerQuestions(ids, teams) {
@@ -72,7 +97,8 @@ function integrityQuestions(ids) {
 const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 const r3 = (x) => Math.round(x * 1000) / 1000;
 
-export async function runRound(teams) {
+export async function runRound(teams, customPersonas) {
+  const personas = customPersonas ? normalizePersonas(customPersonas) : PERSONAS;
   const ids = teams.map((_, i) => `t${i + 1}`);
   const ads = Object.fromEntries(ids.map((id, i) => [id, {
     brand: teams[i].brand.trim(), headline: teams[i].headline.trim(), value_proposition: teams[i].valueProp.trim(), price: teams[i].price.trim(),
@@ -81,10 +107,10 @@ export async function runRound(teams) {
   const cq = customerQuestions(ids, teams);
   const [integrity, ...replies] = await Promise.all([
     ask({ ads }, integrityQuestions(ids)),
-    ...PERSONAS.map((p) => ask({ customer: p.profile, ads }, cq)),
+    ...personas.map((p) => ask({ customer: p.profile, ads }, cq)),
   ]);
 
-  const customers = PERSONAS.map((p, k) => {
+  const customers = personas.map((p, k) => {
     const a = replies[k].answers;
     return {
       id: p.id, name: p.name, segment: p.segment, profile: p.profile,
@@ -101,7 +127,7 @@ export async function runRound(teams) {
     };
   });
 
-  const segments = [...new Set(PERSONAS.map((p) => p.segment))];
+  const segments = [...new Set(personas.map((p) => p.segment))];
   const shareOf = (list, id) => r3(avg(list.map((c) => c.purchaseProbs[id] ?? 0)));
   const brands = ids.map((id, i) => ({
     id, brand: ads[id].brand, headline: ads[id].headline, valueProp: ads[id].value_proposition, price: ads[id].price,

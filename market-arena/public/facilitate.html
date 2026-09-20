@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Facilitate — Market Arena</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%231A1A17' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23C6E84A'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="mast">
+      <a class="brandmark" href="./"><span id="logoSlot"></span><h1>Market Arena</h1></a>
+      <p class="brief"><strong id="scTitle">Loading the market…</strong><span id="scBrief"></span></p>
+    </div>
+    <div class="toolbar">
+      <span class="modebadge">Facilitate</span>
+      <button class="ghost" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the customers</button>
+      <button class="ghost" id="csv" disabled>Download results (CSV)</button>
+      <button class="ghost" id="reset">Start a new game</button>
+    </div>
+  </div>
+</header>
+<div id="directory"><div class="wrap"><div class="dir-grid" id="dirGrid"></div></div></div>
+
+<main>
+  <section>
+    <div class="wrap">
+      <h2 id="editorTitle">Launch your brands</h2>
+      <p class="sub">Each brand gets a name, a headline, a value proposition and a price. Every customer sees all the ads side by side, then decides what to buy, or buys nothing.</p>
+      <div class="brands" id="brands"></div>
+      <div class="run-row">
+        <button class="run" id="run">Run round 1</button>
+        <span class="status" id="status" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+  </section>
+
+  <div id="results" class="hidden">
+    <div class="market">
+      <div class="wrap">
+        <h2 id="marketTitle">The market decided</h2>
+        <p class="sub">Share of purchases across all twelve customers, including those who bought nothing.</p>
+        <div id="flags"></div>
+        <div class="sharebar" id="sharebar" aria-hidden="true"></div>
+        <div class="legend" id="legend"></div>
+        <div class="segments" id="segments"></div>
+        <div class="detail hidden" id="detail" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <section>
+      <div class="wrap grid2">
+        <div>
+          <h2>Where each brand leaks</h2>
+          <p class="sub">Average across customers. The biggest drop between two stages is where to work next round.</p>
+          <div id="funnels"></div>
+        </div>
+        <div>
+          <h2>Who buys what</h2>
+          <p class="sub">Purchase share within each segment.</p>
+          <div class="tablewrap"><table class="heat" id="heat"></table></div>
+          <h2 style="margin-top:36px">What's holding them back</h2>
+          <p class="sub">The most likely objection to each brand, averaged across all customers.</p>
+          <div id="objections"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="historySec" class="hidden">
+      <div class="wrap">
+        <h2>Share over the rounds</h2>
+        <p class="sub">Each line is one brand. Rewrites that land push the line up; the rest of the market pays for it.</p>
+        <div class="tablewrap" id="history"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span>Customers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
+    <span id="meta" class="num"></span>
+  </div>
+  <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
+</footer>
+
+<script type="module">
+import { LOGO_MARK, personaIcon } from "./icons.js";
+import { createResultsView, exportCsv, esc } from "./app-shared.js";
+
+document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
+const view = createResultsView();
+
+const STORE = "market-arena-facilitate-v1", CODE = "market-arena-code";
+const getCode = () => { try { return localStorage.getItem(CODE) || ""; } catch { return ""; } };
+
+let config, state = { teams: [], rounds: [] };
+const $ = (s) => document.querySelector(s);
+const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} };
+view.attachHandlers(() => state.rounds);
+
+async function init() {
+  try {
+    config = await (await fetch("/api/scenario")).json();
+  } catch { $("#scTitle").textContent = "The server isn't running. Start it with: node server.js"; return; }
+  $("#scTitle").textContent = config.scenario.title;
+  $("#scBrief").textContent = config.scenario.brief;
+  renderDirectory();
+  try { const s = JSON.parse(localStorage.getItem(STORE)); if (s?.teams?.length) state = s; } catch {}
+  if (!state.teams.length) state.teams = config.defaults.map((t, i) => ({ ...t, slot: i }));
+  renderEditor();
+  if (state.rounds.length) view.renderResults(state.rounds, false);
+}
+
+function renderDirectory() {
+  const bySeg = {};
+  config.personas.forEach((p) => (bySeg[p.segment] ??= []).push(p));
+  $("#dirGrid").innerHTML = Object.entries(bySeg).map(([s, ps]) =>
+    `<div class="dir-seg"><h3>${esc(s)}</h3>${ps.map((p) => `<p>${personaIcon(p, 16)}<span><b>${esc(p.name)}</b>, ${esc(p.profile)}</span></p>`).join("")}</div>`).join("");
+}
+
+const FIELDS = [["headline", "Headline", "input"], ["valueProp", "Value proposition", "textarea"], ["price", "Price", "input"]];
+const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
+function renderEditor() {
+  const L = config.limits;
+  $("#brands").innerHTML = state.teams.map((t, i) => `
+    <div class="brand" style="--c:${COLORS[t.slot]}">
+      <label for="brand-${i}">Brand name <span class="count" data-for="brand-${i}"></span></label>
+      <input id="brand-${i}" class="name" data-i="${i}" data-f="brand" maxlength="${L.brand + 20}" value="${esc(t.brand)}">
+      ${FIELDS.map(([f, lab, tag]) => `
+        <label for="${f}-${i}">${lab} <span class="count" data-for="${f}-${i}"></span></label>
+        ${tag === "input"
+          ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
+          : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
+      ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this brand")}</button>` : ""}
+    </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a brand</button>` : "");
+  document.querySelectorAll("#brands [data-f]").forEach(updateCount);
+  $("#run").textContent = `Run round ${state.rounds.length + 1}`;
+  $("#editorTitle").textContent = state.rounds.length ? `Rework your brands for round ${state.rounds.length + 1}` : "Launch your brands";
+}
+function updateCount(el) {
+  const max = config.limits[el.dataset.f], n = el.value.trim().length;
+  const c = document.querySelector(`.count[data-for="${el.id}"]`);
+  if (c) { c.textContent = `${n}/${max}`; c.classList.toggle("over", n > max); }
+}
+$("#brands").addEventListener("input", (e) => {
+  const el = e.target; if (!el.dataset.f) return;
+  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateCount(el); save();
+});
+$("#brands").addEventListener("click", (e) => {
+  if (e.target.dataset.rm !== undefined) { state.teams.splice(+e.target.dataset.rm, 1); save(); renderEditor(); }
+  if (e.target.id === "addBrand") {
+    const used = new Set(state.teams.map((t) => t.slot));
+    const slot = [0, 1, 2, 3].find((s) => !used.has(s));
+    state.teams.push({ brand: "", headline: "", valueProp: "", price: "", slot }); save(); renderEditor();
+    document.getElementById(`brand-${state.teams.length - 1}`).focus();
+  }
+});
+
+$("#run").addEventListener("click", async () => {
+  const btn = $("#run"), status = $("#status");
+  btn.disabled = true; status.className = "status"; status.textContent = "Showing your ads to twelve customers…";
+  view.showSkeleton();
+  try {
+    if (config.needsCode && !getCode()) {
+      const c = prompt("Enter the class code from your facilitator");
+      if (!c) throw new Error("Enter the class code to run a round.");
+      try { localStorage.setItem(CODE, c.trim()); } catch {}
+    }
+    const res = await fetch("/api/round", { method: "POST", headers: { "Content-Type": "application/json", "X-Arena-Code": getCode() },
+      body: JSON.stringify({ teams: state.teams.map(({ brand, headline, valueProp, price }) => ({ brand, headline, valueProp, price })) }) });
+    const data = await res.json();
+    if (res.status === 401) { try { localStorage.removeItem(CODE); } catch {} }
+    if (!res.ok) throw new Error(data.error || "The round didn't run. Try again.");
+    data.slots = state.teams.map((t) => t.slot);
+    state.rounds.push(data); save();
+    status.textContent = ""; view.resetOpen();
+    renderEditor(); view.renderResults(state.rounds, true);
+    $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  } catch (err) { status.className = "status error"; status.textContent = err.message; $("#results").classList.add("hidden"); }
+  btn.disabled = false;
+});
+
+$("#toggleDir").addEventListener("click", (e) => {
+  const d = $("#directory"), o = d.classList.toggle("open");
+  e.target.setAttribute("aria-expanded", o); e.target.textContent = o ? "Hide the customers" : "Meet the customers";
+});
+$("#reset").addEventListener("click", () => {
+  view.resetOpen();
+  if (!confirm("Start a new game? This clears every round and resets the brands.")) return;
+  state = { teams: config.defaults.map((t, i) => ({ ...t, slot: i })), rounds: [] }; save();
+  $("#results").classList.add("hidden"); $("#csv").disabled = true; renderEditor();
+});
+$("#csv").addEventListener("click", () => exportCsv(state.rounds, "market-arena-results.csv"));
+
+init();
+</script>
+</body>
+</html>

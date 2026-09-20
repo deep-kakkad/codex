@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Practice — Market Arena</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%231A1A17' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23C6E84A'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="mast">
+      <a class="brandmark" href="./"><span id="logoSlot"></span><h1>Market Arena</h1></a>
+      <p class="brief"><strong>Test your own idea</strong><span>No class code needed. Pick an industry, rewrite the customers and the copy, see who'd actually buy.</span></p>
+    </div>
+    <div class="toolbar">
+      <span class="modebadge">Practice</span>
+      <button class="ghost hidden" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the customers</button>
+      <button class="ghost hidden" id="changeScenario">Change scenario</button>
+      <button class="ghost hidden" id="csv" disabled>Download results (CSV)</button>
+      <button class="ghost hidden" id="reset">Start over</button>
+    </div>
+  </div>
+</header>
+<div id="directory"><div class="wrap"><div class="dir-grid" id="dirGrid"></div></div></div>
+
+<main>
+  <section id="pickerSection">
+    <div class="wrap">
+      <h2>Pick a starting point</h2>
+      <p class="sub">Every template ships with a full set of customers and two example brands. Edit any of it — names, segments, personas, objections your customers face — before you run a round.</p>
+      <div class="picker-grid" id="templateGrid"></div>
+      <div id="savedWrap" class="hidden" style="margin-top:40px">
+        <h2 style="font-size:22px">Your saved scenarios</h2>
+        <p class="sub">Stored in this browser only.</p>
+        <div class="picker-grid" id="savedGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="scenarioSection" class="hidden">
+    <div class="wrap">
+      <h2>Describe your market</h2>
+      <p class="sub">A title and a one-line brief for your own reference — customers don't see this, only your ads.</p>
+      <div class="brand" style="--c:var(--lime);max-width:640px">
+        <label for="scenTitle">Market title</label>
+        <input id="scenTitle" class="name" maxlength="80">
+        <label for="scenBrief">Brief</label>
+        <textarea id="scenBrief" maxlength="280" style="min-height:60px"></textarea>
+      </div>
+    </div>
+  </section>
+
+  <section id="personasSection" class="hidden">
+    <div class="wrap">
+      <h2>Your customers</h2>
+      <p class="sub" id="personasSub">Segments come from whatever you type here — rename, add or remove freely.</p>
+      <div class="personas-grid" id="personas"></div>
+    </div>
+  </section>
+
+  <section id="brandsSection" class="hidden">
+    <div class="wrap">
+      <h2 id="editorTitle">Launch your brands</h2>
+      <p class="sub">Each brand gets a name, a headline, a value proposition and a price. Every customer sees all the ads side by side, then decides what to buy, or buys nothing.</p>
+      <div class="brands" id="brands"></div>
+      <div class="run-row">
+        <button class="ghost" id="saveScenario">Save this scenario</button>
+        <button class="run" id="run">Run round 1</button>
+        <span class="status" id="status" role="status" aria-live="polite"></span>
+      </div>
+    </div>
+  </section>
+
+  <div id="results" class="hidden">
+    <div class="market">
+      <div class="wrap">
+        <h2 id="marketTitle">The market decided</h2>
+        <p class="sub">Share of purchases across all your customers, including those who bought nothing.</p>
+        <div id="flags"></div>
+        <div class="sharebar" id="sharebar" aria-hidden="true"></div>
+        <div class="legend" id="legend"></div>
+        <div class="segments" id="segments"></div>
+        <div class="detail hidden" id="detail" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <section>
+      <div class="wrap grid2">
+        <div>
+          <h2>Where each brand leaks</h2>
+          <p class="sub">Average across customers. The biggest drop between two stages is where to work next round.</p>
+          <div id="funnels"></div>
+        </div>
+        <div>
+          <h2>Who buys what</h2>
+          <p class="sub">Purchase share within each segment.</p>
+          <div class="tablewrap"><table class="heat" id="heat"></table></div>
+          <h2 style="margin-top:36px">What's holding them back</h2>
+          <p class="sub">The most likely objection to each brand, averaged across all customers.</p>
+          <div id="objections"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="historySec" class="hidden">
+      <div class="wrap">
+        <h2>Share over the rounds</h2>
+        <p class="sub">Each line is one brand. Rewrites that land push the line up; the rest of the market pays for it.</p>
+        <div class="tablewrap" id="history"></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span>Customers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
+    <span id="meta" class="num"></span>
+  </div>
+  <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
+</footer>
+
+<script type="module">
+import { LOGO_MARK, personaIcon } from "./icons.js";
+import { createResultsView, exportCsv, esc } from "./app-shared.js";
+
+document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
+const view = createResultsView();
+const $ = (s) => document.querySelector(s);
+const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
+
+const SESSION_KEY = "market-arena-practice-session";
+const SAVED_KEY = "market-arena-practice-saved";
+const loadJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?? fb; } catch { return fb; } };
+const saveJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+
+let TEMPLATES = [], LIMITS, PERSONA_LIMITS;
+let state = null; // { scenario:{title,brief}, personas:[{id,name,segment,profile}], teams:[{brand,headline,valueProp,price,slot}], rounds:[] }
+view.attachHandlers(() => state?.rounds || []);
+
+async function init() {
+  const data = await (await fetch("/api/templates")).json();
+  TEMPLATES = data.templates; LIMITS = data.limits; PERSONA_LIMITS = data.personaLimits;
+  renderTemplateGrid();
+  renderSavedGrid();
+  const session = loadJSON(SESSION_KEY, null);
+  if (session?.personas?.length) { state = session; showBuilder(); if (state.rounds.length) view.renderResults(state.rounds, false); }
+}
+
+function renderTemplateGrid() {
+  $("#templateGrid").innerHTML = TEMPLATES.map((t) => `
+    <button class="picker-card" data-tpl="${t.id}">
+      <span class="kicker">${esc(t.industry)}</span>
+      <h3>${esc(t.scenario.title)}</h3>
+      <p>${esc(t.scenario.brief)}</p>
+    </button>`).join("");
+  $("#templateGrid").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-tpl]"); if (!btn) return;
+    const t = TEMPLATES.find((x) => x.id === btn.dataset.tpl);
+    loadScenario({ scenario: { title: t.scenario.title, brief: t.scenario.brief }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) });
+  });
+}
+function renderSavedGrid() {
+  const saved = loadJSON(SAVED_KEY, []);
+  $("#savedWrap").classList.toggle("hidden", !saved.length);
+  $("#savedGrid").innerHTML = saved.map((s) => `
+    <div class="picker-card" data-saved="${s.id}" style="cursor:default">
+      <span class="kicker">Saved ${new Date(s.savedAt).toLocaleDateString()}</span>
+      <h3>${esc(s.name)}</h3>
+      <p>${esc(s.scenario.brief || "")}</p>
+      <div style="margin-top:14px;display:flex;gap:14px">
+        <button class="ghost" data-load="${s.id}" style="padding:5px 12px">Load</button>
+        <button class="ghost" data-del="${s.id}" style="padding:5px 12px">Delete</button>
+      </div>
+    </div>`).join("");
+  $("#savedGrid").onclick = (e) => {
+    const loadId = e.target.dataset.load, delId = e.target.dataset.del;
+    if (loadId) { const s = saved.find((x) => x.id === loadId); if (s) loadScenario({ scenario: { ...s.scenario }, personas: s.personas.map((p) => ({ ...p })), teams: s.teams.map((t) => ({ ...t })) }); }
+    if (delId) { saveJSON(SAVED_KEY, saved.filter((x) => x.id !== delId)); renderSavedGrid(); }
+  };
+}
+
+function loadScenario({ scenario, personas, teams }) {
+  state = { scenario, personas, teams, rounds: [] };
+  saveJSON(SESSION_KEY, state);
+  showBuilder();
+  view.resetOpen();
+  $("#results").classList.add("hidden"); $("#csv").disabled = true;
+}
+
+function showBuilder() {
+  $("#pickerSection").classList.add("hidden");
+  ["scenarioSection", "personasSection", "brandsSection", "toggleDir", "changeScenario", "csv", "reset"].forEach((id) => $("#" + id).classList.remove("hidden"));
+  $("#scenTitle").value = state.scenario.title || "";
+  $("#scenBrief").value = state.scenario.brief || "";
+  renderDirectory();
+  renderPersonas();
+  renderBrands();
+}
+
+function save() { saveJSON(SESSION_KEY, state); }
+
+$("#scenTitle").addEventListener("input", (e) => { state.scenario.title = e.target.value; save(); renderDirectory(); });
+$("#scenBrief").addEventListener("input", (e) => { state.scenario.brief = e.target.value; save(); });
+
+function renderDirectory() {
+  const bySeg = {};
+  state.personas.forEach((p) => (bySeg[p.segment || "Unlabeled"] ??= []).push(p));
+  $("#dirGrid").innerHTML = Object.entries(bySeg).map(([s, ps]) =>
+    `<div class="dir-seg"><h3>${esc(s)}</h3>${ps.map((p) => `<p>${personaIcon(p, 16)}<span><b>${esc(p.name)}</b>, ${esc(p.profile)}</span></p>`).join("")}</div>`).join("");
+}
+
+function renderPersonas() {
+  const L = PERSONA_LIMITS;
+  $("#personasSub").textContent = `${state.personas.length}/${L.maxPersonas} customers, minimum ${L.minPersonas}. Segments come from whatever you type here — rename, add or remove freely.`;
+  $("#personas").innerHTML = state.personas.map((p, i) => `
+    <div class="pcard" data-i="${i}">
+      <div class="pcard-head">${personaIcon(p)}<input class="pname" data-f="name" data-i="${i}" maxlength="${L.name}" value="${esc(p.name)}" placeholder="Name"></div>
+      <label>Segment</label><input data-f="segment" data-i="${i}" maxlength="${L.segment}" value="${esc(p.segment)}" placeholder="e.g. Budget-conscious students">
+      <label>Profile <span class="count" data-for="profile-${i}"></span></label>
+      <textarea data-f="profile" data-i="${i}" id="profile-${i}" placeholder="Age, role or life stage, what they care about, what they're skeptical of.">${esc(p.profile)}</textarea>
+      ${state.personas.length > L.minPersonas ? `<button class="premove" data-rm="${i}">Remove ${esc(p.name || "this customer")}</button>` : ""}
+    </div>`).join("") + (state.personas.length < L.maxPersonas ? `<button class="padd" id="addPersona">+ Add a customer</button>` : "");
+  document.querySelectorAll("#personas [data-f=profile]").forEach(updatePersonaCount);
+}
+function updatePersonaCount(el) {
+  const n = el.value.trim().length, max = PERSONA_LIMITS.profile;
+  const c = document.querySelector(`.count[data-for="profile-${el.dataset.i}"]`);
+  if (c) { c.textContent = `${n}/${max}`; c.classList.toggle("over", n > max); }
+}
+$("#personas").addEventListener("input", (e) => {
+  const el = e.target; if (!el.dataset.f) return;
+  state.personas[+el.dataset.i][el.dataset.f] = el.value; save();
+  if (el.dataset.f === "profile") updatePersonaCount(el);
+});
+$("#personas").addEventListener("click", (e) => {
+  if (e.target.dataset.rm !== undefined) { state.personas.splice(+e.target.dataset.rm, 1); save(); renderPersonas(); renderDirectory(); }
+  if (e.target.id === "addPersona") {
+    state.personas.push({ id: `c${Date.now()}`, name: "", segment: "", profile: "" }); save(); renderPersonas(); renderDirectory();
+    document.querySelector(`#personas [data-i="${state.personas.length - 1}"][data-f="name"]`)?.focus();
+  }
+});
+$("#personas").addEventListener("change", () => renderDirectory());
+
+const FIELDS = [["headline", "Headline", "input"], ["valueProp", "Value proposition", "textarea"], ["price", "Price", "input"]];
+function renderBrands() {
+  const L = LIMITS;
+  $("#brands").innerHTML = state.teams.map((t, i) => `
+    <div class="brand" style="--c:${COLORS[t.slot]}">
+      <label for="brand-${i}">Brand name <span class="count" data-for="brand-${i}"></span></label>
+      <input id="brand-${i}" class="name" data-i="${i}" data-f="brand" maxlength="${L.brand + 20}" value="${esc(t.brand)}">
+      ${FIELDS.map(([f, lab, tag]) => `
+        <label for="${f}-${i}">${lab} <span class="count" data-for="${f}-${i}"></span></label>
+        ${tag === "input"
+          ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
+          : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
+      ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this brand")}</button>` : ""}
+    </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a brand</button>` : "");
+  document.querySelectorAll("#brands [data-f]").forEach(updateBrandCount);
+  $("#run").textContent = `Run round ${state.rounds.length + 1}`;
+  $("#editorTitle").textContent = state.rounds.length ? `Rework your brands for round ${state.rounds.length + 1}` : "Launch your brands";
+}
+function updateBrandCount(el) {
+  const max = LIMITS[el.dataset.f], n = el.value.trim().length;
+  const c = document.querySelector(`.count[data-for="${el.id}"]`);
+  if (c) { c.textContent = `${n}/${max}`; c.classList.toggle("over", n > max); }
+}
+$("#brands").addEventListener("input", (e) => {
+  const el = e.target; if (!el.dataset.f) return;
+  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateBrandCount(el); save();
+});
+$("#brands").addEventListener("click", (e) => {
+  if (e.target.dataset.rm !== undefined) { state.teams.splice(+e.target.dataset.rm, 1); save(); renderBrands(); }
+  if (e.target.id === "addBrand") {
+    const used = new Set(state.teams.map((t) => t.slot));
+    const slot = [0, 1, 2, 3].find((s) => !used.has(s));
+    state.teams.push({ brand: "", headline: "", valueProp: "", price: "", slot }); save(); renderBrands();
+    document.getElementById(`brand-${state.teams.length - 1}`).focus();
+  }
+});
+
+$("#saveScenario").addEventListener("click", () => {
+  const name = prompt("Name this scenario", state.scenario.title || "My scenario");
+  if (!name) return;
+  const saved = loadJSON(SAVED_KEY, []);
+  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })) });
+  saveJSON(SAVED_KEY, saved.slice(0, 20));
+  const status = $("#status"); status.className = "status"; status.textContent = "Saved to this browser.";
+});
+
+$("#run").addEventListener("click", async () => {
+  const btn = $("#run"), status = $("#status");
+  btn.disabled = true; status.className = "status"; status.textContent = `Showing your ads to ${state.personas.length} customers…`;
+  view.showSkeleton();
+  try {
+    const res = await fetch("/api/round", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "practice",
+        teams: state.teams.map(({ brand, headline, valueProp, price }) => ({ brand, headline, valueProp, price })),
+        personas: state.personas.map(({ id, name, segment, profile }) => ({ id, name, segment, profile })),
+      }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "The round didn't run. Try again.");
+    data.slots = state.teams.map((t) => t.slot);
+    state.rounds.push(data); save();
+    status.textContent = ""; view.resetOpen();
+    renderBrands(); view.renderResults(state.rounds, true);
+    $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  } catch (err) { status.className = "status error"; status.textContent = err.message; $("#results").classList.add("hidden"); }
+  btn.disabled = false;
+});
+
+$("#toggleDir").addEventListener("click", (e) => {
+  const d = $("#directory"), o = d.classList.toggle("open");
+  e.target.setAttribute("aria-expanded", o); e.target.textContent = o ? "Hide the customers" : "Meet the customers";
+});
+$("#changeScenario").addEventListener("click", () => {
+  ["scenarioSection", "personasSection", "brandsSection", "results"].forEach((id) => $("#" + id).classList.add("hidden"));
+  $("#directory").classList.remove("open");
+  $("#pickerSection").classList.remove("hidden");
+  renderSavedGrid();
+});
+$("#reset").addEventListener("click", () => {
+  if (!confirm("Start over? This clears the current scenario, its customers and every round. Saved scenarios are unaffected.")) return;
+  localStorage.removeItem(SESSION_KEY);
+  state = null; view.resetOpen();
+  ["scenarioSection", "personasSection", "brandsSection", "toggleDir", "changeScenario", "csv", "reset"].forEach((id) => $("#" + id).classList.add("hidden"));
+  $("#directory").classList.remove("open");
+  $("#results").classList.add("hidden");
+  $("#pickerSection").classList.remove("hidden");
+  renderSavedGrid();
+});
+$("#csv").addEventListener("click", () => exportCsv(state.rounds, "market-arena-practice-results.csv"));
+
+init();
+</script>
+</body>
+</html>
