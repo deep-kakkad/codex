@@ -168,44 +168,46 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 .topnav .navlinks{display:flex;gap:10px}
 .topnav .navlinks a{padding:6px 14px;font-size:13.5px}
 
-.hero{padding:26px 0 56px;border-bottom:2px solid var(--ink)}
-.hero .kicker{font:600 13px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:14px}
+.hero{padding:20px 0 0;border-bottom:2px solid var(--ink)}
 .hero h1{font-size:clamp(44px,7.5vw,84px)}
-.hero p.lede{max-width:64ch;font-size:19px;color:var(--muted);margin:18px 0 0}
-.hero p.lede b{color:var(--ink);font-weight:500}
-.ctarow{display:flex;gap:14px;flex-wrap:wrap;margin-top:30px;align-items:center}
+.hero p.lede{max-width:56ch;font-size:20px;line-height:1.5;color:var(--ink);margin:16px 0 0;font-family:var(--display)}
+.ctarow{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px;align-items:center}
 .cta-btn{background:var(--ink);color:var(--lime);border:none;padding:15px 26px;font:700 16px var(--body);border-radius:999px;text-decoration:none;display:inline-block;letter-spacing:.01em}
 .cta-btn:hover{background:#000}
 .cta-btn.secondary{background:transparent;color:var(--ink);border:1.5px solid var(--ink);padding:13.5px 24px}
 .cta-btn.secondary:hover{background:var(--ink);color:var(--cream)}
-.riskline{margin-top:16px;font-size:13.5px;color:var(--muted)}
 
-.proof{padding:54px 0 10px}
-.proof figure{margin:0;border:1.5px solid var(--ink);background:#0F0F0D;overflow:hidden}
-.proof img{display:block;width:100%;height:auto}
-.proof figcaption{padding:13px 20px;font-size:13px;color:var(--muted);border-top:1.5px solid var(--ink);background:var(--paper)}
+/* Live demo stage: real captured rounds, replayed client-side. This is the
+   product's own reveal mechanic (same token/sharebar treatment as the app),
+   not decorative art, so the hero shows the thing instead of describing it. */
+.demo-stage{background:var(--ink);color:var(--cream);margin:34px 0 0;padding:26px 26px 22px;min-height:230px}
+.demo-brand{font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:#8E8A7B;display:block;min-height:14px}
+.demo-ad{font:500 22px/1.35 var(--display);min-height:60px;margin:8px 0 0;max-width:46ch}
+.demo-ad .cursor{display:inline-block;width:2px;height:19px;background:var(--lime);margin-left:2px;vertical-align:-3px;animation:blink 1s step-end infinite}
+.demo-tokens{display:flex;flex-wrap:wrap;gap:7px;margin:18px 0 16px;min-height:34px}
+.demo-tokens .token{width:34px;height:34px;opacity:0;transform:scale(.4);transition:opacity .3s ease,transform .3s ease,background .35s ease}
+.demo-tokens .token.show{opacity:1;transform:scale(1)}
+.demo-tokens .token svg{width:15px;height:15px}
+.demo-bar{display:flex;height:36px;border:1.5px solid var(--cream);overflow:hidden}
+.demo-bar div{height:100%;min-width:0;transition:flex-grow 1s cubic-bezier(.2,.8,.2,1);display:flex;align-items:center;justify-content:center;font:600 12px var(--mono);overflow:hidden;white-space:nowrap}
+.demo-bar .none{background:repeating-linear-gradient(135deg,#3A3934 0 6px,#2A2925 6px 12px)}
+.demo-legend{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:12px;font-size:12.5px;color:#B9B5A6}
+.demo-legend b{color:var(--cream);font-family:var(--mono);font-weight:600}
+.demo-legend .sw{width:8px;height:8px;display:inline-block;margin-right:5px;vertical-align:1px}
+@keyframes blink{50%{opacity:0}}
+.demo-caption{margin:14px 0 0;font-size:13px;color:var(--muted)}
+.demo-caption a{color:var(--ink);text-decoration:underline}
 
-.narrative{padding:54px 0 10px}
-.narrative p{max-width:70ch;font:400 20px/1.55 var(--display);color:var(--ink);margin:0}
-.narrative b{font-weight:600}
+/* Objection sequence: the pitch answers real skepticism instead of listing features */
+.qa{max-width:660px;padding:48px 0;border-top:1.5px solid var(--line)}
+.qa:first-of-type{border-top:none}
+.qa h2{font:italic 500 28px/1.35 var(--display);margin:0 0 16px;letter-spacing:-.005em}
+.qa p{font-size:16.5px;line-height:1.65;color:var(--muted);margin:0 0 20px;max-width:60ch}
+.qa-proof{margin:4px 0 22px;border:1.5px solid var(--ink);max-width:480px}
+.qa-proof img{display:block;width:100%;height:auto}
+.qa-proof figcaption{padding:9px 13px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
 
-.steps{padding:50px 0}
-.steps .stepgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;margin-top:26px}
-.step .stepno{font:600 15px var(--mono);color:var(--muted);display:block;margin-bottom:10px}
-.step h3{font:600 21px var(--display);margin:0 0 8px}
-.step p{margin:0;color:var(--muted);font-size:14.5px}
-
-.cta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:22px;margin-top:26px}
-.cta-card{background:var(--paper);border:1.5px solid var(--ink);padding:28px;text-decoration:none;color:inherit;display:block;position:relative;overflow:hidden}
-.cta-card:hover{background:var(--ink);color:var(--cream)}
-.cta-card:hover .cta-arrow{transform:translateX(4px)}
-.cta-card .kicker{font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--lime);display:block;margin-bottom:10px}
-.cta-card h2{font-size:28px;margin:0 0 10px}
-.cta-card p{color:inherit;opacity:.75;margin:0 0 18px;max-width:44ch}
-.cta-arrow{font:600 15px var(--mono);display:inline-flex;align-items:center;gap:6px;transition:transform .2s ease}
-
-@media (max-width:900px){.steps .stepgrid{grid-template-columns:1fr}}
-@media (max-width:540px){.ctarow{flex-direction:column;align-items:stretch}.cta-btn{text-align:center}}
+@media (max-width:540px){.ctarow{flex-direction:column;align-items:stretch}.cta-btn{text-align:center}.demo-stage{padding:20px 18px 18px}}
 @media (max-width:900px){.segments{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr;gap:10px}.skel-seg{grid-template-columns:1fr 1fr}}
 @media (max-width:540px){.wrap{padding:0 16px}.segments{grid-template-columns:1fr}.sharebar,.skel-bar{height:56px}.legend .pct{font-size:20px}.skel-seg{grid-template-columns:1fr}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}

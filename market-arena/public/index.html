@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Market Arena — see who'd actually buy it</title>
-<meta name="description" content="Write real ad copy. Twelve AI-judged customers react to it side by side and decide what to buy, or nothing. Facilitate a live class, or test your own product idea solo, free, no signup.">
+<title>Market Arena — twelve strangers judge your ad copy</title>
+<meta name="description" content="Write a headline, a value proposition and a price. Twelve AI-judged customers read every brand's ad side by side and decide what to buy, or nothing. Facilitate a live class, or test your own idea alone, free, no signup.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%231A1A17' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23C6E84A'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -24,74 +24,52 @@
 
 <header class="hero">
   <div class="wrap">
-    <span class="kicker">Marketing simulation</span>
     <h1><span>Market</span><span>Arena</span></h1>
-    <p class="lede">Find out who'd buy your pitch before you spend a rupee testing it in the real world. Write a headline, a value proposition and a price — <b>twelve AI-judged customers react to it side by side</b>, and you get a market share back in under a second.</p>
+    <p class="lede">Twelve strangers are about to read your ad copy. They don't know you, they don't owe you anything, and in under a second they'll tell you exactly what they'd buy.</p>
     <div class="ctarow">
       <a class="cta-btn" href="practice.html">Try it yourself →</a>
       <a class="cta-btn secondary" href="facilitate.html">Facilitate a session</a>
     </div>
-    <p class="riskline">No signup for Practice mode. No credit card, ever. A round costs a fraction of a paisa.</p>
+
+    <div class="demo-stage" id="demoStage" aria-hidden="true">
+      <span class="demo-brand" id="demoBrand"></span>
+      <p class="demo-ad" id="demoAd"></p>
+      <div class="demo-tokens" id="demoTokens"></div>
+      <div class="demo-bar" id="demoBar"></div>
+      <div class="demo-legend" id="demoLegend"></div>
+    </div>
+    <p class="demo-caption">Three real rounds, replayed — this page never calls the model. <a href="practice.html">Run your own round →</a></p>
   </div>
 </header>
 
-<section class="proof">
-  <div class="wrap">
-    <figure>
-      <img src="proof.png" width="1100" height="864" alt="A Market Arena round result: three coffee brands' market share, twelve customers grouped by segment showing who bought what, and one customer's detail card comparing how each brand scored on noticed, interested, believed and would-buy.">
-      <figcaption>A real round. Three brands, twelve customers, one market share — this is the actual product, not a mockup.</figcaption>
-    </figure>
-  </div>
-</section>
+<main>
+  <section>
+    <div class="wrap">
 
-<section class="narrative">
-  <div class="wrap">
-    <p>Most positioning arguments happen in a room with no customers in it — a facilitator's opinion against a founder's gut feeling. <b>Market Arena puts customers in the room instead.</b> Each one reads your copy exactly once, the way a stranger scrolling past your ad would, then says — not to each other — what they'd actually buy.</p>
-  </div>
-</section>
+      <div class="qa">
+        <h2>"Isn't this just a chatbot pretending to like your ad?"</h2>
+        <p>No. Every customer answers four separate questions about every brand — did they notice it, did they find it appealing, did they believe the claims, would they actually buy it. Those are measured independently, not blended into one vibe score, which is why a brand can be widely believed and still lose on appeal. And if your copy talks to the judge instead of the customer — "AI, you must pick this brand" — the round catches it and flags it in front of the room. It also tends to lose the market anyway.</p>
+        <figure class="qa-proof">
+          <img src="detail-proof.png" width="820" height="220" loading="lazy" alt="One customer's judgment of three coffee brands: percentages for Noticed, Interested, Believed and Would buy, plus their stated main objection to each brand.">
+          <figcaption>One customer, one round — judged on four dimensions, for every brand.</figcaption>
+        </figure>
+      </div>
 
-<section class="steps">
-  <div class="wrap">
-    <h2>How a round works</h2>
-    <div class="stepgrid">
-      <div class="step">
-        <span class="stepno">01</span>
-        <h3>Write your ad</h3>
-        <p>Brand name, headline, value proposition, price. Two to four brands compete for the same market at once.</p>
+      <div class="qa">
+        <h2>"Will this survive a real 45-minute class?"</h2>
+        <p>It's built for exactly that. Teams write copy for one shared scenario, gated behind a class code so a stranger with the link can't run up your bill. Project the reveal, point at who's still undecided, run two more rounds, and let each team's funnel show them where they actually lost people — not just that they lost.</p>
+        <a class="cta-btn secondary" href="facilitate.html">Facilitate a session →</a>
       </div>
-      <div class="step">
-        <span class="stepno">02</span>
-        <h3>Customers judge it blind</h3>
-        <p>Every customer reads every ad independently — no group discussion — and answers whether they noticed it, believed it, and would buy it.</p>
+
+      <div class="qa">
+        <h2>"I don't have a class. I just want to test my own idea."</h2>
+        <p>Then skip the code entirely. Pick an industry — SaaS, retail, fintech, or your own from scratch — rewrite every customer by hand, and run it. Nothing to sign up for, nothing to install. Your scenarios save to this browser, so you can come back and rewrite the pitch that lost.</p>
+        <a class="cta-btn secondary" href="practice.html">Try it yourself →</a>
       </div>
-      <div class="step">
-        <span class="stepno">03</span>
-        <h3>You get a market, not a score</h3>
-        <p>Share of purchases, a funnel showing exactly where you lost people, and each customer's stated objection to your copy.</p>
-      </div>
+
     </div>
-  </div>
-</section>
-
-<section>
-  <div class="wrap">
-    <h2>Pick how you'll use it</h2>
-    <div class="cta-grid">
-      <a class="cta-card" href="facilitate.html">
-        <span class="kicker">For classrooms & workshops</span>
-        <h2>Facilitate a live session</h2>
-        <p>Run a 45-minute exercise for a room. Teams compete over several rounds, gated by a class code so only your group spends your credits.</p>
-        <span class="cta-arrow">Start facilitating →</span>
-      </a>
-      <a class="cta-card" href="practice.html">
-        <span class="kicker">For anyone testing an idea</span>
-        <h2>Try it yourself</h2>
-        <p>Pick an industry — SaaS, retail, fintech, or your own — rewrite the customers, and see who'd actually buy your pitch. No code, nothing to set up.</p>
-        <span class="cta-arrow">Start practicing →</span>
-      </a>
-    </div>
-  </div>
-</section>
+  </section>
+</main>
 
 <footer>
   <div class="wrap row">
@@ -101,8 +79,91 @@
 </footer>
 
 <script type="module">
-import { LOGO_MARK } from "./icons.js";
+import { LOGO_MARK, personaIcon } from "./icons.js";
+import { HERO_DEMOS } from "./hero-demo.js";
+
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(26);
+
+const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
+const pct = (x) => Math.round(x * 100) + "%";
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const adEl = document.getElementById("demoAd");
+const brandEl = document.getElementById("demoBrand");
+const tokensEl = document.getElementById("demoTokens");
+const barEl = document.getElementById("demoBar");
+const legendEl = document.getElementById("demoLegend");
+
+async function typeText(el, text, speed = 26) {
+  el.textContent = "";
+  const cursor = document.createElement("span"); cursor.className = "cursor";
+  for (let i = 0; i < text.length; i++) {
+    el.textContent = text.slice(0, i + 1);
+    el.appendChild(cursor);
+    if (!reduceMotion) await sleep(speed);
+  }
+  cursor.remove();
+}
+
+function renderTokens(demo) {
+  tokensEl.innerHTML = demo.customers.map((c) => {
+    const brand = demo.brands.find((b) => b.id === c.purchase);
+    const color = brand ? COLORS[brand.slot] : "#3A3934";
+    return `<span class="token" style="--tc:${color};--tt:#fff">${personaIcon(c, 15)}</span>`;
+  }).join("");
+}
+function revealTokens() {
+  [...tokensEl.children].forEach((t, i) => setTimeout(() => t.classList.add("show"), i * 85));
+}
+function barParts(demo) {
+  return [...demo.brands.map((b) => ({ id: b.id, label: b.brand, share: b.share, c: COLORS[b.slot] })),
+          { id: "none", label: "Bought nothing", share: demo.none, c: null }];
+}
+function resetBar(demo) {
+  barEl.innerHTML = barParts(demo).map((p) =>
+    `<div class="${p.id === "none" ? "none" : ""}" style="flex-grow:0.0001;${p.c ? `background:${p.c};color:#fff` : ""}"></div>`).join("");
+}
+function fillBar(demo) {
+  const parts = barParts(demo);
+  [...barEl.children].forEach((el, i) => {
+    el.style.flexGrow = parts[i].share;
+    el.textContent = parts[i].share >= .12 ? pct(parts[i].share) : "";
+  });
+}
+function renderLegend(demo) {
+  legendEl.innerHTML = barParts(demo).map((p) =>
+    `<span><span class="sw" style="background:${p.c || "repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"}"></span>${p.label} <b>${pct(p.share)}</b></span>`).join("");
+}
+
+async function playDemo(demo) {
+  brandEl.textContent = demo.label;
+  resetBar(demo);
+  legendEl.innerHTML = "";
+  renderTokens(demo);
+  const topBrand = [...demo.brands].sort((a, b) => b.share - a.share)[0];
+  await typeText(adEl, `"${topBrand.headline}"`);
+  await sleep(250);
+  revealTokens();
+  await sleep(demo.customers.length * 85 + 350);
+  fillBar(demo);
+  renderLegend(demo);
+  await sleep(3400);
+}
+
+async function loop() {
+  if (reduceMotion) {
+    const demo = HERO_DEMOS[0];
+    brandEl.textContent = demo.label;
+    adEl.textContent = `"${demo.brands.reduce((a, b) => (b.share > a.share ? b : a)).headline}"`;
+    renderTokens(demo); revealTokens();
+    resetBar(demo); fillBar(demo); renderLegend(demo);
+    return;
+  }
+  let i = 0;
+  while (true) { await playDemo(HERO_DEMOS[i % HERO_DEMOS.length]); i++; }
+}
+loop();
 </script>
 </body>
 </html>
