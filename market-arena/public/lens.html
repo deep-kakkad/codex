@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Market Lens — Market Arena</title>
+<meta name="description" content="An alternative front end for a Market Arena round: one decision, explored through lenses, instead of seven report sections.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%23171717' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23B23A48'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="lens.css">
+</head>
+<body>
+
+<div class="lwrap">
+  <div class="ltop">
+    <a class="lmark" href="./"><b>Market Arena</b><span>Lens</span></a>
+    <span class="lsource" id="source"></span>
+    <div class="ltop-right">
+      <div class="pillset" id="roundTabs"></div>
+      <div class="pillset" id="modeTabs">
+        <button class="pill on" data-mode="analyst">Analyst</button>
+        <button class="pill" data-mode="story">Story</button>
+      </div>
+      <a class="tbtn" href="practice.html">Open the report view →</a>
+    </div>
+  </div>
+</div>
+
+<div class="decision" id="decision">
+  <div class="lwrap decision-in">
+    <div>
+      <p class="dround" id="dRound"></p>
+      <h1 class="dverdict" id="dVerdict"></h1>
+      <div class="dchips" id="dChips"></div>
+    </div>
+    <div class="dfacts" id="dFacts"></div>
+  </div>
+</div>
+
+<div class="lensbar">
+  <div class="lwrap lensbar-in" id="lensBar"></div>
+</div>
+
+<main class="lwrap" id="main"></main>
+
+<script type="module">
+import { personaIcon } from "./icons.js";
+import { SAMPLE } from "./lens-sample.js";
+
+/* ---------- shared vocabulary ---------- */
+const STAGES = [
+  ["attention", "Noticed", "getting noticed"],
+  ["interest", "Interested", "sounding appealing"],
+  ["belief", "Believed", "being believed"],
+  ["purchase", "Chose", "closing the choice"],
+];
+const OBJ_ORDER = ["price", "trust", "relevance", "unclear"];
+const OBJ_SHORT = { price: "Price", trust: "Belief in the claims", relevance: "Fit with their needs", unclear: "Clarity of the offer", none: "No real objection" };
+const OBJ_SAID = { price: "the price felt too high", trust: "they didn't believe the claims", relevance: "it didn't fit their needs or habits", unclear: "they didn't understand the offer", none: "they had no real objection" };
+const OBJ_NOUN = { price: "price objections", trust: "doubts about the claims", relevance: "objections about fit", unclear: "confusion about the offer" };
+const COLORS = ["var(--c0)", "var(--c1)", "var(--c2)", "var(--c3)"];
+const HEX = ["#2D5FBF", "#B23A48", "#1F8B6E", "#C98A1F"];
+const SESSION_KEY = "market-arena-practice-session";
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = (x) => Math.round(x * 100) + "%";
+const pts = (x) => (x > 0 ? "+" : x < 0 ? "−" : "±") + Math.abs(Math.round(x * 100));
+const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+const list = (xs) => xs.length < 2 ? (xs[0] || "") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
+
+/* ---------- state ---------- */
+const state = { rounds: [], idx: 0, lens: "all", view: "winner", focus: null, sel: null, mode: "analyst", step: 0, source: "", live: false, meta: {} };
+
+/* Every number on this page is derived here, from the buyers the active lens
+   includes. Change the lens and the winner itself can change — that is the
+   whole point of the page, so nothing is ever read from a precomputed total. */
+function analyse(round, customers) {
+  const brands = round.brands.map((b, i) => {
+    const slot = round.slots[i];
+    const probs = customers.map((c) => c.purchaseProbs[b.id] ?? 0);
+    const share = avg(probs);
+    const objCounts = Object.fromEntries([...OBJ_ORDER, "none"].map((k) => [k, 0]));
+    customers.forEach((c) => { objCounts[c.byBrand[b.id].objection] += 1; });
+    const n = customers.length || 1;
+    return {
+      ...b, slot, share,
+      stages: {
+        attention: avg(customers.map((c) => c.byBrand[b.id].attention)),
+        interest: avg(customers.map((c) => c.byBrand[b.id].appeal)),
+        belief: avg(customers.map((c) => c.byBrand[b.id].belief)),
+        purchase: share,
+      },
+      objCounts,
+      objRate: Object.fromEntries(Object.entries(objCounts).map(([k, v]) => [k, v / n])),
+      picks: customers.filter((c) => c.purchase === b.id),
+      strong: probs.filter((p) => p >= .5).length,
+      weak: probs.filter((p) => p < .15).length,
+    };
+  });
+  const ranked = [...brands].sort((a, b) => b.share - a.share);
+  return {
+    brands, ranked, customers,
+    winner: ranked[0], second: ranked[1],
+    none: avg(customers.map((c) => c.purchaseProbs.none ?? 0)),
+    walkers: customers.filter((c) => c.purchase === "none"),
+  };
+}
+
+const round = () => state.rounds[state.idx];
+const prevRound = () => (state.idx > 0 ? state.rounds[state.idx - 1] : null);
+const lensCustomers = (r) => state.lens === "all" ? r.customers : r.customers.filter((c) => c.segment === state.lens);
+const A = () => analyse(round(), lensCustomers(round()));
+const colorOf = (b) => COLORS[b.slot];
+
+/* What separated the winner from the rest of the field, in points. Positive
+   means it helped the winner. Objection rows are inverted on purpose: fewer
+   buyers objecting is an advantage. */
+function drivers(a) {
+  const others = a.brands.filter((b) => b.id !== a.winner.id);
+  const cap = (t) => t[0].toUpperCase() + t.slice(1);
+  const rows = STAGES.filter(([k]) => k !== "purchase").map(([k, , plain]) => {
+    const mine = a.winner.stages[k], theirs = avg(others.map((b) => b.stages[k]));
+    return {
+      key: k, kind: "stage", label: cap(plain), value: mine - theirs, mine, theirs,
+      pos: `led on ${plain} — ${pct(mine)} against the field's ${pct(theirs)}`,
+      neg: `trailed the field on ${plain} — ${pct(mine)} against ${pct(theirs)}`,
+      headline: `It won on ${plain}.`,
+    };
+  });
+  OBJ_ORDER.forEach((k) => {
+    const mine = a.winner.objRate[k], theirs = avg(others.map((b) => b.objRate[k]));
+    if (Math.abs(theirs - mine) < .08) return;
+    rows.push({
+      key: k, kind: "obj", label: cap(OBJ_NOUN[k]), value: theirs - mine, mine, theirs,
+      pos: `drew fewer ${OBJ_NOUN[k]} than the field — ${pct(mine)} of buyers against ${pct(theirs)}`,
+      neg: `drew more ${OBJ_NOUN[k]} than the field — ${pct(mine)} of buyers against ${pct(theirs)}`,
+      headline: `It drew the fewest ${OBJ_NOUN[k]}.`,
+    });
+  });
+  return rows.sort((x, y) => Math.abs(y.value) - Math.abs(x.value));
+}
+
+/* Labels the shape of the market for one contender. Thresholds are a reading
+   aid; the counts they come from are always shown next to the label and in the
+   drawer, so the call is checkable rather than asserted. */
+function consensus(b, n) {
+  const strong = b.strong / Math.max(1, n), weak = b.weak / Math.max(1, n);
+  if (strong >= .4 && weak >= .3) return "polarizing";
+  if (weak >= .5) return "narrow appeal";
+  if (strong >= .4) return "broad appeal";
+  return "mixed";
+}
+
+/* A buyer who went against the majority of their own segment. These are the
+   cases worth reading, and they are computed, not hand-picked. */
+function outliers(a) {
+  const out = [];
+  [...new Set(a.customers.map((c) => c.segment))].forEach((seg) => {
+    const inSeg = a.customers.filter((c) => c.segment === seg);
+    if (inSeg.length < 3) return;
+    const tally = {};
+    inSeg.forEach((c) => (tally[c.purchase] = (tally[c.purchase] || 0) + 1));
+    const [majority, count] = Object.entries(tally).sort((x, y) => y[1] - x[1])[0];
+    if (count < Math.ceil(inSeg.length * .6)) return;
+    inSeg.filter((c) => c.purchase !== majority).forEach((c) => out.push({ c, seg, majority, count, of: inSeg.length }));
+  });
+  return out;
+}
+
+const nameOf = (a, id) => id === "none" ? "nothing" : (a.brands.find((b) => b.id === id)?.brand ?? id);
+
+/* ---------- decision header ---------- */
+function renderDecision(a) {
+  const r = round();
+  const gap = Math.round((a.winner.share - a.second.share) * 100);
+  const tie = gap < 5;
+  $("#dRound").textContent = `Round ${state.idx + 1}${state.lens === "all" ? "" : " · " + state.lens} · ${a.customers.length} buyers`;
+  $("#dVerdict").innerHTML = tie
+    ? `<em style="--vc:var(--hair)">${esc(a.winner.brand)}</em> and <em style="--vc:var(--hair)">${esc(a.second.brand)}</em> are level.`
+    : `<em style="--vc:${colorOf(a.winner)}">${esc(a.winner.brand)}</em> leads.`;
+
+  $("#dChips").innerHTML = a.ranked.map((b) => `
+    <button class="dchip ${state.focus === b.slot ? "on" : ""}" data-focus="${b.slot}" style="--c:${colorOf(b)}">
+      <span class="sw"></span>${esc(b.brand)} <b>${pct(b.share)}</b>
+    </button>`).join("") +
+    `<span class="dchip nochip"><span class="sw"></span>no purchase <b>${pct(a.none)}</b></span>`;
+
+  const d = drivers(a);
+  const best = d.find((x) => x.value > 0);
+  const worst = [...d].reverse().find((x) => x.value < 0);
+  const target = a.second;
+  const topObj = OBJ_ORDER.map((k) => [k, target.objRate[k]]).sort((x, y) => y[1] - x[1])[0];
+  $("#dFacts").innerHTML = `
+    <div class="dfact"><span>Main reason</span><p>${best ? `<b>${esc(a.winner.brand)}</b> ${esc(best.pos)}` : "No single driver separated the field."}</p></div>
+    <div class="dfact"><span>Biggest weakness</span><p>${worst ? `<b>${esc(a.winner.brand)}</b> ${esc(worst.neg)}` : `${pct(a.none)} of this panel bought nothing at all`}</p></div>
+    <div class="dfact"><span>Next test</span><p><b>${esc(target.brand)}</b>: ${target.objCounts[topObj[0]]} of ${a.customers.length} buyers said ${esc(OBJ_SAID[topObj[0]])} <button class="tbtn" style="padding:3px 9px;font-size:12px;margin-left:6px" data-go="next">Compose it →</button></p></div>`;
+}
+
+/* ---------- lens bar ---------- */
+function renderLensBar(r) {
+  const segs = [...new Set(r.customers.map((c) => c.segment))];
+  const overall = analyse(r, r.customers);
+  const chips = [["all", "All buyers", r.customers.length], ...segs.map((s) => [s, s, r.customers.filter((c) => c.segment === s).length])];
+  let html = `<span class="lenslabel">Look at this market through</span>` + chips.map(([k, label, n]) =>
+    `<button class="lens ${state.lens === k ? "on" : ""}" data-lens="${esc(k)}">${esc(label)}<span class="n">${n}</span></button>`).join("");
+
+  if (state.lens !== "all") {
+    const a = A();
+    if (a.winner.slot !== overall.winner.slot) {
+      html += `<p class="flip" style="flex-basis:100%"><span class="fk">Winner flips</span>
+        Through this lens <b>${esc(a.winner.brand)}</b> wins on ${pct(a.winner.share)} — overall it was ${esc(overall.winner.brand)}.</p>`;
+    }
+    if (a.customers.length < 4) {
+      html += `<p class="thin" style="flex-basis:100%">${a.customers.length} buyers in this lens. Read it as an anecdote, not a result.</p>`;
+    }
+  }
+  $("#lensBar").innerHTML = html;
+}
+
+/* ---------- views ---------- */
+const VIEWS = [
+  ["winner", "Winner"], ["why", "Why it won"], ["path", "Decision path"],
+  ["objections", "Objections"], ["buyers", "Buyers"], ["walkaways", "Walk-aways"],
+  ["changes", "What changed"], ["next", "Next test"],
+];
+
+function renderRail() {
+  const has2 = state.idx > 0;
+  return `<nav class="rail">` + VIEWS.map(([k, label], i) => {
+    if (k === "changes" && !has2) return "";
+    return `${k === "changes" || (k === "next" && !has2) ? `<hr>` : ""}<button class="${state.view === k ? "on" : ""}" data-view="${k}"><span class="rk">${String(i + 1).padStart(2, "0")}</span>${label}</button>`;
+  }).join("") + `</nav>`;
+}
+
+function viewWinner(a) {
+  const gap = Math.round((a.winner.share - a.second.share) * 100);
+  const tie = gap < 5;
+  return `
+    <section class="view">
+      ${tie ? `<p class="caveat"><b>Too close to call.</b> ${esc(a.winner.brand)} and ${esc(a.second.brand)} are ${gap} points apart across ${a.customers.length} buyers. Treat this as a tie and change something bigger.</p>` : ""}
+      <p class="big" style="color:${colorOf(a.winner)}">${pct(a.winner.share)}</p>
+      <p class="bigsub">${esc(a.winner.brand.toUpperCase())} · ${a.winner.picks.length} of ${a.customers.length} buyers picked it outright</p>
+      <div class="ladder">
+        ${a.ranked.map((b) => `
+          <button class="lrow ${state.focus === b.slot ? "on" : ""}" data-focus="${b.slot}" style="--c:${colorOf(b)}">
+            <span class="lname"><i></i><span>${esc(b.brand)}</span></span>
+            <span class="ltrack"><span class="lfill" style="width:${Math.round(b.share * 100)}%"></span></span>
+            <span class="lpct">${pct(b.share)}</span>
+          </button>`).join("")}
+        <button class="lrow none" data-sel='{"kind":"none"}'>
+          <span class="lname"><i style="background:none"></i><span>bought nothing</span></span>
+          <span class="ltrack"><span class="lfill" style="width:${Math.round(a.none * 100)}%"></span></span>
+          <span class="lpct">${pct(a.none)}</span>
+        </button>
+      </div>
+      <h2 style="margin-top:38px">How divided were they?</h2>
+      <p class="lead">Share is an average. Two contenders on the same number can hide very different markets.</p>
+      <div class="rows">
+        ${a.ranked.map((b) => `
+          <button class="row" data-sel='{"kind":"consensus","slot":${b.slot}}' style="--c:${colorOf(b)}">
+            <span class="rowmain"><b>${esc(b.brand)}</b><p>${b.strong} strongly for, ${b.weak} effectively out</p></span>
+            <span class="minibar"><i style="width:${Math.round((b.strong / Math.max(1, a.customers.length)) * 100)}%"></i></span>
+            <span class="rowend">${consensus(b, a.customers.length)}</span>
+          </button>`).join("")}
+      </div>
+    </section>`;
+}
+
+function viewWhy(a) {
+  const d = drivers(a);
+  const max = Math.max(...d.map((x) => Math.abs(x.value)), .08);
+  return `
+    <section class="view">
+      <h2>Why ${esc(a.winner.brand)} won</h2>
+      <p class="lead">Each row is the gap between ${esc(a.winner.brand)} and the average of the other contenders, in points, for these ${a.customers.length} buyers. Click one to see the numbers behind it.</p>
+      <div class="drivers">
+        ${d.map((x) => `
+          <button class="driver ${state.sel?.kind === "driver" && state.sel.key === x.key ? "on" : ""}" data-sel='${esc(JSON.stringify({ kind: "driver", key: x.key, dkind: x.kind }))}' style="--c:${colorOf(a.winner)}">
+            <span class="dlabel">${esc(x.label)}</span>
+            <span class="dbarwrap"><span class="dbar ${x.value >= 0 ? "pos" : "neg"}" style="width:${Math.abs(x.value) / max * 44}%"></span></span>
+            <span class="dval ${x.value < 0 ? "neg" : ""}">${pts(x.value)}</span>
+          </button>`).join("")}
+      </div>
+      <p class="pathnote">Positive means it helped ${esc(a.winner.brand)}; negative means the field did better. Objection rows are inverted — fewer buyers objecting counts as an advantage.</p>
+    </section>`;
+}
+
+function viewPath(a) {
+  const W = 760, H = 250, L = 56, R = 108, T = 18, B = 42;
+  const x = (i) => L + i * ((W - L - R) / 3);
+  const y = (v) => T + (1 - v) * (H - T - B);
+  const stage = state.sel?.kind === "stage" ? state.sel.key : null;
+  let svg = `<svg class="pathsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Every contender across the four decision stages">`;
+  [0, .25, .5, .75, 1].forEach((v) => {
+    svg += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#E4E2D9"/><text x="${L - 10}" y="${y(v) + 4}" text-anchor="end">${pct(v)}</text>`;
+  });
+  STAGES.forEach(([k, label], i) => {
+    svg += `<g class="hit ${stage === k ? "on" : ""}" data-stage="${k}"><rect x="${x(i) - 44}" y="${T - 10}" width="88" height="${H - T - B + 22}" rx="6"/></g>`;
+    svg += `<text class="stagelab" x="${x(i)}" y="${H - 16}" text-anchor="middle" fill="${stage === k ? "#171717" : "#73736D"}">${label}</text>`;
+  });
+  a.brands.forEach((b) => {
+    const pt = STAGES.map(([k], i) => [x(i), y(b.stages[k])]);
+    svg += `<polyline fill="none" stroke="${HEX[b.slot]}" stroke-width="${state.focus == null || state.focus === b.slot ? 2.5 : 1}" opacity="${state.focus == null || state.focus === b.slot ? 1 : .3}" points="${pt.map((p) => p.join(",")).join(" ")}"/>`;
+    pt.forEach((p, i) => { svg += `<circle cx="${p[0]}" cy="${p[1]}" r="${stage === STAGES[i][0] ? 6 : 4}" fill="${HEX[b.slot]}" opacity="${state.focus == null || state.focus === b.slot ? 1 : .3}"/>`; });
+    const last = pt[3];
+    svg += `<text x="${last[0] + 12}" y="${last[1] + 4}" style="fill:${HEX[b.slot]};font-weight:600">${esc(b.brand)} ${pct(b.stages.purchase)}</text>`;
+  });
+  svg += `</svg>`;
+
+  const rows = stage ? a.customers.map((c) => ({
+    c, vals: a.brands.map((b) => ({ b, v: stage === "purchase" ? (c.purchaseProbs[b.id] ?? 0) : c.byBrand[b.id][stage === "interest" ? "appeal" : stage] })),
+  })) : [];
+
+  return `
+    <section class="view">
+      <h2>One path, every contender</h2>
+      <p class="lead">All ${a.brands.length} contenders across the same four questions, for these ${a.customers.length} buyers. Click a stage to see who scored what.</p>
+      <div class="pathwrap">${svg}</div>
+      <p class="pathnote">These four are measured independently, not as a funnel — a buyer can believe a claim more than they found it appealing, so a later point can sit higher than an earlier one.</p>
+      ${stage ? `
+        <h2 style="margin-top:34px">${STAGES.find(([k]) => k === stage)[1]}, buyer by buyer</h2>
+        <p class="lead">Sorted by how ${esc(a.winner.brand)} did with each buyer, weakest first.</p>
+        <div class="rows">
+          ${rows.sort((p, q) => (p.vals.find((v) => v.b.id === a.winner.id).v) - (q.vals.find((v) => v.b.id === a.winner.id).v))
+            .map(({ c, vals }) => `
+              <button class="row" data-sel='${esc(JSON.stringify({ kind: "buyer", id: c.id }))}'>
+                <span class="rowmain"><b>${esc(c.name)}</b><p>${esc(c.segment)}</p></span>
+                <span style="display:flex;gap:14px;flex-wrap:wrap">${vals.map((v) => `<span style="font:600 12.5px var(--mono);color:${HEX[v.b.slot]}">${esc(v.b.brand)} ${pct(v.v)}</span>`).join("")}</span>
+                <span class="rowend"></span>
+              </button>`).join("")}
+        </div>` : ""}
+    </section>`;
+}
+
+function viewObjections(a) {
+  return `
+    <section class="view">
+      <h2>What stopped them</h2>
+      <p class="lead">For every contender, each buyer named the single biggest reason they might not buy. These are counts of buyers, not scores.</p>
+      ${a.ranked.map((b) => {
+        const top = OBJ_ORDER.map((k) => [k, b.objCounts[k]]).sort((x, y) => y[1] - x[1]);
+        return `
+        <h2 style="font-size:20px;margin:26px 0 6px;color:${colorOf(b)}">${esc(b.brand)}</h2>
+        <div class="rows">
+          ${top.filter(([, n]) => n > 0).map(([k, n]) => `
+            <button class="row" data-sel='${esc(JSON.stringify({ kind: "objection", key: k, slot: b.slot }))}' style="--c:${colorOf(b)}">
+              <span class="rowmain"><b>${OBJ_SHORT[k]}</b><p>${n} of ${a.customers.length} buyers</p></span>
+              <span class="minibar"><i style="width:${Math.round((n / Math.max(1, a.customers.length)) * 100)}%"></i></span>
+              <span class="rowend">${pct(n / Math.max(1, a.customers.length))}</span>
+            </button>`).join("")}
+          ${b.objCounts.none > 0 ? `<div class="row" style="cursor:default"><span class="rowmain"><b>No real objection</b><p>${b.objCounts.none} buyers had nothing against it</p></span><span></span><span class="rowend">${pct(b.objCounts.none / Math.max(1, a.customers.length))}</span></div>` : ""}
+        </div>`;
+      }).join("")}
+    </section>`;
+}
+
+function viewBuyers(a) {
+  const outs = outliers(a);
+  const outIds = new Set(outs.map((o) => o.c.id));
+  return `
+    <section class="view">
+      <h2>Twelve separate decisions</h2>
+      <p class="lead">Each buyer is a trace: what they saw, how they scored it, what they picked. ${outs.length ? `${outs.length} went against their own segment — those are marked.` : "Nobody broke with their segment this round."}</p>
+      ${outs.length ? `<p class="caveat"><b>${list(outs.map((o) => esc(o.c.name)))}</b> ${outs.length > 1 ? "are outliers" : "is an outlier"}. ${outs.map((o) => `${o.count} of ${o.of} ${esc(o.seg)} buyers chose ${esc(nameOf(a, o.majority))}; ${esc(o.c.name)} chose ${esc(nameOf(a, o.c.purchase))}.`).join(" ")}</p>` : ""}
+      <div class="traces">
+        ${a.customers.map((c) => {
+          const b = a.brands.find((x) => x.id === c.purchase);
+          return `
+          <button class="trace ${state.sel?.kind === "buyer" && state.sel.id === c.id ? "on" : ""} ${outIds.has(c.id) ? "outlier" : ""}" data-sel='${esc(JSON.stringify({ kind: "buyer", id: c.id }))}' style="--c:${b ? colorOf(b) : "var(--none)"}">
+            <span class="trace-top">
+              <i>${personaIcon(c, 13)}</i>
+              <span><b>${esc(c.name)}</b><span class="trace-seg">${esc(c.segment)}</span></span>
+              ${outIds.has(c.id) ? `<span class="outdot">Outlier</span>` : ""}
+            </span>
+            <span class="trace-pick">${b ? "Chose " + esc(b.brand) : "Bought nothing"} · ${pct(c.confidence)} sure</span>
+          </button>`;
+        }).join("")}
+      </div>
+    </section>`;
+}
+
+function viewWalkaways(a) {
+  const n = a.walkers.length;
+  const counts = Object.fromEntries(OBJ_ORDER.map((k) => [k, 0]));
+  a.walkers.forEach((c) => a.brands.forEach((b) => { const o = c.byBrand[b.id].objection; if (o !== "none") counts[o] += 1; }));
+  const ranked = Object.entries(counts).sort((x, y) => y[1] - x[1]);
+  const universal = ranked[0] && ranked[0][1] >= n * a.brands.length * .5;
+  return `
+    <section class="view">
+      <h2>${pct(a.none)} of this market bought nothing</h2>
+      <p class="lead">Walking away is a result, not a leftover. If the same objection blocks every contender, the problem is the category or the price, not the copy.</p>
+      ${n === 0 ? `<p class="caveat">No buyer in this lens rejected all contenders outright, though ${pct(a.none)} of the averaged choice still went nowhere.</p>` : `
+        <div class="rows">
+          ${a.walkers.map((c) => {
+            const objs = a.brands.map((b) => c.byBrand[b.id].objection);
+            const same = new Set(objs).size === 1;
+            return `<button class="row" data-sel='${esc(JSON.stringify({ kind: "buyer", id: c.id }))}'>
+              <span class="rowmain"><b>${esc(c.name)}</b><p>${esc(c.segment)}${same ? ` — ${OBJ_SAID[objs[0]]} against all ${a.brands.length}` : ` — ${list([...new Set(objs)].map((o) => OBJ_SHORT[o].toLowerCase()))}`}</p></span>
+              <span></span><span class="rowend">${pct(c.purchaseProbs.none ?? 0)}</span>
+            </button>`;
+          }).join("")}
+        </div>`}
+      <h2 style="margin-top:34px">What blocked them, across every contender</h2>
+      <div class="rows">
+        ${ranked.filter(([, v]) => v > 0).map(([k, v]) => `
+          <div class="row" style="cursor:default">
+            <span class="rowmain"><b>${OBJ_SHORT[k]}</b><p>cited ${v} times across ${n} buyers × ${a.brands.length} contenders</p></span>
+            <span class="minibar"><i style="width:${Math.round((v / Math.max(1, n * a.brands.length)) * 100)}%"></i></span>
+            <span class="rowend">${pct(v / Math.max(1, n * a.brands.length))}</span>
+          </div>`).join("")}
+      </div>
+      ${universal ? `<p class="caveat" style="margin-top:20px"><b>Same wall everywhere.</b> ${OBJ_SHORT[ranked[0][0]]} blocked these buyers against every contender. Rewriting one ad won't move them — the offer has to change.</p>` : ""}
+    </section>`;
+}
+
+function viewChanges(a) {
+  const prev = prevRound();
+  if (!prev) return `<section class="view"><h2>Nothing to compare yet</h2><p class="lead">Run a second round and this becomes the most useful page here.</p></section>`;
+  const pa = analyse(prev, state.lens === "all" ? prev.customers : prev.customers.filter((c) => c.segment === state.lens));
+  const bySlot = (an, slot) => an.brands.find((b) => b.slot === slot);
+  const FIELDS = [["brand", "Name"], ["headline", "Headline"], ["valueProp", "Value proposition"], ["price", "Price"]];
+  const prevById = Object.fromEntries(pa.customers.map((c) => [c.id, c]));
+  const switchers = a.customers.map((c) => {
+    const was = prevById[c.id];
+    if (!was || was.purchase === c.purchase) return null;
+    return { c, from: nameOf(pa, was.purchase), to: nameOf(a, c.purchase) };
+  }).filter(Boolean);
+
+  return `
+    <section class="view">
+      <h2>Round ${state.idx} → ${state.idx + 1}</h2>
+      <p class="lead">What you changed, what it moved, and who moved.</p>
+      <div class="ladder wide">
+        ${a.ranked.map((b) => {
+          const before = bySlot(pa, b.slot);
+          const delta = before ? b.share - before.share : null;
+          return `<button class="lrow" data-focus="${b.slot}" style="--c:${colorOf(b)}">
+            <span class="lname"><i></i><span>${esc(b.brand)}</span></span>
+            <span class="ltrack"><span class="lfill" style="width:${Math.round(b.share * 100)}%"></span></span>
+            <span class="lpct">${before ? `${pct(before.share)} → ${pct(b.share)}` : pct(b.share)}</span>
+          </button>
+          ${delta !== null && Math.abs(Math.round(delta * 100)) >= 1 ? `<p class="thin" style="margin:-4px 0 6px 146px">${pts(delta)} points</p>` : ""}`;
+        }).join("")}
+      </div>
+      <h2 style="margin-top:34px">What you actually changed</h2>
+      <div class="rows">
+        ${a.brands.map((b) => {
+          const before = bySlot(pa, b.slot);
+          if (!before) return `<div class="row" style="cursor:default"><span class="rowmain"><b>${esc(b.brand)}</b><p>new this round</p></span><span></span><span class="rowend"></span></div>`;
+          const diffs = FIELDS.filter(([f]) => (before[f] || "") !== (b[f] || ""));
+          if (!diffs.length) return `<div class="row" style="cursor:default"><span class="rowmain"><b>${esc(b.brand)}</b><p>unchanged</p></span><span></span><span class="rowend">held</span></div>`;
+          return diffs.map(([f, label]) => `
+            <div class="row" style="cursor:default;--c:${colorOf(b)}">
+              <span class="rowmain"><b>${esc(b.brand)}</b><p>${label}</p></span>
+              <span style="font-size:13px"><span style="color:var(--dim);text-decoration:line-through">${esc(before[f] || "—")}</span> <span style="color:var(--faint)">→</span> <b>${esc(b[f] || "—")}</b></span>
+              <span class="rowend"></span>
+            </div>`).join("");
+        }).join("")}
+      </div>
+      <h2 style="margin-top:34px">${switchers.length} buyer${switchers.length === 1 ? "" : "s"} switched</h2>
+      ${switchers.length ? `<div class="rows">${switchers.map(({ c, from, to }) => `
+        <button class="row" data-sel='${esc(JSON.stringify({ kind: "buyer", id: c.id }))}'>
+          <span class="rowmain"><b>${esc(c.name)}</b><p>${esc(c.segment)}</p></span>
+          <span style="font:500 13px var(--mono)">${esc(from)} <span style="color:var(--faint)">→</span> ${esc(to)}</span>
+          <span class="rowend">${pct(c.confidence)} sure</span>
+        </button>`).join("")}</div>` : `<p class="lead">Everyone landed where they landed last time.</p>`}
+    </section>`;
+}
+
+function viewNext(a) {
+  const target = state.focus != null ? a.brands.find((b) => b.slot === state.focus) : a.second;
+  const topObj = OBJ_ORDER.map((k) => [k, target.objRate[k]]).sort((x, y) => y[1] - x[1])[0][0];
+  const FIELD_FOR = { price: ["price", "Price"], trust: ["valueProp", "Value proposition"], relevance: ["headline", "Headline"], unclear: ["headline", "Headline"] };
+  const [field, fieldLabel] = FIELD_FOR[topObj];
+  const HYP = {
+    price: `Lowering ${target.brand}'s price lifts its choice share${state.lens === "all" ? "" : ` with ${state.lens} buyers`}.`,
+    trust: `A more specific, checkable claim makes ${target.brand} believable enough to choose.`,
+    relevance: `Speaking directly to ${state.lens === "all" ? "one segment" : state.lens} makes ${target.brand} feel relevant.`,
+    unclear: `A plainer headline makes ${target.brand}'s offer understood on first read.`,
+  };
+  const locks = [["brand", "Name"], ["headline", "Headline"], ["valueProp", "Value proposition"], ["price", "Price"]].filter(([f]) => f !== field);
+  return `
+    <section class="view">
+      <h2>Design the next round</h2>
+      <p class="lead">One change, everything else held. That is the only way a second round tells you anything.</p>
+      <div class="composer">
+        <div class="cfield">
+          <label>Contender</label>
+          <select id="cTarget" style="font:500 14px var(--ui);padding:8px 11px;border:1px solid var(--hair);border-radius:7px;background:var(--bg)">
+            ${a.ranked.map((b) => `<option value="${b.slot}" ${b.slot === target.slot ? "selected" : ""}>${esc(b.brand)} · ${pct(b.share)}</option>`).join("")}
+          </select>
+        </div>
+        <div class="cfield">
+          <label>Hypothesis</label>
+          <p class="hyp">${esc(HYP[topObj])}</p>
+          <p class="cnote" style="margin-top:8px">Because ${target.objCounts[topObj]} of ${a.customers.length} buyers gave that as their single biggest reason not to buy ${esc(target.brand)}.</p>
+        </div>
+        <div class="cfield">
+          <label>Change — ${fieldLabel}</label>
+          <div class="cchange">
+            <span class="was">${esc(target[field] || "—")}</span>
+            <span style="color:var(--faint)">→</span>
+            <input id="cNew" value="${esc(target[field] || "")}" ${field === "price" ? "" : 'style="width:320px"'}>
+          </div>
+        </div>
+        <div class="cfield">
+          <label>Hold constant</label>
+          <div class="locks">
+            ${locks.map(([, label]) => `<label><input type="checkbox" checked disabled> ${label}</label>`).join("")}
+            <label><input type="checkbox" checked disabled> The same ${a.customers.length} buyers</label>
+          </div>
+        </div>
+        <div class="cgo">
+          ${state.live
+            ? `<button class="cbtn" id="cSend">Send to the editor →</button><button class="cbtn ghost" id="cCopy">Copy the plan</button>`
+            : `<button class="cbtn" id="cCopy">Copy the plan</button>`}
+          <span class="cnote" id="cStatus" style="margin:0"></span>
+        </div>
+        ${state.live ? `<p class="cnote">Sending writes the change into your Practice project and opens the editor with it loaded. Nothing runs until you press Run there.</p>`
+          : `<p class="cnote">This is the sample market, so there's no project to write into. Copy the plan and set it up in Practice mode.</p>`}
+      </div>
+    </section>`;
+}
+
+/* ---------- evidence drawer ---------- */
+function renderDrawer(a) {
+  const s = state.sel;
+  const wrap = (k, title, sub, body, note) =>
+    `<aside class="drawer"><p class="dr-k">${k}</p><p class="dr-title">${title}</p>${sub ? `<p class="dr-sub">${sub}</p>` : ""}${body}${note ? `<p class="dr-note">${note}</p>` : ""}</aside>`;
+
+  if (!s) return wrap("Evidence", "Nothing selected",
+    "", `<p class="dr-empty">Click any number, driver, stage or buyer and the working behind it appears here — counts of real buyers and the scores the model returned, never a summary you can't check.</p>`,
+    `Round ${state.idx + 1} · ${round().model} · ${a.customers.length} buyers in this lens`);
+
+  if (s.kind === "driver") {
+    const d = drivers(a).find((x) => x.key === s.key);
+    if (!d) return wrap("Evidence", "—", "", "");
+    const others = a.brands.filter((b) => b.id !== a.winner.id);
+    return wrap("Driver", esc(d.label),
+      `${esc(a.winner.brand)} against the average of ${list(others.map((b) => esc(b.brand)))}.`,
+      `<div class="dr-stat"><span>${esc(a.winner.brand)}</span><b>${pct(d.mine)}</b></div>
+       <div class="dr-stat"><span>Field average</span><b>${pct(d.theirs)}</b></div>
+       <div class="dr-stat"><span>Difference</span><b>${pts(d.value)} pts</b></div>
+       ${d.kind === "obj" ? `<ul class="dr-list">${a.brands.map((b) => `<li><b>${esc(b.brand)}</b><span>${b.objCounts[s.key]} of ${a.customers.length} buyers</span></li>`).join("")}</ul>`
+        : `<ul class="dr-list">${a.brands.map((b) => `<li><b>${esc(b.brand)}</b><span>${pct(b.stages[s.key])}</span></li>`).join("")}</ul>`}`,
+      d.kind === "obj" ? "Counts of buyers who named this as their single biggest reason not to buy." : "Average score across every buyer in this lens.");
+  }
+
+  if (s.kind === "buyer") {
+    const c = a.customers.find((x) => x.id === s.id) || round().customers.find((x) => x.id === s.id);
+    if (!c) return wrap("Evidence", "—", "", "");
+    const picked = a.brands.find((b) => b.id === c.purchase);
+    const peers = a.customers.filter((x) => x.segment === c.segment && x.id !== c.id);
+    return wrap("Buyer trace", esc(c.name), esc(c.profile),
+      `<div class="dr-stat"><span>Picked</span><b>${picked ? esc(picked.brand) : "nothing"}</b></div>
+       <div class="dr-stat"><span>Confidence</span><b>${pct(c.confidence)}</b></div>
+       ${a.brands.map((b) => `
+         <p class="dr-k" style="margin:16px 0 6px;color:${HEX[b.slot]}">${esc(b.brand)}</p>
+         <ul class="dr-list">
+           ${STAGES.filter(([k]) => k !== "purchase").map(([k, label]) => `<li><span>${label}</span><b>${pct(c.byBrand[b.id][k === "interest" ? "appeal" : k])}</b></li>`).join("")}
+           <li><span>Would buy</span><b>${pct(c.purchaseProbs[b.id] ?? 0)}</b></li>
+           <li><span>Main objection</span><b>${OBJ_SHORT[c.byBrand[b.id].objection]}</b></li>
+         </ul>`).join("")}`,
+      peers.length ? `${peers.length} other ${esc(c.segment)} buyer${peers.length === 1 ? "" : "s"} in this lens: ${list(peers.map((p) => `${esc(p.name)} chose ${esc(nameOf(a, p.purchase))}`))}.` : "");
+  }
+
+  if (s.kind === "objection") {
+    const b = a.brands.find((x) => x.slot === s.slot);
+    const who = a.customers.filter((c) => c.byBrand[b.id].objection === s.key);
+    return wrap("Objection", `${esc(OBJ_SHORT[s.key])} · ${esc(b.brand)}`,
+      `${who.length} of ${a.customers.length} buyers named this as the single biggest reason they might not buy ${esc(b.brand)}.`,
+      `<ul class="dr-list">${who.map((c) => `<li><b>${esc(c.name)}</b><span>${esc(c.segment)} · ${pct(c.purchaseProbs[b.id] ?? 0)} would buy</span></li>`).join("") || `<li>Nobody</li>`}</ul>`,
+      "Each buyer names one objection per contender, so these are buyer counts rather than percentages of mentions.");
+  }
+
+  if (s.kind === "consensus") {
+    const b = a.brands.find((x) => x.slot === s.slot);
+    const probs = a.customers.map((c) => ({ c, p: c.purchaseProbs[b.id] ?? 0 })).sort((x, y) => y.p - x.p);
+    return wrap("Spread", esc(b.brand),
+      `Average share hides the shape of the market. Here is every buyer's probability of choosing ${esc(b.brand)}.`,
+      `<div class="dr-stat"><span>Average</span><b>${pct(b.share)}</b></div>
+       <div class="dr-stat"><span>Strongly for (≥50%)</span><b>${b.strong}</b></div>
+       <div class="dr-stat"><span>Effectively out (&lt;15%)</span><b>${b.weak}</b></div>
+       <ul class="dr-list">${probs.map(({ c, p }) => `<li><b>${esc(c.name)}</b><span>${pct(p)}</span></li>`).join("")}</ul>`);
+  }
+
+  if (s.kind === "stage") {
+    const label = STAGES.find(([k]) => k === s.key)[1];
+    return wrap("Stage", label,
+      `Average across the ${a.customers.length} buyers in this lens.`,
+      `<ul class="dr-list">${a.ranked.map((b) => `<li><b>${esc(b.brand)}</b><span>${pct(b.stages[s.key])}</span></li>`).join("")}</ul>`,
+      "The four stages are measured independently, so these don't have to descend.");
+  }
+
+  if (s.kind === "none") {
+    return wrap("Walk-aways", "Bought nothing",
+      `${pct(a.none)} of the averaged choice went nowhere; ${a.walkers.length} buyer${a.walkers.length === 1 ? "" : "s"} rejected every contender outright.`,
+      `<ul class="dr-list">${a.walkers.map((c) => `<li><b>${esc(c.name)}</b><span>${esc(c.segment)}</span></li>`).join("") || `<li>Nobody outright</li>`}</ul>`,
+      "A buyer can spread probability across options without ever committing, which is why the percentage and the headcount differ.");
+  }
+  return wrap("Evidence", "—", "", "");
+}
+
+/* ---------- story mode ---------- */
+function renderStory(a) {
+  const r = round();
+  const d = drivers(a);
+  const best = d.find((x) => x.value > 0);
+  const segs = [...new Set(r.customers.map((c) => c.segment))];
+  const overall = analyse(r, r.customers);
+  const flip = segs.map((s) => {
+    const sa = analyse(r, r.customers.filter((c) => c.segment === s));
+    return sa.winner.slot !== overall.winner.slot ? { s, sa } : null;
+  }).filter(Boolean)[0];
+  const target = overall.second;
+  const topObj = OBJ_ORDER.map((k) => [k, target.objRate[k]]).sort((x, y) => y[1] - x[1])[0][0];
+
+  const steps = [
+    { k: "The result", h: `${overall.winner.brand} won.`, body: `
+      <p class="say"><b>${pct(overall.winner.share)}</b> of buyer choices went to ${esc(overall.winner.brand)}, against ${pct(overall.second.share)} for ${esc(overall.second.brand)}.</p>
+      <p class="say">${pct(overall.none)} of this market bought nothing at all.</p>
+      <div class="ladder">${overall.ranked.map((b) => `
+        <div class="lrow" style="--c:${colorOf(b)}"><span class="lname"><i></i><span>${esc(b.brand)}</span></span>
+        <span class="ltrack"><span class="lfill" style="width:${Math.round(b.share * 100)}%"></span></span>
+        <span class="lpct">${pct(b.share)}</span></div>`).join("")}</div>` },
+    { k: "Why", h: best ? best.headline : "No single driver separated them.", body: `
+      ${best ? `<p class="say"><b>${esc(overall.winner.brand)}</b> ${esc(best.pos)} — a gap of ${pts(best.value)} points.</p>` : ""}
+      <div class="ladder">${drivers(overall).slice(0, 4).map((x) => `
+        <div class="lrow" style="--c:${colorOf(overall.winner)}"><span class="lname"><span>${esc(x.label)}</span></span>
+        <span class="ltrack"><span class="lfill" style="width:${Math.min(100, Math.abs(x.value) * 300)}%;${x.value < 0 ? "background:#B9B7AE" : ""}"></span></span>
+        <span class="lpct">${pts(x.value)}</span></div>`).join("")}</div>` },
+    { k: "The surprise", h: flip ? `${flip.sa.winner.brand} won with ${flip.s.toLowerCase()}.` : "Every segment agreed.", body: flip
+      ? `<p class="say">Overall ${esc(overall.winner.brand)} led. But look only at <b>${esc(flip.s)}</b> buyers and the market flips: ${esc(flip.sa.winner.brand)} takes ${pct(flip.sa.winner.share)}.</p>
+         <p class="say">There isn't one market. There are ${segs.length}.</p>`
+      : `<p class="say">All ${segs.length} segments put ${esc(overall.winner.brand)} first. That's rarer than it sounds, and it means the message is doing the work rather than the targeting.</p>` },
+    { k: "Next", h: `Test ${target.brand}'s ${topObj === "price" ? "price" : "claim"}.`, body: `
+      <p class="say">${target.objCounts[topObj]} of ${overall.customers.length} buyers said <b>${OBJ_SAID[topObj]}</b> about ${esc(target.brand)} — its single biggest blocker.</p>
+      <p class="say">Change that one thing, hold everything else, run it again.</p>` },
+  ];
+  const s = steps[Math.min(state.step, steps.length - 1)];
+  return `
+    <section class="story">
+      <p class="story-k">${esc(s.k)} · Round ${state.idx + 1}</p>
+      <h2>${esc(s.h)}</h2>
+      ${s.body}
+      <div class="storynav">
+        <button class="cbtn ghost" data-step="${state.step - 1}" ${state.step === 0 ? "disabled" : ""}>Back</button>
+        ${state.step < steps.length - 1
+          ? `<button class="cbtn" data-step="${state.step + 1}">Next</button>`
+          : `<button class="cbtn" data-mode="analyst">Explore it yourself →</button>`}
+        <span class="sdots">${steps.map((_, i) => `<i class="${i === state.step ? "on" : ""}"></i>`).join("")}</span>
+      </div>
+    </section>`;
+}
+
+/* ---------- render ---------- */
+function render() {
+  const r = round();
+  const a = A();
+  renderDecision(a);
+  renderLensBar(r);
+  $("#roundTabs").innerHTML = state.rounds.length < 2 ? "" :
+    state.rounds.map((_, i) => `<button class="pill ${i === state.idx ? "on" : ""}" data-round="${i}">R${i + 1}</button>`).join("");
+  document.querySelectorAll("#modeTabs .pill").forEach((p) => p.classList.toggle("on", p.dataset.mode === state.mode));
+
+  document.querySelector(".lensbar").classList.toggle("hidden", state.mode === "story");
+  if (state.mode === "story") { $("#main").innerHTML = renderStory(a); return; }
+
+  const body = { winner: viewWinner, why: viewWhy, path: viewPath, objections: viewObjections, buyers: viewBuyers, walkaways: viewWalkaways, changes: viewChanges, next: viewNext }[state.view](a);
+  $("#main").innerHTML = `<div class="work">${renderRail()}<div>${body}</div>${renderDrawer(a)}</div>`;
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-view],[data-lens],[data-round],[data-mode],[data-focus],[data-sel],[data-stage],[data-step],[data-go],#cSend,#cCopy");
+  if (!t) return;
+  if (t.dataset.view) { state.view = t.dataset.view; state.sel = null; }
+  else if (t.dataset.go) { state.view = t.dataset.go; state.sel = null; }
+  else if (t.dataset.lens) { state.lens = t.dataset.lens; state.sel = null; }
+  else if (t.dataset.round) { state.idx = +t.dataset.round; state.sel = null; }
+  else if (t.dataset.mode) { state.mode = t.dataset.mode; state.step = 0; }
+  else if (t.dataset.step !== undefined) { state.step = Math.max(0, +t.dataset.step); }
+  else if (t.dataset.focus !== undefined) { const s = +t.dataset.focus; state.focus = state.focus === s ? null : s; }
+  else if (t.dataset.stage) { state.sel = state.sel?.kind === "stage" && state.sel.key === t.dataset.stage ? null : { kind: "stage", key: t.dataset.stage }; }
+  else if (t.dataset.sel) { const s = JSON.parse(t.dataset.sel); state.sel = JSON.stringify(state.sel) === JSON.stringify(s) ? null : s; }
+  else if (t.id === "cSend") return sendToEditor();
+  else if (t.id === "cCopy") return copyPlan();
+  render();
+});
+
+function planText() {
+  const a = A();
+  const sel = $("#cTarget");
+  const target = a.brands.find((b) => b.slot === +sel.value);
+  const topObj = OBJ_ORDER.map((k) => [k, target.objRate[k]]).sort((x, y) => y[1] - x[1])[0][0];
+  const field = { price: "price", trust: "valueProp", relevance: "headline", unclear: "headline" }[topObj];
+  return { target, field, was: target[field] || "", now: $("#cNew").value.trim(), topObj, a };
+}
+function copyPlan() {
+  const { target, field, was, now, topObj, a } = planText();
+  const text = `Market Arena — next round\nContender: ${target.brand}\nChange ${field}: ${was} → ${now}\nHold: everything else, same ${a.customers.length} buyers\nWhy: ${target.objCounts[topObj]} buyers said ${OBJ_SAID[topObj]}`;
+  navigator.clipboard.writeText(text).then(() => { $("#cStatus").textContent = "Copied."; }, () => { $("#cStatus").textContent = text; });
+}
+function sendToEditor() {
+  const { target, field, now } = planText();
+  try {
+    const session = JSON.parse(localStorage.getItem(SESSION_KEY));
+    const team = session.teams.find((t) => t.slot === target.slot);
+    if (!team) throw new Error("that contender isn't in the saved project any more");
+    team[field] = now;
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    location.href = "practice.html";
+  } catch (err) {
+    $("#cStatus").textContent = "Couldn't write to the project: " + err.message;
+  }
+}
+
+/* ---------- boot ---------- */
+async function boot() {
+  const id = new URLSearchParams(location.search).get("id");
+  if (id) {
+    try {
+      const res = await fetch(`/api/share/${encodeURIComponent(id)}`);
+      const data = await res.json();
+      if (res.ok && data.round) {
+        state.rounds = [data.round]; state.meta = data.meta || {};
+        state.source = `shared round${data.meta?.title ? " · " + data.meta.title : ""}`;
+        return render(), void ($("#source").textContent = state.source);
+      }
+    } catch {}
+  }
+  try {
+    const session = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if (session?.rounds?.length) {
+      state.rounds = session.rounds; state.live = true;
+      state.source = `your project · ${session.scenario?.title || "untitled"}`;
+      state.idx = session.rounds.length - 1;
+    }
+  } catch {}
+  if (!state.rounds.length) {
+    state.rounds = SAMPLE.rounds;
+    state.source = "sample market · no project of your own yet";
+  }
+  $("#source").textContent = state.source;
+  render();
+}
+boot();
+</script>
+</body>
+</html>
