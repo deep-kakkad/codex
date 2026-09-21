@@ -535,3 +535,32 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
   .s-navlinks{display:none}
   .s-bgrid{grid-template-columns:repeat(2,1fr)}
 }
+
+/* Static page — added visual texture: buyer dot-strip, archetype icons,
+   objection/stage icons, and comparison chips. Still zero animation. */
+.s-dotstrip{display:flex;flex-wrap:wrap;gap:5px;margin-top:14px}
+.s-dot{width:17px;height:17px;border-radius:50%;display:grid;place-items:center;color:#fff}
+.s-dot svg{width:9px;height:9px}
+
+.s-buyer-mini{color:var(--muted)}
+.s-buyer-mini svg{width:14px;height:14px}
+
+.s-bcard .bc-avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;color:#fff;margin-bottom:10px}
+.s-bcard .bc-avatar svg{width:15px;height:15px}
+.s-bcard.expanded .bc-avatar{width:42px;height:42px;margin-bottom:14px}
+.s-bcard.expanded .bc-avatar svg{width:20px;height:20px}
+
+.s-fstage .fn{display:flex;align-items:center;gap:8px}
+.s-fstage .fn svg{flex:none;color:#8E8A7B}
+.s-fstage.drop .fn svg{color:#FF8A6B}
+.s-objicon{display:inline-flex;vertical-align:-3px;margin-right:5px}
+
+.s-vscard{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:10px;max-width:460px}
+.s-vs-item{flex:1;padding:10px 14px;font-size:13px;color:var(--ink);background:var(--paper);line-height:1.4}
+.s-vs-item span{display:block;font:700 10px var(--mono);color:var(--faint);margin-bottom:3px;letter-spacing:.03em}
+.s-vs-sep{display:flex;align-items:center;justify-content:center;padding:0 12px;font:700 10px var(--mono);color:var(--faint);background:var(--cream);border-left:1px solid var(--line);border-right:1px solid var(--line)}
+
+.s-credcol li{display:flex;align-items:center;gap:10px}
+.s-credcol li svg{flex:none}
+.s-credcol.yes li svg{color:var(--good)}
+.s-credcol.no li svg{color:var(--bad)}

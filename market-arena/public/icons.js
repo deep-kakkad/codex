@@ -38,10 +38,10 @@ const ARCHETYPES = [
   { icon: "briefcase", test: /(professional|manager|executive|analyst|director|founder|operator|lead|officer|banker|consult)/i },
   { icon: "graduate", test: /(student|school|college|university|campus|freelanc|solo)/i },
   { icon: "heart", test: /(health|wellness|yoga|doctor|nurse|fitness|runner|medical)/i },
-  { icon: "home", test: /(parent|mother|father|family|homemaker|teacher|kids)/i },
+  { icon: "home", test: /(parent|mother|father|family|homemaker|teacher|kids|convenience)/i },
   { icon: "wrench", test: /(engineer|developer|technical|it |cto|security|build)/i },
   { icon: "piggy", test: /(budget|value|frugal|price|saver|debt)/i },
-  { icon: "leaf", test: /(eco|sustainab|green|organic|natural)/i },
+  { icon: "leaf", test: /(eco|sustainab|green|organic|natural|enthusiast)/i },
   { icon: "star", test: /(premium|luxury|early adopter|collector|trend)/i },
   { icon: "shield", test: /(skeptic|traditional|risk-averse|distrust|wary|cautious)/i },
 ];
@@ -86,4 +86,11 @@ const STAGE_ICON = {
 export function stageIcon(key, size = 16) {
   const d = STAGE_ICON[key] || STAGE_ICON.attention;
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+}
+
+export function checkIcon(size = 14) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>`;
+}
+export function crossIcon(size = 14) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>`;
 }

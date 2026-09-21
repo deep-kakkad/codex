@@ -72,11 +72,12 @@
           <div class="s-share-row"><span class="sl">A</span><div class="s-share-track"><div class="s-share-fill" style="width:23%;background:var(--ink)"></div></div><span class="sp">23%</span></div>
           <div class="s-share-row none"><span class="sl">–</span><div class="s-share-track"><div class="s-share-fill" style="width:9%"></div></div><span class="sp">9%</span></div>
         </div>
+        <div class="s-dotstrip" id="heroDots" aria-label="One dot per buyer, colored by which contender they chose"></div>
 
         <div class="s-why">
           <div>
             <p class="s-why-label">Why C won</p>
-            <p>Price wasn't its advantage — C faced more price pushback than A or B. A specific, dated claim ("roasted this week") carried it anyway.</p>
+            <p><span class="s-objicon" id="objIconPrice"></span>Price wasn't its advantage — C faced more price pushback than A or B. A specific, dated claim ("roasted this week") carried it anyway.</p>
           </div>
           <div class="s-buyer-spot">
             <span class="sb-name">ARJUN · COFFEE ENTHUSIAST · CHOSE C</span>
@@ -123,11 +124,7 @@
       <div class="s-farrow">→</div>
       <div class="s-fpanel">
         <span class="sf-k">02 / SAME BUYERS</span>
-        <div class="s-buyer-mini-grid">
-          <span class="s-buyer-mini">AI</span><span class="s-buyer-mini">FA</span><span class="s-buyer-mini">PR</span><span class="s-buyer-mini">RO</span>
-          <span class="s-buyer-mini">DE</span><span class="s-buyer-mini">AR</span><span class="s-buyer-mini">ME</span><span class="s-buyer-mini">SA</span>
-          <span class="s-buyer-mini">NE</span><span class="s-buyer-mini">KA</span><span class="s-buyer-mini">AN</span><span class="s-buyer-mini">VI</span>
-        </div>
+        <div class="s-buyer-mini-grid" id="miniBuyerGrid"></div>
         <p class="sf-caption">12 SIMULATED BUYERS</p>
         <p class="sf-note">Each evaluates the same competing offers.</p>
       </div>
@@ -151,10 +148,10 @@
     <h2 class="s-h2" style="color:var(--cream)">Find where you lost them.</h2>
     <div class="s-funnel-grid" style="margin-top:40px">
       <div>
-        <div class="s-fstage"><span class="fn">SAW THE OFFER</span><div class="s-ftrack"><div class="s-ffill" style="width:50%"></div></div><span class="fp">50%</span></div>
-        <div class="s-fstage"><span class="fn">INTERESTED</span><div class="s-ftrack"><div class="s-ffill" style="width:62%"></div></div><span class="fp">62%</span></div>
-        <div class="s-fstage"><span class="fn">BELIEVED</span><div class="s-ftrack"><div class="s-ffill" style="width:61%"></div></div><span class="fp">61%</span></div>
-        <div class="s-fstage drop"><span class="fn">CHOSE</span><div class="s-ftrack"><div class="s-ffill" style="width:41%"></div></div><span class="fp">41%</span></div>
+        <div class="s-fstage"><span class="fn"><span class="s-ficon" data-stage="attention"></span>SAW THE OFFER</span><div class="s-ftrack"><div class="s-ffill" style="width:50%"></div></div><span class="fp">50%</span></div>
+        <div class="s-fstage"><span class="fn"><span class="s-ficon" data-stage="interest"></span>INTERESTED</span><div class="s-ftrack"><div class="s-ffill" style="width:62%"></div></div><span class="fp">62%</span></div>
+        <div class="s-fstage"><span class="fn"><span class="s-ficon" data-stage="belief"></span>BELIEVED</span><div class="s-ftrack"><div class="s-ffill" style="width:61%"></div></div><span class="fp">61%</span></div>
+        <div class="s-fstage drop"><span class="fn"><span class="s-ficon" data-stage="purchase"></span>CHOSE</span><div class="s-ftrack"><div class="s-ffill" style="width:41%"></div></div><span class="fp">41%</span></div>
       </div>
       <div class="s-callout">
         <p class="sc-label">Biggest drop</p>
@@ -162,7 +159,7 @@
         <p>Contender C won the round. Buyers still believed its claims twenty points more than they chose it — belief and purchase aren't the same decision.</p>
         <div class="s-objbox">
           <span class="so-label">Common objection</span>
-          <p>Price — cited by 60% of buyers who didn't choose Contender C.</p>
+          <p><span class="s-objicon" id="objIconPrice2"></span>Price — cited by 60% of buyers who didn't choose Contender C.</p>
         </div>
       </div>
     </div>
@@ -177,6 +174,7 @@
 
     <div class="s-bgrid">
       <div class="s-bcard expanded">
+        <span class="bc-avatar" data-b="b7" style="background:var(--b2)"></span>
         <span class="bc-name">MEERA</span><span class="bc-seg">Price-sensitive</span>
         <div class="s-bexpand-row">
           <div><span>Chose</span><b>Contender B</b></div>
@@ -188,17 +186,17 @@
           <p>B's "₹23 a cup" framing scored 89% appeal for her — more than double A's 31%. Same stated objection toward every contender (price), completely different response to how the value was framed.</p>
         </div>
       </div>
-      <div class="s-bcard"><span class="bc-name">Kabir</span><span class="bc-seg">Premium buyer</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
-      <div class="s-bcard"><span class="bc-name">Rohan</span><span class="bc-seg">Coffee enthusiast</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
-      <div class="s-bcard"><span class="bc-name">Farhan</span><span class="bc-seg">Convenience-first</span><span class="bc-choice" style="background:var(--b1)">A</span></div>
-      <div class="s-bcard"><span class="bc-name">Priya</span><span class="bc-seg">Convenience-first</span><span class="bc-choice" style="background:var(--b1)">A</span></div>
-      <div class="s-bcard"><span class="bc-name">Devika</span><span class="bc-seg">Coffee enthusiast</span><span class="bc-choice" style="background:var(--b2)">B</span></div>
-      <div class="s-bcard"><span class="bc-name">Aisha</span><span class="bc-seg">Convenience-first</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
-      <div class="s-bcard"><span class="bc-name">Arjun</span><span class="bc-seg">Coffee enthusiast</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
-      <div class="s-bcard"><span class="bc-name">Sandeep</span><span class="bc-seg">Price-sensitive</span><span class="bc-choice" style="background:#8B8B84">None</span></div>
-      <div class="s-bcard"><span class="bc-name">Neha</span><span class="bc-seg">Price-sensitive</span><span class="bc-choice" style="background:var(--b2)">B</span></div>
-      <div class="s-bcard"><span class="bc-name">Ananya</span><span class="bc-seg">Premium buyer</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
-      <div class="s-bcard"><span class="bc-name">Vikram</span><span class="bc-seg">Premium buyer</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b10" style="background:var(--b3)"></span><span class="bc-name">Kabir</span><span class="bc-seg">Premium buyer</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b4" style="background:var(--b3)"></span><span class="bc-name">Rohan</span><span class="bc-seg">Coffee enthusiast</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b2" style="background:var(--b1)"></span><span class="bc-name">Farhan</span><span class="bc-seg">Convenience-first</span><span class="bc-choice" style="background:var(--b1)">A</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b3" style="background:var(--b1)"></span><span class="bc-name">Priya</span><span class="bc-seg">Convenience-first</span><span class="bc-choice" style="background:var(--b1)">A</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b5" style="background:var(--b2)"></span><span class="bc-name">Devika</span><span class="bc-seg">Coffee enthusiast</span><span class="bc-choice" style="background:var(--b2)">B</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b1" style="background:var(--b3)"></span><span class="bc-name">Aisha</span><span class="bc-seg">Convenience-first</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b6" style="background:var(--b3)"></span><span class="bc-name">Arjun</span><span class="bc-seg">Coffee enthusiast</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b8" style="background:#8B8B84"></span><span class="bc-name">Sandeep</span><span class="bc-seg">Price-sensitive</span><span class="bc-choice" style="background:#8B8B84">None</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b9" style="background:var(--b2)"></span><span class="bc-name">Neha</span><span class="bc-seg">Price-sensitive</span><span class="bc-choice" style="background:var(--b2)">B</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b11" style="background:var(--b3)"></span><span class="bc-name">Ananya</span><span class="bc-seg">Premium buyer</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
+      <div class="s-bcard"><span class="bc-avatar" data-b="b12" style="background:var(--b3)"></span><span class="bc-name">Vikram</span><span class="bc-seg">Premium buyer</span><span class="bc-choice" style="background:var(--b3)">C</span></div>
     </div>
   </div>
 </section>
@@ -210,17 +208,37 @@
 
     <div class="s-ucrow">
       <span class="s-uclabel">Positioning</span>
-      <div><h4>Which promise should lead?</h4><p class="s-ucex">"Save five hours every week."<span class="vs">VS</span>"Never update this spreadsheet again."</p></div>
+      <div><h4>Which promise should lead?</h4>
+        <div class="s-vscard">
+          <div class="s-vs-item"><span>A</span>"Save five hours every week."</div>
+          <div class="s-vs-sep">vs</div>
+          <div class="s-vs-item"><span>B</span>"Never update this spreadsheet again."</div>
+        </div>
+      </div>
       <a class="s-uclink" href="practice.html">TEST POSITIONING →</a>
     </div>
     <div class="s-ucrow">
       <span class="s-uclabel">Pricing</span>
-      <div><h4>Does lowering the price actually help?</h4><p class="s-ucex">₹999<span class="vs">VS</span>₹799</p></div>
+      <div><h4>Does lowering the price actually help?</h4>
+        <div class="s-vscard">
+          <div class="s-vs-item"><span>A</span>₹999</div>
+          <div class="s-vs-sep">vs</div>
+          <div class="s-vs-item"><span>B</span>₹799</div>
+        </div>
+      </div>
       <a class="s-uclink" href="practice.html">TEST PRICING →</a>
     </div>
     <div class="s-ucrow">
       <span class="s-uclabel">Copy</span>
-      <div><h4>Which headline earns the choice?</h4><p class="s-ucex">Benefit-led<span class="vs">VS</span>Pain-led<span class="vs">VS</span>Proof-led</p></div>
+      <div><h4>Which headline earns the choice?</h4>
+        <div class="s-vscard">
+          <div class="s-vs-item"><span>A</span>Benefit-led</div>
+          <div class="s-vs-sep">vs</div>
+          <div class="s-vs-item"><span>B</span>Pain-led</div>
+          <div class="s-vs-sep">vs</div>
+          <div class="s-vs-item"><span>C</span>Proof-led</div>
+        </div>
+      </div>
       <a class="s-uclink" href="practice.html">TEST COPY →</a>
     </div>
     <div class="s-ucrow">
@@ -237,25 +255,25 @@
     <h2 class="s-h2">Direction before validation.</h2>
     <p>Market Arena is designed to pressure-test ideas, generate hypotheses and expose possible objections before you run expensive real-world experiments.</p>
     <div class="s-credcols">
-      <div class="s-credcol">
+      <div class="s-credcol yes">
         <h5>Good for</h5>
         <ul>
-          <li>Comparing messages</li>
-          <li>Exploring positioning</li>
-          <li>Pressure-testing pricing</li>
-          <li>Finding objections</li>
-          <li>Generating hypotheses</li>
-          <li>Teaching marketing decisions</li>
+          <li><span class="ico"></span>Comparing messages</li>
+          <li><span class="ico"></span>Exploring positioning</li>
+          <li><span class="ico"></span>Pressure-testing pricing</li>
+          <li><span class="ico"></span>Finding objections</li>
+          <li><span class="ico"></span>Generating hypotheses</li>
+          <li><span class="ico"></span>Teaching marketing decisions</li>
         </ul>
       </div>
       <div class="s-credcol no">
         <h5>Not a replacement for</h5>
         <ul>
-          <li>Customer interviews</li>
-          <li>Market research</li>
-          <li>A/B testing</li>
-          <li>Sales forecasting</li>
-          <li>Statistically representative surveys</li>
+          <li><span class="ico"></span>Customer interviews</li>
+          <li><span class="ico"></span>Market research</li>
+          <li><span class="ico"></span>A/B testing</li>
+          <li><span class="ico"></span>Sales forecasting</li>
+          <li><span class="ico"></span>Statistically representative surveys</li>
         </ul>
       </div>
     </div>
@@ -281,8 +299,44 @@
 </div>
 
 <script type="module">
-import { ARENA_MARK } from "./icons.js";
+// Static page: this script only fills in real, precomputed values on load —
+// no animation, no interaction, no state. Same data source as the
+// interactive page (public/arena-data.js), so the two never drift apart.
+import { ARENA_MARK, personaIcon, objectionIcon, stageIcon, checkIcon, crossIcon } from "./icons.js";
+import { ARENA } from "./arena-data.js";
+
 document.getElementById("logoSlot").innerHTML = ARENA_MARK(22);
+
+const BCOLOR = { A: "var(--b1)", B: "var(--b2)", C: "var(--b3)", none: "#8B8B84" };
+const buyerById = Object.fromEntries(ARENA.buyers.map((b) => [b.id, b]));
+
+// Hero dot strip — one dot per buyer, colored by real round-1 choice.
+document.getElementById("heroDots").innerHTML = ARENA.buyers.map((b) => {
+  const choice = ARENA.round1.decisions[b.id].choice;
+  return `<span class="s-dot" style="background:${BCOLOR[choice]}" title="${b.name} chose ${choice === "none" ? "nothing" : "Contender " + choice}">${personaIcon(b, 9)}</span>`;
+}).join("");
+
+// "Same buyers" mini grid in How it works — neutral (no decision made yet).
+document.getElementById("miniBuyerGrid").innerHTML = ARENA.buyers.map((b) =>
+  `<span class="s-buyer-mini">${personaIcon(b, 14)}</span>`).join("");
+
+// Buyer grid avatars (icon only — color is already set inline per card).
+document.querySelectorAll(".bc-avatar[data-b]").forEach((el) => {
+  el.innerHTML = personaIcon(buyerById[el.dataset.b], 15);
+});
+
+// Objection icons
+document.getElementById("objIconPrice").innerHTML = objectionIcon("price", 14);
+document.getElementById("objIconPrice2").innerHTML = objectionIcon("price", 13);
+
+// Funnel stage icons
+document.querySelectorAll(".s-ficon[data-stage]").forEach((el) => {
+  el.innerHTML = stageIcon(el.dataset.stage, 13);
+});
+
+// Credibility check / cross marks
+document.querySelectorAll(".s-credcol.yes li .ico").forEach((el) => (el.innerHTML = checkIcon(13)));
+document.querySelectorAll(".s-credcol.no li .ico").forEach((el) => (el.innerHTML = crossIcon(13)));
 </script>
 </body>
 </html>
