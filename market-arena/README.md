@@ -45,7 +45,7 @@ The app and the marketing site use the same two words: a **contender** is one ad
 
 ## Reading a round's results
 
-The report opens with a sticky bar: round tabs on the left (click **1**, **2**, **3** to re-read any earlier round's full report, not just its share number) and section links on the right. Beyond the market-share reveal and per-contender funnels, every round also shows:
+The report is a numbered sequence of sections, one question each, banded light/dark so the eye can tell where one ends and the next begins. Numbering and banding are worked out from the sections actually on screen, so a round with no rewrites doesn't leave a gap in the count. It opens with a sticky bar: round tabs on the left (click **1**, **2**, **3** to re-read any earlier round's full report, not just its share number) and section links on the right, hiding the links for sections this round doesn't have. Beyond the market-share reveal and per-contender funnels, every round also shows:
 
 - **What happened** — the round written out in plain sentences: who won and by how much, where they separated from the runner-up, the most common objection, which segment disagreed, and what moved since last round. Every sentence is assembled from that round's own numbers, so it can't claim anything the data doesn't say; a gap under 5 points is called a tie rather than a win.
 

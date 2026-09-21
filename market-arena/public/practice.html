@@ -130,8 +130,10 @@
       <div class="roundtabs hidden" id="roundTabs"></div>
       <nav class="reportnav" id="reportNav" aria-label="Report sections">
         <a href="#secMarket">Result</a>
-        <a href="#pitchSec">Pitches</a>
+        <a href="#secBuyers">Buyers</a>
+        <a href="#pitchSec">Ads</a>
         <a href="#secFunnels">Funnels</a>
+        <a href="#secSegments">Segments</a>
         <a href="#secObjections">Objections</a>
         <a href="#suggestSec">Next test</a>
         <a href="#changesSec">Changes</a>
@@ -141,76 +143,139 @@
   </div>
 
   <div id="results" class="hidden">
-    <div class="market" id="secMarket">
+    <section class="rsec dark-sec" id="secMarket">
       <div class="wrap">
-        <h2 id="marketTitle">The market decided</h2>
-        <p class="sub">Who each buyer picked when they saw all the ads together — including the ones who walked away.</p>
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2 id="marketTitle">The market decided</h2>
+            <p class="sub">Who each buyer picked when they saw all the ads together — including the ones who walked away.</p>
+          </div>
+        </header>
         <p class="roundnote" id="roundNote"></p>
         <div id="flags"></div>
         <div class="sharebar" id="sharebar" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
         <div class="explain" id="explain"></div>
+      </div>
+    </section>
+
+    <section class="rsec" id="secBuyers">
+      <div class="wrap">
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>Every buyer's decision</h2>
+            <p class="sub">Who each buyer is, what they picked, and how sure they were. Click one to see how they scored every ad.</p>
+          </div>
+        </header>
         <div class="segments" id="segments"></div>
         <div class="detail hidden" id="detail" aria-live="polite"></div>
       </div>
-    </div>
+    </section>
 
-    <section id="pitchSec" class="hidden">
+    <section class="rsec hidden" id="pitchSec">
       <div class="wrap">
-        <h2>What you put in the arena</h2>
-        <p class="sub">The exact ads the buyers saw. Same buyers, same moment, different pitch.</p>
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>What you put in the arena</h2>
+            <p class="sub">The exact ads the buyers saw. Same buyers, same moment, different pitch.</p>
+          </div>
+        </header>
         <div class="pitches" id="pitches"></div>
       </div>
     </section>
 
-    <section>
-      <div class="wrap grid2">
-        <div id="secFunnels">
-          <h2>Where each contender leaks</h2>
-          <p class="sub">How far each contender got with the average buyer. The biggest gap between two bars is the thing to fix first.</p>
-          <div id="funnels"></div>
-        </div>
-        <div id="secObjections">
-          <h2>Who buys what</h2>
-          <p class="sub">The same result split by buyer type, so you can see who each pitch actually lands with.</p>
-          <div class="tablewrap"><table class="heat" id="heat"></table></div>
-          <div id="heatKey"></div>
-          <div id="segInsights"></div>
-          <h2 style="margin-top:36px">What's holding them back</h2>
-          <p class="sub">The reason buyers gave for not choosing each contender. Darker means more of them said it.</p>
-          <div id="objections"></div>
-        </div>
+    <section class="rsec" id="secFunnels">
+      <div class="wrap">
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>Where each pitch lost people</h2>
+            <p class="sub">How far each contender got with the average buyer. The biggest gap between two bars is the thing to fix first.</p>
+          </div>
+        </header>
+        <div id="funnels"></div>
       </div>
     </section>
 
-    <section id="suggestSec" class="hidden">
+    <section class="rsec" id="secSegments">
       <div class="wrap">
-        <h2>What to test next</h2>
-        <p class="sub">One suggestion per contender, based on where it lost people and what they objected to.</p>
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>Who each pitch lands with</h2>
+            <p class="sub">The same result split by buyer type, so you can see who each pitch actually works on.</p>
+          </div>
+        </header>
+        <div class="tablewrap"><table class="heat" id="heat"></table></div>
+        <div id="heatKey"></div>
+        <div id="segInsights"></div>
+      </div>
+    </section>
+
+    <section class="rsec" id="secObjections">
+      <div class="wrap">
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>What's holding them back</h2>
+            <p class="sub">The reason buyers gave for not choosing each contender. Darker means more of them said it.</p>
+          </div>
+        </header>
+        <div id="objections"></div>
+      </div>
+    </section>
+
+    <section class="rsec hidden" id="suggestSec">
+      <div class="wrap">
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>What to test next</h2>
+            <p class="sub">One suggestion per contender, based on where it lost people and what they objected to.</p>
+          </div>
+        </header>
         <div id="suggestions"></div>
       </div>
     </section>
 
-    <section id="changesSec" class="hidden">
+    <section class="rsec hidden" id="changesSec">
       <div class="wrap">
-        <h2>What you changed</h2>
-        <p class="sub">What you rewrote since the last round — the cause behind any move in the numbers above.</p>
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>What you changed</h2>
+            <p class="sub">What you rewrote since the last round — the cause behind any move in the numbers above.</p>
+          </div>
+        </header>
         <div id="changes"></div>
       </div>
     </section>
 
-    <section id="deltaSec" class="hidden">
+    <section class="rsec hidden" id="deltaSec">
       <div class="wrap">
-        <h2>Who changed their mind</h2>
-        <p class="sub">Buyers who picked something different this time, and how strongly the new pick appealed to them.</p>
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>Who changed their mind</h2>
+            <p class="sub">Buyers who picked something different this time, and how strongly the new pick appealed to them.</p>
+          </div>
+        </header>
         <div id="deltas"></div>
       </div>
     </section>
 
-    <section id="historySec" class="hidden">
+    <section class="rsec hidden" id="historySec">
       <div class="wrap">
-        <h2>Share over the rounds</h2>
-        <p class="sub">Each line is one contender across rounds. When one goes up, another usually pays for it.</p>
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>Share over the rounds</h2>
+            <p class="sub">Each line is one contender across rounds. When one goes up, another usually pays for it.</p>
+          </div>
+        </header>
         <div class="tablewrap" id="history"></div>
       </div>
     </section>

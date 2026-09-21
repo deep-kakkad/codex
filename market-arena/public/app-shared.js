@@ -169,6 +169,7 @@ export function createResultsView() {
     renderDeltas(r, prev);
     showDetail();
     renderHistory(rounds, idx);
+    numberSections();
     $("#meta").textContent = `${r.model}, ${r.tokens.toLocaleString()} tokens, ${(r.ms / 1000).toFixed(1)}s`;
   }
 
@@ -332,6 +333,23 @@ export function createResultsView() {
       if (last) svg += `<text x="${last[0] + 10}" y="${last[1] + 4}" style="fill:${HEX[s]};font-weight:600">${esc(last[2])}</text>`;
     });
     $("#history").innerHTML = svg + "</svg>";
+  }
+
+  // Sections come and go with the round (no diff on round one, no switchers if
+  // nobody moved), so their numbers and their light/dark banding are worked out
+  // from the ones actually on screen rather than baked into the markup.
+  function numberSections() {
+    const shown = [...document.querySelectorAll("#results .rsec")].filter((s) => !s.classList.contains("hidden"));
+    shown.forEach((s, i) => {
+      const num = s.querySelector(".rsec-num");
+      if (num) num.textContent = String(i + 1);
+      s.classList.toggle("alt", i % 2 === 1);
+    });
+    // Nav entries for sections this round doesn't have would scroll to nothing.
+    document.querySelectorAll("#reportNav a").forEach((a) => {
+      const target = document.querySelector(a.getAttribute("href"));
+      a.classList.toggle("hidden", !target || target.classList.contains("hidden"));
+    });
   }
 
   // Highlights the report-nav link for whichever section is currently on screen.
