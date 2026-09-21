@@ -161,26 +161,41 @@ footer .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 .hidden{display:none!important}
 
-/* Landing page */
-.topnav{display:flex;align-items:center;justify-content:space-between;padding:20px 0}
-.topnav .brandmark{gap:9px}
-.topnav .brandmark b{font:600 16px var(--body);letter-spacing:-.01em}
-.topnav .navlinks{display:flex;gap:10px}
-.topnav .navlinks a{padding:6px 14px;font-size:13.5px}
+/* Landing page: dark/light bands, commercial rhythm (nav → ticker → hero
+   all one continuous dark block, then alternating cream/dark sections) */
+.dark-block{background:var(--ink)}
+.topnav{display:flex;align-items:center;justify-content:space-between;padding:18px 0}
+.topnav .brandmark{gap:9px;color:var(--cream)}
+.topnav .brandmark b{font:600 15px var(--body);letter-spacing:-.005em}
+.topnav .navlinks{display:flex;align-items:center;gap:6px}
+.topnav .navlinks a{padding:7px 14px;font-size:13px;color:var(--cream);border-color:#3A3934}
+.topnav .navlinks a:hover{background:var(--cream);color:var(--ink);border-color:var(--cream)}
+.topnav .navlinks a i{color:#6B6858;font:600 10px var(--mono);font-style:normal;margin-right:6px}
+.topnav .navlinks a:hover i{color:var(--ink)}
+.topnav .cta-btn{padding:9px 18px;font-size:13px;border-radius:8px}
 
-.hero{padding:14px 0 0;border-bottom:none}
-.hero h1{font-size:clamp(40px,6vw,60px)}
-.hero p.lede{max-width:52ch;font-size:19px;line-height:1.55;color:var(--muted);margin:14px 0 0;font-family:var(--body)}
-.ctarow{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px;align-items:center}
-.cta-btn{background:var(--ink);color:var(--lime);border:1px solid var(--ink);padding:12px 22px;font:700 15px var(--body);border-radius:10px;text-decoration:none;display:inline-block;letter-spacing:.005em}
-.cta-btn:hover{background:#000}
-.cta-btn.secondary{background:#fff;color:var(--ink);border:1px solid var(--line)}
-.cta-btn.secondary:hover{background:var(--cream);border-color:var(--ink)}
+.ticker{border-top:1px solid #2A2A25;border-bottom:1px solid #2A2A25;overflow:hidden;padding:8px 0}
+.ticker-track{display:flex;gap:36px;white-space:nowrap;width:max-content;animation:ticker 24s linear infinite}
+.ticker-track span{font:700 11.5px var(--mono);letter-spacing:.07em;color:var(--lime);text-transform:uppercase}
+@keyframes ticker{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+.hero{padding:56px 0 50px}
+.hero h1{font:600 clamp(42px,6.4vw,84px)/1.08 var(--body);letter-spacing:-.02em;color:var(--cream);margin:0}
+.hero h1 em{font-style:italic;color:var(--lime)}
+.hero p.lede{max-width:48ch;font-size:18px;line-height:1.55;color:#B9B5A6;margin:20px 0 0;font-family:var(--body)}
+.ctarow{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px;align-items:center}
+.cta-btn{background:var(--lime);color:var(--ink);border:1px solid var(--lime);padding:12px 22px;font:700 15px var(--body);border-radius:10px;text-decoration:none;display:inline-block;letter-spacing:.005em}
+.cta-btn:hover{background:#D9F06B}
+.cta-btn.secondary{background:transparent;color:var(--cream);border:1px solid #4A4940}
+.cta-btn.secondary:hover{border-color:var(--cream)}
+.cta-btn.on-light{background:var(--ink);color:var(--lime);border-color:var(--ink)}
+.cta-btn.on-light:hover{background:#000}
 
 /* Live demo stage: real captured rounds, replayed client-side. This is the
    product's own reveal mechanic (same token/sharebar treatment as the app),
    wrapped in browser chrome so it reads as software, not a poster. */
-.browser-frame{background:#fff;border-radius:12px;border:1px solid var(--line);box-shadow:0 24px 60px -28px rgba(26,26,23,.35),0 2px 10px rgba(26,26,23,.05);overflow:hidden;margin:36px 0 0}
+.browser-frame{background:#fff;border-radius:12px;border:1px solid var(--line);box-shadow:0 24px 70px -24px rgba(0,0,0,.55);overflow:hidden;margin:40px 0 0}
+.browser-frame figcaption{padding:10px 14px;font-size:12.5px;color:var(--muted);border-top:1px solid var(--line)}
 .browser-bar{display:flex;align-items:center;gap:6px;padding:10px 14px;background:#EFEBDE;border-bottom:1px solid var(--line)}
 .browser-bar .dot{width:9px;height:9px;border-radius:50%;background:var(--line)}
 .browser-bar .url{margin:0 auto 0 10px;font:400 12px var(--mono);color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:6px;padding:3px 12px;flex:1;max-width:280px;text-align:center}
@@ -199,20 +214,57 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 .demo-legend b{color:var(--cream);font-family:var(--mono);font-weight:600}
 .demo-legend .sw{width:8px;height:8px;border-radius:2px;display:inline-block;margin-right:5px;vertical-align:1px}
 @keyframes blink{50%{opacity:0}}
-.demo-caption{margin:14px 0 0;font-size:13px;color:var(--muted)}
-.demo-caption a{color:var(--ink);text-decoration:underline}
+.demo-caption{margin:14px 0 0;font-size:13px;color:#8E8A7B}
+.demo-caption a{color:var(--cream);text-decoration:underline}
 
-/* Objection sequence: the pitch answers real skepticism instead of listing features */
-.qa{max-width:660px;padding:44px 0;border-top:1px solid var(--line)}
-.qa:first-of-type{border-top:none}
-.qa .qmark{font:800 54px/1 Georgia,serif;color:var(--ink);opacity:.18;display:block;margin-bottom:-6px}
-.qa h2{font:800 25px/1.4 var(--body);margin:0 0 14px;letter-spacing:-.01em}
-.qa p{font-size:16px;line-height:1.65;color:var(--muted);margin:0 0 20px;max-width:60ch}
-.qa-proof.browser-frame{margin:4px 0 22px;max-width:480px}
-.qa-proof img{display:block;width:100%;height:auto}
-.qa-proof figcaption{padding:9px 13px;font-size:12px;color:var(--muted);border-top:1px solid var(--line)}
+/* Section eyebrow: [NN] LABEL, used to open every band like the numbered nav */
+.eyebrow{display:flex;align-items:center;gap:10px;font:700 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 26px}
+.eyebrow i{width:24px;height:1px;background:var(--line);display:inline-block;font-style:normal}
+.band-dark .eyebrow{color:#8E8A7B}
+.band-dark .eyebrow i{background:#3A3934}
 
-@media (max-width:540px){.ctarow{flex-direction:column;align-items:stretch}.cta-btn{text-align:center}.demo-stage{padding:20px 18px 18px}}
+/* Stat band */
+.stat-band{padding:64px 0}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:24px}
+.stat-tile b{display:block;font:700 42px/1 var(--body);letter-spacing:-.02em;color:var(--ink)}
+.stat-tile span{display:block;margin-top:8px;font-size:13.5px;color:var(--muted);line-height:1.4}
+
+/* FAQ band: objection sequence as a card grid, not a stacked essay */
+.faq-band{padding:64px 0}
+.faq-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#2A2A25;border:1px solid #2A2A25;border-radius:14px;overflow:hidden}
+.faq-card{background:var(--ink);padding:30px 26px;color:var(--cream)}
+.faq-card .qmark{font:800 40px/1 Georgia,serif;color:#3A3934;display:block;margin-bottom:6px}
+.faq-card h3{font:800 18px/1.4 var(--body);margin:0 0 12px;letter-spacing:-.005em}
+.faq-card p{font-size:14px;line-height:1.6;color:#B9B5A6;margin:0 0 16px}
+.faq-card a.arrow{color:var(--lime);font:700 13px var(--mono);text-decoration:none}
+.faq-card a.arrow:hover{text-decoration:underline}
+.faq-card .browser-frame{margin:14px 0 16px;box-shadow:none}
+
+/* Two-path band */
+.path-band{padding:64px 0}
+.path-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.path-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:30px;text-decoration:none;color:inherit;display:block;transition:border-color .15s ease}
+.path-card:hover{border-color:var(--ink)}
+.path-card .tag{font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:block;margin-bottom:10px}
+.path-card h3{font:800 23px var(--body);margin:0 0 10px;letter-spacing:-.005em}
+.path-card p{color:var(--muted);font-size:14.5px;line-height:1.55;margin:0 0 18px}
+.path-card .arrow{font:700 14px var(--mono);color:var(--ink)}
+
+/* Final CTA + footer, one continuous dark block */
+.final-band{padding:76px 0 0}
+.final-band h2{font:600 clamp(34px,5vw,54px)/1.15 var(--body);color:var(--cream);max-width:15ch;margin:0 0 28px;letter-spacing:-.015em}
+.final-band h2 em{color:var(--lime);font-style:italic}
+.footer-ticker{margin-top:64px}
+.footer-cols{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:30px;padding:46px 0 30px}
+.footer-cols p{color:#8E8A7B;font-size:13.5px;line-height:1.6;max-width:36ch;margin:10px 0 0}
+.footer-cols h4{font:700 11px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:#6B6858;margin:0 0 14px}
+.footer-cols a{display:block;color:#B9B5A6;font-size:14px;text-decoration:none;margin-bottom:9px}
+.footer-cols a:hover{color:var(--cream)}
+.footer-bottom{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:20px 0;border-top:1px solid #2A2A25;font-size:12.5px;color:#6B6858}
+.footer-bottom a{color:#8E8A7B;text-decoration:underline}
+
+@media (max-width:900px){.stat-row{grid-template-columns:1fr 1fr}.faq-grid{grid-template-columns:1fr}.path-grid{grid-template-columns:1fr}.footer-cols{grid-template-columns:1fr 1fr}}
+@media (max-width:540px){.ctarow{flex-direction:column;align-items:stretch}.cta-btn{text-align:center}.demo-stage{padding:20px 18px 18px}.stat-row{grid-template-columns:1fr 1fr}.topnav .navlinks{display:none}.footer-cols{grid-template-columns:1fr}}
 @media (max-width:900px){.segments{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr;gap:10px}.skel-seg{grid-template-columns:1fr 1fr}}
 @media (max-width:540px){.wrap{padding:0 16px}.segments{grid-template-columns:1fr}.sharebar,.skel-bar{height:56px}.legend .pct{font-size:20px}.skel-seg{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}.ticker-track{animation:none}}

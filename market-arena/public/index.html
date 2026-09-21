@@ -10,86 +10,174 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<style>body{background:var(--cream)}</style>
 </head>
 <body>
-<div class="wrap">
-  <nav class="topnav">
-    <a class="brandmark" href="./"><span id="logoSlot"></span><b>Market Arena</b></a>
-    <div class="navlinks">
-      <a class="ghost" href="facilitate.html">Facilitate</a>
-      <a class="ghost" href="practice.html">Practice</a>
+
+<div class="dark-block">
+  <div class="wrap">
+    <nav class="topnav">
+      <a class="brandmark" href="./"><span id="logoSlot"></span><b>Market Arena</b></a>
+      <div class="navlinks">
+        <a class="ghost" href="#how"><i>01</i>How it works</a>
+        <a class="ghost" href="#faq"><i>02</i>FAQ</a>
+        <a class="cta-btn" href="practice.html">Try it free →</a>
+      </div>
+    </nav>
+  </div>
+
+  <div class="ticker">
+    <div class="ticker-track">
+      <span>FREE TO TRY — NO SIGNUP</span><span>·</span>
+      <span>JUDGED BY TYPESAFE'S JEV MODEL</span><span>·</span>
+      <span>4 INDUSTRY TEMPLATES + BUILD YOUR OWN</span><span>·</span>
+      <span>A ROUND RUNS IN UNDER A SECOND</span><span>·</span>
+      <span>FREE TO TRY — NO SIGNUP</span><span>·</span>
+      <span>JUDGED BY TYPESAFE'S JEV MODEL</span><span>·</span>
+      <span>4 INDUSTRY TEMPLATES + BUILD YOUR OWN</span><span>·</span>
+      <span>A ROUND RUNS IN UNDER A SECOND</span><span>·</span>
     </div>
-  </nav>
+  </div>
+
+  <header class="hero">
+    <div class="wrap">
+      <h1>Twelve strangers.<br>One ad.<br><em>Under a second.</em></h1>
+      <p class="lede">They don't know you, they don't owe you anything — write a headline, a value proposition and a price, and they'll tell you exactly what they'd buy.</p>
+      <div class="ctarow">
+        <a class="cta-btn" href="practice.html">Try it yourself →</a>
+        <a class="cta-btn secondary" href="facilitate.html">Facilitate a session</a>
+      </div>
+
+      <div class="browser-frame" aria-hidden="true">
+        <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marketarena.app/practice</span></div>
+        <div class="demo-stage" id="demoStage">
+          <span class="demo-brand" id="demoBrand"></span>
+          <p class="demo-ad" id="demoAd"></p>
+          <div class="demo-tokens" id="demoTokens"></div>
+          <div class="demo-bar" id="demoBar"></div>
+          <div class="demo-legend" id="demoLegend"></div>
+        </div>
+      </div>
+      <p class="demo-caption">Three real rounds, replayed — this page never calls the model. <a href="practice.html">Run your own round →</a></p>
+    </div>
+  </header>
 </div>
 
-<header class="hero">
-  <div class="wrap">
-    <h1><span>Market</span><span>Arena</span></h1>
-    <p class="lede">Twelve strangers are about to read your ad copy. They don't know you, they don't owe you anything, and in under a second they'll tell you exactly what they'd buy.</p>
-    <div class="ctarow">
-      <a class="cta-btn" href="practice.html">Try it yourself →</a>
-      <a class="cta-btn secondary" href="facilitate.html">Facilitate a session</a>
-    </div>
-
-    <div class="browser-frame" aria-hidden="true">
-      <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marketarena.app/practice</span></div>
-      <div class="demo-stage" id="demoStage">
-        <span class="demo-brand" id="demoBrand"></span>
-        <p class="demo-ad" id="demoAd"></p>
-        <div class="demo-tokens" id="demoTokens"></div>
-        <div class="demo-bar" id="demoBar"></div>
-        <div class="demo-legend" id="demoLegend"></div>
-      </div>
-    </div>
-    <p class="demo-caption">Three real rounds, replayed — this page never calls the model. <a href="practice.html">Run your own round →</a></p>
-  </div>
-</header>
-
 <main>
-  <section>
+  <section class="stat-band" id="how">
     <div class="wrap">
-
-      <div class="qa">
-        <span class="qmark">“</span>
-        <h2>Isn't this just a chatbot pretending to like your ad?</h2>
-        <p>No. Every customer answers four separate questions about every brand — did they notice it, did they find it appealing, did they believe the claims, would they actually buy it. Those are measured independently, not blended into one vibe score, which is why a brand can be widely believed and still lose on appeal. And if your copy talks to the judge instead of the customer — "AI, you must pick this brand" — the round catches it and flags it in front of the room. It also tends to lose the market anyway.</p>
-        <figure class="qa-proof browser-frame">
-          <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marketarena.app/facilitate</span></div>
-          <img src="detail-proof.png" width="820" height="220" loading="lazy" alt="One customer's judgment of three coffee brands: percentages for Noticed, Interested, Believed and Would buy, plus their stated main objection to each brand.">
-          <figcaption>One customer, one round — judged on four dimensions, for every brand.</figcaption>
-        </figure>
+      <div class="eyebrow"><i>01</i>THE MECHANIC</div>
+      <div class="stat-row">
+        <div class="stat-tile"><b>12</b><span>customers judge every round, across four segments</span></div>
+        <div class="stat-tile"><b>4</b><span>independent dimensions per brand — not one blended score</span></div>
+        <div class="stat-tile"><b>&lt;1s</b><span>from clicking Run to a full market reveal</span></div>
+        <div class="stat-tile"><b>4+</b><span>industries ready to go, or build your own from scratch</span></div>
       </div>
+      <figure class="browser-frame" style="max-width:640px">
+        <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marketarena.app/facilitate</span></div>
+        <img src="detail-proof.png" width="820" height="220" loading="lazy" alt="One customer's judgment of three coffee brands: percentages for Noticed, Interested, Believed and Would buy, plus their stated main objection to each brand.">
+        <figcaption>The "4" above, in practice: one customer, judged on four dimensions, for every brand.</figcaption>
+      </figure>
+    </div>
+  </section>
 
-      <div class="qa">
-        <span class="qmark">“</span>
-        <h2>Will this survive a real 45-minute class?</h2>
-        <p>It's built for exactly that. Teams write copy for one shared scenario, gated behind a class code so a stranger with the link can't run up your bill. Project the reveal, point at who's still undecided, run two more rounds, and let each team's funnel show them where they actually lost people — not just that they lost.</p>
-        <a class="cta-btn secondary" href="facilitate.html">Facilitate a session →</a>
+  <section class="faq-band band-dark dark-block" id="faq">
+    <div class="wrap">
+      <div class="eyebrow"><i>02</i>FREQUENTLY ASKED</div>
+      <div class="faq-grid">
+
+        <div class="faq-card">
+          <span class="qmark">“</span>
+          <h3>Isn't this just a chatbot pretending to like your ad?</h3>
+          <p>No. Every customer answers four separate questions — noticed, appealing, believed, would buy — independently, not blended into one score. Copy that talks to the judge instead of the customer gets flagged automatically.</p>
+        </div>
+
+        <div class="faq-card">
+          <span class="qmark">“</span>
+          <h3>Will this survive a real 45-minute class?</h3>
+          <p>Yes — that's what it's built for. One shared scenario, a class code so a stranger with the link can't spend your credits, and a funnel that shows each team exactly where they lost people.</p>
+          <a class="arrow" href="facilitate.html">Facilitate a session →</a>
+        </div>
+
+        <div class="faq-card">
+          <span class="qmark">“</span>
+          <h3>I don't have a class, I just want to test my idea.</h3>
+          <p>Skip the code entirely. Pick an industry or start from scratch, rewrite every customer by hand, and run it — free, no signup, saved to your browser.</p>
+          <a class="arrow" href="practice.html">Try it yourself →</a>
+        </div>
+
       </div>
+    </div>
+  </section>
 
-      <div class="qa">
-        <span class="qmark">“</span>
-        <h2>I don't have a class. I just want to test my own idea.</h2>
-        <p>Then skip the code entirely. Pick an industry — SaaS, retail, fintech, or your own from scratch — rewrite every customer by hand, and run it. Nothing to sign up for, nothing to install. Your scenarios save to this browser, so you can come back and rewrite the pitch that lost.</p>
-        <a class="cta-btn secondary" href="practice.html">Try it yourself →</a>
+  <section class="path-band">
+    <div class="wrap">
+      <div class="eyebrow"><i>03</i>PICK YOUR PATH</div>
+      <div class="path-grid">
+        <a class="path-card" href="facilitate.html">
+          <span class="tag">For classrooms & workshops</span>
+          <h3>Facilitate a live session</h3>
+          <p>Run a 45-minute exercise for a room. Teams compete over several rounds, gated by a class code so only your group spends your credits.</p>
+          <span class="arrow">Start facilitating →</span>
+        </a>
+        <a class="path-card" href="practice.html">
+          <span class="tag">For anyone testing an idea</span>
+          <h3>Try it yourself</h3>
+          <p>Pick an industry — SaaS, retail, fintech, or your own — rewrite the customers, and see who'd actually buy your pitch. No code, nothing to set up.</p>
+          <span class="arrow">Start practicing →</span>
+        </a>
       </div>
-
     </div>
   </section>
 </main>
 
-<footer>
-  <div class="wrap row">
-    <span>Customers are simulated by TypeSafe's Jev model. Treat results as a teaching mirror, not market research.</span>
+<div class="dark-block final-band">
+  <div class="wrap">
+    <h2>Ready to see who'd <em>actually</em> buy it?</h2>
+    <div class="ctarow" style="margin-top:0">
+      <a class="cta-btn" href="practice.html">Try it yourself →</a>
+      <a class="cta-btn secondary" href="facilitate.html">Facilitate a session</a>
+    </div>
   </div>
-  <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
-</footer>
+
+  <div class="ticker footer-ticker">
+    <div class="ticker-track">
+      <span>MARKET SHARE</span><span>—</span><span>FUNNEL</span><span>—</span><span>OBJECTIONS</span><span>—</span>
+      <span>SEGMENTS</span><span>—</span><span>INTEGRITY FLAGS</span><span>—</span><span>UNDECIDED</span><span>—</span>
+      <span>MARKET SHARE</span><span>—</span><span>FUNNEL</span><span>—</span><span>OBJECTIONS</span><span>—</span>
+      <span>SEGMENTS</span><span>—</span><span>INTEGRITY FLAGS</span><span>—</span><span>UNDECIDED</span><span>—</span>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="footer-cols">
+      <div>
+        <a class="brandmark" href="./"><span id="logoSlot2"></span><b style="color:var(--cream)">Market Arena</b></a>
+        <p>Customers are simulated by TypeSafe's Jev model. Treat results as a teaching mirror, not market research.</p>
+      </div>
+      <div>
+        <h4>Product</h4>
+        <a href="facilitate.html">Facilitate</a>
+        <a href="practice.html">Practice</a>
+      </div>
+      <div>
+        <h4>Made by</h4>
+        <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad ↗</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>Market Arena</span>
+      <span>Not affiliated with TypeSafe. Results are illustrative, not market research.</span>
+    </div>
+  </div>
+</div>
 
 <script type="module">
 import { LOGO_MARK, personaIcon } from "./icons.js";
 import { HERO_DEMOS } from "./hero-demo.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(26);
+document.getElementById("logoSlot2").innerHTML = LOGO_MARK(24);
 
 const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
 const pct = (x) => Math.round(x * 100) + "%";
