@@ -3,262 +3,383 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Market Arena — twelve strangers judge your ad copy</title>
-<meta name="description" content="Write a headline, a value proposition and a price. Twelve AI-judged customers read every brand's ad side by side and decide what to buy, or nothing. Facilitate a live class, or test your own idea alone, free, no signup.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%231A1A17' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23C6E84A'/></svg>">
+<title>Market Arena — competitive message testing</title>
+<meta name="description" content="Compare competing pitches against the same simulated buyers and see what gets chosen, what loses, and why. A fast sandbox for pressure-testing marketing decisions before you spend real money testing them.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><path d='M3 10V5a2 2 0 0 1 2-2h5' stroke='%23121212' stroke-width='2.4' fill='none'/><path d='M29 10V5a2 2 0 0 0-2-2h-5' stroke='%23121212' stroke-width='2.4' fill='none'/><path d='M3 22v5a2 2 0 0 0 2 2h5' stroke='%23121212' stroke-width='2.4' fill='none'/><path d='M29 22v5a2 2 0 0 1-2 2h-5' stroke='%23121212' stroke-width='2.4' fill='none'/><circle cx='16' cy='16' r='3.4' fill='%23FF5A36'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,500&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<style>body{background:var(--cream)}</style>
 </head>
 <body>
 
-<div class="dark-block">
-  <div class="wrap">
-    <nav class="topnav">
-      <a class="brandmark" href="./"><span id="logoSlot"></span><b>Market Arena</b></a>
-      <div class="navlinks">
-        <a class="ghost" href="#how"><i>01</i>How it works</a>
-        <a class="ghost" href="#faq"><i>02</i>FAQ</a>
-        <a class="cta-btn" href="practice.html">Try it free →</a>
-      </div>
-    </nav>
-  </div>
-
-  <div class="ticker">
-    <div class="ticker-track">
-      <span>FREE TO TRY — NO SIGNUP</span><span>·</span>
-      <span>JUDGED BY TYPESAFE'S JEV MODEL</span><span>·</span>
-      <span>4 INDUSTRY TEMPLATES + BUILD YOUR OWN</span><span>·</span>
-      <span>A ROUND RUNS IN UNDER A SECOND</span><span>·</span>
-      <span>FREE TO TRY — NO SIGNUP</span><span>·</span>
-      <span>JUDGED BY TYPESAFE'S JEV MODEL</span><span>·</span>
-      <span>4 INDUSTRY TEMPLATES + BUILD YOUR OWN</span><span>·</span>
-      <span>A ROUND RUNS IN UNDER A SECOND</span><span>·</span>
+<div class="wrap">
+  <nav class="lp-nav">
+    <a class="brandmark" href="./"><span id="logoSlot"></span><b>MARKET ARENA</b></a>
+    <div class="lp-navlinks">
+      <a href="#how">How it works</a>
+      <a href="#usecases">Use cases</a>
+      <a href="facilitate.html">For classrooms</a>
+      <a href="#model">About the model</a>
     </div>
-  </div>
-
-  <header class="hero">
-    <div class="wrap">
-      <h1>Twelve strangers.<br>One ad.<br><em>Under a second.</em></h1>
-      <p class="lede">They don't know you, they don't owe you anything — write a headline, a value proposition and a price, and they'll tell you exactly what they'd buy.</p>
-      <div class="ctarow">
-        <a class="cta-btn" href="practice.html">Try it yourself →</a>
-        <a class="cta-btn secondary" href="facilitate.html">Facilitate a session</a>
-      </div>
-
-      <div class="browser-frame" aria-hidden="true">
-        <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marketarena.app/practice</span></div>
-        <div class="demo-stage" id="demoStage">
-          <span class="demo-brand" id="demoBrand"></span>
-          <p class="demo-ad" id="demoAd"></p>
-          <div class="demo-tokens" id="demoTokens"></div>
-          <div class="demo-bar" id="demoBar"></div>
-          <div class="demo-legend" id="demoLegend"></div>
-        </div>
-      </div>
-      <p class="demo-caption">Three real rounds, replayed — this page never calls the model. <a href="practice.html">Run your own round →</a></p>
-    </div>
-  </header>
+    <a class="cta-btn" href="practice.html">Run an arena →</a>
+  </nav>
 </div>
 
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <p class="hero-eyebrow">Competitive message testing</p>
+      <h1>Make your pitches compete before your budget does.</h1>
+      <p class="hero-sub">Put 2–4 marketing ideas in front of the same simulated buyers. See what gets chosen, where alternatives lose people, and why.</p>
+      <div class="ctarow">
+        <a class="cta-btn" href="practice.html">Run an arena →</a>
+        <button class="cta-btn secondary" id="watchSample">Watch a sample round</button>
+      </div>
+      <p class="hero-reassure">No signup required for your first round</p>
+    </div>
+
+    <div class="arena-card" id="arenaCard">
+      <div class="arena-head">
+        <span class="label">Sample arena / Coffee subscription</span>
+        <span class="status" id="arenaStatus">12 buyers</span>
+      </div>
+      <div class="arena-body">
+        <div class="contender-row" id="contenderRow"><div class="scan-line" id="scanLine"></div></div>
+        <div class="run-row-arena">
+          <button class="cta-btn accent" id="runSample">Run sample round →</button>
+        </div>
+        <div class="buyer-strip" id="buyerStrip"></div>
+        <div class="result-bars hidden" id="resultBars"></div>
+      </div>
+    </div>
+  </div>
+</header>
+
 <main>
-  <section class="stat-band" id="how">
+
+  <section class="lp-section">
     <div class="wrap">
-      <div class="eyebrow"><i>01</i>THE MECHANIC</div>
-      <div class="stat-row">
-        <div class="stat-tile"><b>12</b><span>customers judge every round, across four segments</span></div>
-        <div class="stat-tile"><b>4</b><span>independent dimensions per brand — not one blended score</span></div>
-        <div class="stat-tile"><b>&lt;1s</b><span>from clicking Run to a full market reveal</span></div>
-        <div class="stat-tile"><b>4+</b><span>industries ready to go, or build your own from scratch</span></div>
+      <p class="section-label">Why Market Arena</p>
+      <h2 class="lp-h2">Most marketing debates are just opinions wearing confidence.</h2>
+      <div class="debate-grid">
+        <div class="debate-notes">
+          <div class="note"><span class="who">Founder</span><p>"₹999 makes us look more premium."</p></div>
+          <div class="note"><span class="who">Growth lead</span><p>"₹699 will convert better."</p></div>
+          <div class="note"><span class="who">Copywriter</span><p>"The price isn't the problem. The value prop is."</p></div>
+        </div>
+        <div class="debate-arrow">→</div>
+        <div class="arena-target">PUT THEM IN<br>THE SAME ARENA</div>
       </div>
-      <figure class="browser-frame" style="max-width:640px">
-        <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url">marketarena.app/facilitate</span></div>
-        <img src="detail-proof.png" width="820" height="220" loading="lazy" alt="One customer's judgment of three coffee brands: percentages for Noticed, Interested, Believed and Would buy, plus their stated main objection to each brand.">
-        <figcaption>The "4" above, in practice: one customer, judged on four dimensions, for every brand.</figcaption>
-      </figure>
+      <p class="debate-result">Now you're comparing decisions, not confidence.</p>
     </div>
   </section>
 
-  <section class="faq-band band-dark dark-block" id="faq">
+  <section class="lp-section" id="how">
     <div class="wrap">
-      <div class="eyebrow"><i>02</i>FREQUENTLY ASKED</div>
-      <div class="faq-grid">
+      <p class="section-label">How it works</p>
+      <h2 class="lp-h2">One connected system, not three separate steps.</h2>
+      <div class="flow">
+        <div class="flow-step"><span class="k">Input</span><h4>Contenders</h4><p>Market or context, plus 2–4 contenders. Each with a brand, headline, value proposition and price.</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><span class="k">Same market</span><h4>One panel</h4><p>All contenders are evaluated against the same twelve simulated buyers. The buyers stay still — the propositions move into their arena.</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><span class="k">Forced choice</span><h4>One decision each</h4><p>Every buyer independently chooses among the contenders in front of them.</p></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-step"><span class="k">Results</span><h4>Full breakdown</h4><p>Choice share, decision funnel, buyer-level decisions, and objections.</p></div>
+      </div>
+      <p class="flow-loop">Change one variable → run another round → compare</p>
+    </div>
+  </section>
 
-        <div class="faq-card">
-          <span class="qmark">“</span>
-          <h3>Isn't this just a chatbot pretending to like your ad?</h3>
-          <p>No. Every customer answers four separate questions — noticed, appealing, believed, would buy — independently, not blended into one score. Copy that talks to the judge instead of the customer gets flagged automatically.</p>
+  <section class="lp-section">
+    <div class="wrap">
+      <p class="section-label">The signature visual</p>
+      <h2 class="lp-h2">Winning is useful. Knowing where you lost is better.</h2>
+      <div class="funnel-viz">
+        <div class="funnel-bars" id="funnelBars"></div>
+        <div class="funnel-callout">
+          <p class="biggest">Biggest drop</p>
+          <p class="delta">Believed → Chose</p>
+          <p>Contender C won the round — but 60.7% of buyers believed its claims while only 40.8% chose it. Nineteen points believed it and still hesitated, mostly over price. Believing isn't buying.</p>
         </div>
-
-        <div class="faq-card">
-          <span class="qmark">“</span>
-          <h3>Will this survive a real 45-minute class?</h3>
-          <p>Yes — that's what it's built for. One shared scenario, a class code so a stranger with the link can't spend your credits, and a funnel that shows each team exactly where they lost people.</p>
-          <a class="arrow" href="facilitate.html">Facilitate a session →</a>
-        </div>
-
-        <div class="faq-card">
-          <span class="qmark">“</span>
-          <h3>I don't have a class, I just want to test my idea.</h3>
-          <p>Skip the code entirely. Pick an industry or start from scratch, rewrite every customer by hand, and run it — free, no signup, saved to your browser.</p>
-          <a class="arrow" href="practice.html">Try it yourself →</a>
-        </div>
-
       </div>
     </div>
   </section>
 
-  <section class="path-band">
+  <section class="lp-section">
     <div class="wrap">
-      <div class="eyebrow"><i>03</i>PICK YOUR PATH</div>
-      <div class="path-grid">
-        <a class="path-card" href="facilitate.html">
-          <span class="tag">For classrooms & workshops</span>
-          <h3>Facilitate a live session</h3>
-          <p>Run a 45-minute exercise for a room. Teams compete over several rounds, gated by a class code so only your group spends your credits.</p>
-          <span class="arrow">Start facilitating →</span>
-        </a>
-        <a class="path-card" href="practice.html">
-          <span class="tag">For anyone testing an idea</span>
-          <h3>Try it yourself</h3>
-          <p>Pick an industry — SaaS, retail, fintech, or your own — rewrite the customers, and see who'd actually buy your pitch. No code, nothing to set up.</p>
-          <span class="arrow">Start practicing →</span>
-        </a>
+      <p class="section-label">12 decisions &gt; 1 average</p>
+      <h2 class="lp-h2">Markets are made of disagreements.</h2>
+      <div class="buyer-grid" id="buyerGrid"></div>
+      <div id="buyerPanel"></div>
+    </div>
+  </section>
+
+  <section class="lp-section">
+    <div class="wrap">
+      <p class="section-label">Iteration</p>
+      <h2 class="lp-h2">Change one thing. Run it again.</h2>
+      <div class="iter-grid">
+        <div class="iter-col">
+          <span class="roundlabel">Round 01</span>
+          <div class="result-bars" id="iterR1"></div>
+        </div>
+        <div class="iter-col">
+          <span class="roundlabel">Round 02</span>
+          <div class="result-bars" id="iterR2"></div>
+        </div>
+        <div class="iter-edit">
+          Contender A price: <span class="old">₹699</span> → <span class="new">₹549</span>
+          <button class="cta-btn secondary" id="runAgain" style="margin-left:8px">Run again →</button>
+        </div>
+      </div>
+      <p class="debate-result" id="iterInsight" style="margin-top:24px"></p>
+    </div>
+  </section>
+
+  <section class="lp-section" id="usecases">
+    <div class="wrap">
+      <p class="section-label">Use cases</p>
+      <h2 class="lp-h2">Four ways teams actually use it.</h2>
+
+      <div class="usecase-row">
+        <span class="uc-label">Positioning</span>
+        <div><h4>Which promise should lead?</h4><p>Compare different ways of framing the same product. "Save 5 hours every week" vs. "Never update this spreadsheet again."</p></div>
+      </div>
+      <div class="usecase-row">
+        <span class="uc-label">Pricing</span>
+        <div><h4>Does the cheaper offer actually win?</h4><p>Change price while holding everything else constant, and see who it actually takes share from.</p></div>
+      </div>
+      <div class="usecase-row">
+        <span class="uc-label">Copy</span>
+        <div><h4>Which headline earns the choice?</h4><p>Test specificity, framing, proof, urgency or benefit against the same panel.</p></div>
+      </div>
+      <div class="usecase-row">
+        <span class="uc-label">Workshops</span>
+        <div><h4>Turn marketing theory into a live experiment.</h4><p>Let a room predict the winner. Run the arena. Reveal the decisions. Debate why the market behaved differently from the room.</p></div>
       </div>
     </div>
   </section>
+
+  <section class="lp-section" id="model">
+    <div class="wrap tech-grid">
+      <div class="tech-copy">
+        <p class="section-label">Under the hood</p>
+        <h2 class="lp-h2" style="margin-bottom:20px">Decisions, not chatbot opinions.</h2>
+        <p>Market Arena uses TypeSafe's Jev model to evaluate structured choices and return probabilistic decisions. Jev is built for typed probabilistic decisions rather than free-form conversational generation.</p>
+        <p>That matters because Market Arena is asking <b>which option?</b> — not <b>write me a paragraph about these options.</b></p>
+      </div>
+      <div class="tech-diagram">
+        <div class="tech-node">MARKET STATE</div>
+        <div class="tech-arrow">↓</div>
+        <div class="tech-node">BUYER CONTEXT + A / B / C</div>
+        <div class="tech-arrow">↓</div>
+        <div class="tech-node accent">JEV</div>
+        <div class="tech-arrow">↓</div>
+        <div class="tech-outputs"><span>A 0.23</span><span>B 0.27</span><span>C 0.41</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="lp-section">
+    <div class="wrap">
+      <p class="section-label">Trust</p>
+      <h2 class="lp-h2">A simulator, not a crystal ball.</h2>
+      <div class="trust-grid">
+        <div class="trust-col yes">
+          <h4>Use Market Arena for</h4>
+          <ul>
+            <li>Generating hypotheses</li>
+            <li>Comparing competing messages</li>
+            <li>Finding possible objections</li>
+            <li>Exploring pricing framing</li>
+            <li>Workshops and teaching</li>
+            <li>Deciding what deserves a real-world test</li>
+          </ul>
+        </div>
+        <div class="trust-col no">
+          <h4>Don't use it as</h4>
+          <ul>
+            <li>Actual customer research</li>
+            <li>Sales forecasting</li>
+            <li>Proof of product-market fit</li>
+            <li>A substitute for A/B testing</li>
+            <li>A statistically representative survey</li>
+          </ul>
+        </div>
+      </div>
+      <p class="trust-note">Market Arena gives you a cheap directional signal before you pay for an expensive real one. When the decision matters, validate it with actual customers.</p>
+    </div>
+  </section>
+
 </main>
 
-<div class="dark-block final-band">
+<div class="final-cta">
   <div class="wrap">
-    <h2>Ready to see who'd <em>actually</em> buy it?</h2>
-    <div class="ctarow" style="margin-top:0">
-      <a class="cta-btn" href="practice.html">Try it yourself →</a>
-      <a class="cta-btn secondary" href="facilitate.html">Facilitate a session</a>
+    <h2>You've got two ideas.<br>Make them compete.</h2>
+    <div class="specs">
+      <span>12 SIMULATED BUYERS</span>
+      <span>2–4 CONTENDERS</span>
+      <span>~1 ROUND</span>
     </div>
-  </div>
-
-  <div class="ticker footer-ticker">
-    <div class="ticker-track">
-      <span>MARKET SHARE</span><span>—</span><span>FUNNEL</span><span>—</span><span>OBJECTIONS</span><span>—</span>
-      <span>SEGMENTS</span><span>—</span><span>INTEGRITY FLAGS</span><span>—</span><span>UNDECIDED</span><span>—</span>
-      <span>MARKET SHARE</span><span>—</span><span>FUNNEL</span><span>—</span><span>OBJECTIONS</span><span>—</span>
-      <span>SEGMENTS</span><span>—</span><span>INTEGRITY FLAGS</span><span>—</span><span>UNDECIDED</span><span>—</span>
-    </div>
-  </div>
-
-  <div class="wrap">
-    <div class="footer-cols">
-      <div>
-        <a class="brandmark" href="./"><span id="logoSlot2"></span><b style="color:var(--cream)">Market Arena</b></a>
-        <p>Customers are simulated by TypeSafe's Jev model. Treat results as a teaching mirror, not market research.</p>
-      </div>
-      <div>
-        <h4>Product</h4>
-        <a href="facilitate.html">Facilitate</a>
-        <a href="practice.html">Practice</a>
-      </div>
-      <div>
-        <h4>Made by</h4>
-        <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad ↗</a>
-      </div>
-    </div>
-    <div class="footer-bottom">
-      <span>Market Arena</span>
-      <span>Not affiliated with TypeSafe. Results are illustrative, not market research.</span>
-    </div>
+    <div class="ctarow"><a class="cta-btn accent" href="practice.html">Run your first arena →</a></div>
+    <p class="fine">No signup required</p>
+    <p class="attrib">Built as an experiment by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a>. Customers are simulated by TypeSafe's Jev model — treat results as a directional signal, not market research.</p>
   </div>
 </div>
 
 <script type="module">
-import { LOGO_MARK, personaIcon } from "./icons.js";
-import { HERO_DEMOS } from "./hero-demo.js";
+import { LOGO_MARK, ARENA_MARK, objectionIcon } from "./icons.js";
+import { ARENA, OBJ_LABEL } from "./arena-data.js";
 
-document.getElementById("logoSlot").innerHTML = LOGO_MARK(26);
-document.getElementById("logoSlot2").innerHTML = LOGO_MARK(24);
-
-const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
-const pct = (x) => Math.round(x * 100) + "%";
+document.getElementById("logoSlot").innerHTML = ARENA_MARK(24);
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const sleep = (ms) => new Promise((r) => setTimeout(r, reduceMotion ? 0 : ms));
+const pct = (x) => Math.round(x * 100) + "%";
+const BCOLOR = { A: "var(--b1)", B: "var(--b2)", C: "var(--b3)", none: "#8B8B84" };
+const $ = (s) => document.querySelector(s);
 
-const adEl = document.getElementById("demoAd");
-const brandEl = document.getElementById("demoBrand");
-const tokensEl = document.getElementById("demoTokens");
-const barEl = document.getElementById("demoBar");
-const legendEl = document.getElementById("demoLegend");
+// ---------- Hero mini arena ----------
+const contenderRow = $("#contenderRow");
+const buyerStrip = $("#buyerStrip");
+const resultBars = $("#resultBars");
+const arenaStatus = $("#arenaStatus");
+const runBtn = $("#runSample");
 
-async function typeText(el, text, speed = 26) {
-  el.textContent = "";
-  const cursor = document.createElement("span"); cursor.className = "cursor";
-  for (let i = 0; i < text.length; i++) {
-    el.textContent = text.slice(0, i + 1);
-    el.appendChild(cursor);
-    if (!reduceMotion) await sleep(speed);
-  }
-  cursor.remove();
+function renderContenders(priceKey) {
+  contenderRow.innerHTML = `<div class="scan-line" id="scanLine"></div>` + ARENA.contenders.map((c) => `
+    <div class="contender-card" data-c="${c.id}">
+      <span class="tag">CONTENDER ${c.id}</span>
+      <h4>${c.headline}</h4>
+      <p>${c.valueProp}</p>
+      <span class="price">${c[priceKey]}</span>
+    </div>`).join("");
 }
+renderContenders("priceR1");
 
-function renderTokens(demo) {
-  tokensEl.innerHTML = demo.customers.map((c) => {
-    const brand = demo.brands.find((b) => b.id === c.purchase);
-    const color = brand ? COLORS[brand.slot] : "#3A3934";
-    return `<span class="token" style="--tc:${color};--tt:#fff">${personaIcon(c, 15)}</span>`;
-  }).join("");
+function buildResultRows(container, share) {
+  container.classList.remove("hidden");
+  container.innerHTML = ["A", "B", "C"].map((id) => `
+    <div class="result-row" data-row="${id}">
+      <span class="letter">${id}</span>
+      <div class="result-track"><div class="result-fill" style="background:${BCOLOR[id]}"></div></div>
+      <span class="pct"></span>
+    </div>`).join("");
 }
-function revealTokens() {
-  [...tokensEl.children].forEach((t, i) => setTimeout(() => t.classList.add("show"), i * 85));
-}
-function barParts(demo) {
-  return [...demo.brands.map((b) => ({ id: b.id, label: b.brand, share: b.share, c: COLORS[b.slot] })),
-          { id: "none", label: "Bought nothing", share: demo.none, c: null }];
-}
-function resetBar(demo) {
-  barEl.innerHTML = barParts(demo).map((p) =>
-    `<div class="${p.id === "none" ? "none" : ""}" style="flex-grow:0.0001;${p.c ? `background:${p.c};color:#fff` : ""}"></div>`).join("");
-}
-function fillBar(demo) {
-  const parts = barParts(demo);
-  [...barEl.children].forEach((el, i) => {
-    el.style.flexGrow = parts[i].share;
-    el.textContent = parts[i].share >= .12 ? pct(parts[i].share) : "";
+function fillResultRows(container, share, animate) {
+  ["A", "B", "C"].forEach((id) => {
+    const row = container.querySelector(`[data-row="${id}"]`);
+    const run = () => { row.querySelector(".result-fill").style.width = pct(share[id]); row.querySelector(".pct").textContent = pct(share[id]); };
+    if (animate) requestAnimationFrame(() => requestAnimationFrame(run)); else run();
   });
 }
-function renderLegend(demo) {
-  legendEl.innerHTML = barParts(demo).map((p) =>
-    `<span><span class="sw" style="background:${p.c || "repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"}"></span>${p.label} <b>${pct(p.share)}</b></span>`).join("");
-}
 
-async function playDemo(demo) {
-  brandEl.textContent = demo.label;
-  resetBar(demo);
-  legendEl.innerHTML = "";
-  renderTokens(demo);
-  const topBrand = [...demo.brands].sort((a, b) => b.share - a.share)[0];
-  await typeText(adEl, `"${topBrand.headline}"`);
-  await sleep(250);
-  revealTokens();
-  await sleep(demo.customers.length * 85 + 350);
-  fillBar(demo);
-  renderLegend(demo);
-  await sleep(3400);
-}
+async function runHeroSample() {
+  runBtn.disabled = true;
+  arenaStatus.textContent = "ROUND STARTING";
+  await sleep(400);
+  $("#scanLine").classList.add("on");
+  document.querySelectorAll(".contender-card").forEach((c) => c.classList.add("scanning"));
+  await sleep(1600);
+  $("#scanLine").classList.remove("on");
+  document.querySelectorAll(".contender-card").forEach((c) => c.classList.remove("scanning"));
 
-async function loop() {
-  if (reduceMotion) {
-    const demo = HERO_DEMOS[0];
-    brandEl.textContent = demo.label;
-    adEl.textContent = `"${demo.brands.reduce((a, b) => (b.share > a.share ? b : a)).headline}"`;
-    renderTokens(demo); revealTokens();
-    resetBar(demo); fillBar(demo); renderLegend(demo);
-    return;
-  }
-  let i = 0;
-  while (true) { await playDemo(HERO_DEMOS[i % HERO_DEMOS.length]); i++; }
+  buyerStrip.innerHTML = ARENA.buyers.map((b) => `<span class="btoken" data-b="${b.id}">${b.name[0]}</span>`).join("");
+  const tokens = [...buyerStrip.children];
+  tokens.forEach((t, i) => setTimeout(() => {
+    t.classList.add("show");
+    const d = ARENA.round1.decisions[t.dataset.b];
+    setTimeout(() => {
+      t.classList.add("decided");
+      t.style.background = BCOLOR[d.choice] || BCOLOR.none;
+      t.textContent = d.choice === "none" ? "–" : d.choice;
+      arenaStatus.textContent = `${i + 1}/12 DECISIONS LOCKED`;
+    }, 120);
+  }, i * 130));
+  await sleep(ARENA.buyers.length * 130 + 500);
+
+  buildResultRows(resultBars, ARENA.round1.share);
+  fillResultRows(resultBars, ARENA.round1.share, true);
+  document.querySelector('.contender-card[data-c="C"]').classList.add("winner");
+  await sleep(200);
+  const insight = document.createElement("div");
+  insight.className = "result-insight";
+  insight.innerHTML = `
+    <p class="winner-line">Winner — Contender C</p>
+    <p>Price wasn't C's advantage — it faced the most price pushback of the three. A specific, dated claim ("roasted this week") carried it anyway.</p>
+    <p class="objection">Meera chose B over A. ${objectionIcon("price", 13)} Same objection category toward every contender (price) — but B's "₹23 a cup" framing scored 89% appeal for her vs 31% for A. Framing made the value legible; the category label alone wouldn't have told you that.</p>
+    <div class="ctarow" style="margin-top:16px"><a class="cta-btn secondary" href="practice.html">Try it with your own pitches →</a></div>`;
+  resultBars.after(insight);
+  arenaStatus.textContent = "RESULT";
 }
-loop();
+runBtn.addEventListener("click", runHeroSample);
+$("#watchSample").addEventListener("click", () => { $("#arenaCard").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" }); if (!runBtn.disabled) runHeroSample(); });
+
+// ---------- Signature funnel (section 4) ----------
+const STAGES = [["saw", "SAW THE OFFER"], ["interested", "INTERESTED"], ["believed", "BELIEVED"], ["chose", "CHOSE"]];
+const cFunnel = ARENA.round1.funnel.C;
+$("#funnelBars").innerHTML = STAGES.map(([k, label], i) => {
+  const drop = i > 0 && (STAGES[i - 1][0] in cFunnel) && cFunnel[STAGES[i - 1][0]] - cFunnel[k] > 0.15;
+  return `<div class="funnel-stage${drop ? " drop" : ""}"><span class="name">${label}</span><div class="funnel-track"><div class="funnel-fill" style="width:${pct(cFunnel[k])}"></div></div><span class="pct">${pct(cFunnel[k])}</span></div>`;
+}).join("");
+
+// ---------- Buyer grid (section 5) ----------
+const buyerGrid = $("#buyerGrid");
+const buyerPanel = $("#buyerPanel");
+buyerGrid.innerHTML = ARENA.buyers.map((b) => {
+  const d = ARENA.round1.decisions[b.id];
+  return `<button class="buyer-cell" data-b="${b.id}" aria-expanded="false">
+    <span class="bavatar" style="background:${BCOLOR[d.choice] || BCOLOR.none}">${b.name[0]}</span>
+    <span class="bname">${b.name}</span><span class="bseg">${b.segment}</span>
+  </button>`;
+}).join("");
+
+let openBuyer = null;
+buyerGrid.addEventListener("click", (e) => {
+  const btn = e.target.closest(".buyer-cell"); if (!btn) return;
+  const id = btn.dataset.b;
+  openBuyer = openBuyer === id ? null : id;
+  document.querySelectorAll(".buyer-cell").forEach((c) => c.setAttribute("aria-expanded", String(c.dataset.b === openBuyer)));
+  if (!openBuyer) { buyerPanel.innerHTML = ""; return; }
+  const buyer = ARENA.buyers.find((b) => b.id === openBuyer);
+  const d = ARENA.round1.decisions[openBuyer];
+  const rejected = ["A", "B", "C"].filter((c) => c !== d.choice);
+  buyerPanel.innerHTML = `
+    <div class="buyer-panel">
+      <button class="x" id="closeBuyer">Close</button>
+      <h4>${buyer.name.toUpperCase()}</h4>
+      <p class="bseg2">${buyer.age}, ${buyer.segment.toLowerCase()}</p>
+      <div class="row">
+        <div><span>Chose</span><b>Contender ${d.choice}</b></div>
+        <div><span>Rejected</span><b>${rejected.join(", ")}</b></div>
+        <div><span>Confidence</span><b>${pct(d.confidence)}</b></div>
+      </div>
+      ${rejected.map((c) => `<p class="obj">Objection to Contender ${c}: <b>${OBJ_LABEL[d.byBrand[c].objection]}</b> (${pct(d.byBrand[c].appeal)} appeal)</p>`).join("")}
+    </div>`;
+  $("#closeBuyer").addEventListener("click", () => { openBuyer = null; buyerPanel.innerHTML = ""; document.querySelectorAll(".buyer-cell").forEach((c) => c.setAttribute("aria-expanded", "false")); });
+});
+
+// ---------- Iteration (section 6) ----------
+buildResultRows($("#iterR1"), ARENA.round1.share);
+fillResultRows($("#iterR1"), ARENA.round1.share, false);
+buildResultRows($("#iterR2"), ARENA.round1.share); // starts identical to R1 until "run again"
+fillResultRows($("#iterR2"), ARENA.round1.share, false);
+$("#iterR2").style.opacity = ".45";
+
+let iterRun = false;
+$("#runAgain").addEventListener("click", async () => {
+  if (iterRun) return; iterRun = true;
+  const btn = $("#runAgain"); btn.disabled = true; btn.textContent = "Running…";
+  await sleep(500);
+  $("#iterR2").style.opacity = "1";
+  fillResultRows($("#iterR2"), ARENA.round2.share, true);
+  await sleep(900);
+  const dA = Math.round((ARENA.round2.share.A - ARENA.round1.share.A) * 100);
+  const dB = Math.round((ARENA.round2.share.B - ARENA.round1.share.B) * 100);
+  $("#iterInsight").innerHTML = `<span class="iter-delta up">+${dA} pts for A</span> &nbsp; <span class="iter-delta down">${dB} pts for B</span> &nbsp; C barely moved. The price cut didn't dethrone the leader — it mostly came out of B's pocket, not C's.`;
+  btn.textContent = "Ran again ✓";
+});
 </script>
 </body>
 </html>

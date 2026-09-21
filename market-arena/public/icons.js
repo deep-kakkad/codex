@@ -6,7 +6,18 @@
 export const LOGO_MARK = (size = 32) => `
 <svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Market Arena">
   <circle cx="22" cy="24" r="17" stroke="currentColor" stroke-width="4"/>
-  <circle cx="38" cy="10" r="6" fill="var(--lime)"/>
+  <circle cx="38" cy="10" r="6" fill="var(--accent)"/>
+</svg>`;
+
+// The arena mark: four corner brackets around a decision point — a bounded
+// space where something gets chosen. No shields, no colosseum, no flames.
+export const ARENA_MARK = (size = 26) => `
+<svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Market Arena">
+  <path d="M3 10V5a2 2 0 0 1 2-2h5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M29 10V5a2 2 0 0 0-2-2h-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M3 22v5a2 2 0 0 0 2 2h5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M29 22v5a2 2 0 0 1-2 2h-5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+  <circle cx="16" cy="16" r="3.4" fill="var(--accent)"/>
 </svg>`;
 
 const PATHS = {
