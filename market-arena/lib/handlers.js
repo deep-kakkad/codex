@@ -2,6 +2,7 @@
 import { runRound, validateTeams, validatePersonas, LIMITS, PERSONA_LIMITS } from "./engine.js";
 import { SCENARIO, PERSONAS, DEFAULT_TEAMS } from "./scenario.js";
 import { TEMPLATES } from "./templates.js";
+import { saveShare, getShareById } from "./store.js";
 
 const codeOk = (code) => !process.env.ARENA_CODE || (code || "").trim() === process.env.ARENA_CODE;
 
@@ -51,4 +52,26 @@ export async function round(rawBody, code, ip) {
   if (problem) return [400, { error: problem }];
   try { return [200, await runRound(teams)]; }
   catch (e) { console.error(e); return [502, { error: "The market simulation couldn't reach TypeSafe. Run the round again in a moment." }]; }
+}
+
+// A shared snapshot is exactly one round's result plus a little display context —
+// never live state, so a stale link just shows the round as it was when shared.
+export async function share(rawBody) {
+  let body;
+  try { body = JSON.parse(rawBody || "{}"); } catch { return [400, { error: "The request wasn't valid JSON." }]; }
+  const { round: r, meta } = body;
+  if (!r || !Array.isArray(r.brands) || !Array.isArray(r.customers) || !Array.isArray(r.slots))
+    return [400, { error: "That doesn't look like a round result." }];
+  try {
+    const id = await saveShare({ round: r, meta: { title: String(meta?.title || "").slice(0, 120), brief: String(meta?.brief || "").slice(0, 300) }, sharedAt: Date.now() });
+    return [200, { id }];
+  } catch (e) { console.error(e); return [502, { error: "Couldn't create a share link. Try again in a moment." }]; }
+}
+
+export async function getShare(id) {
+  try {
+    const data = await getShareById(String(id || ""));
+    if (!data) return [404, { error: "This share link doesn't exist, or has expired." }];
+    return [200, data];
+  } catch (e) { console.error(e); return [502, { error: "Couldn't load that share link. Try again in a moment." }]; }
 }

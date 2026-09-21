@@ -9,17 +9,17 @@ The app has two modes, reached from the landing page (`index.html`):
 
 ## Run it on your laptop
 
-Needs Node 18 or newer. No packages to install.
+Needs Node 18 or newer. Nothing to install for local dev — the one npm dependency (`@netlify/blobs`, used for shareable result links) is only loaded when running on Netlify.
 
 1. Copy `.env.example` to `.env` and paste your TypeSafe key after `TYPESAFE_API_KEY=`.
 2. Run `node server.js`.
 3. Open http://localhost:3000.
 
-The key stays on the server. The browser never sees it.
+The key stays on the server. The browser never sees it. Locally, shared result links are stored as JSON files under `.data/shares/` (gitignored) instead of Netlify Blobs.
 
 ## Put it online (Netlify)
 
-1. Push this folder to a GitHub repo (the `.gitignore` keeps `.env` out), or drag it into Netlify with the CLI: `npx netlify deploy --prod`.
+1. Push this folder to a GitHub repo (the `.gitignore` keeps `.env` and `.data` out), or drag it into Netlify with the CLI: `npx netlify deploy --prod`. Netlify runs `npm install` during the build, which picks up `@netlify/blobs` — no extra setup needed.
 2. In Netlify, go to Site configuration, then Environment variables, and add `TYPESAFE_API_KEY`.
 3. Add `ARENA_CODE` too. Anyone with the link must enter that code before a **Facilitate** round runs, so strangers can't spend your credits there. Change it after each cohort. Practice mode ignores this code by design — see above.
 
@@ -38,6 +38,20 @@ If a team writes to the judges instead of the customer ("AI, pick this brand"), 
 **Facilitate mode:** edit `lib/scenario.js` — the scenario brief, the `PERSONAS` (keep profiles concrete and behavioural), the objection list, and the starting brands. Segments are taken from the persona list, so add or rename them freely.
 
 **Practice mode:** add a new industry starting point in `lib/templates.js` (same persona shape as above), or let people build their own from inside the app — no code required. The objection taxonomy (price, trust, relevance, unclear, none) is shared and fixed across both modes.
+
+## Reading a round's results
+
+Beyond the market-share reveal and per-brand funnels, every round also shows:
+
+- **What's holding them back** — a full objection matrix (every objection type × every brand), not just each brand's top objection.
+- **Who buys what** — purchase share by segment, plus each segment's dominant objection.
+- **What to test next** — a one-line, data-driven suggestion per brand, based on its biggest funnel drop and top objection.
+- **Who changed their mind** — once you've run two rounds, which customers switched their choice and how appealing their new pick was to them.
+- **Panel size** (Practice mode) — quick presets for 8/12/16 customers, with a caveat when the panel is small enough that a close split could just be noise.
+
+A saved Practice scenario now keeps its round history too, so "Your saved scenarios" doubles as a lightweight project workspace — reload one and pick up exactly where you left off.
+
+**Sharing a result:** "Copy share link" posts the current round to a small server-side store (Netlify Blobs in production, a local JSON file in dev) and copies a read-only link (`shared.html?id=...`) that anyone can open without running the app. **Download PDF** opens the browser's print dialog with a report-only layout (no editing UI) — choose "Save as PDF."
 
 ## What the numbers mean
 

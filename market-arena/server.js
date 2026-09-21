@@ -11,7 +11,7 @@ try {
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^['"]|['"]$/g, "");
   });
 } catch {}
-const { scenario, templates, round } = await import("./lib/handlers.js");
+const { scenario, templates, round, share, getShare } = await import("./lib/handlers.js");
 if (!process.env.TYPESAFE_API_KEY) { console.error("Set TYPESAFE_API_KEY in your shell or a .env file, then start again."); process.exit(1); }
 
 const PUBLIC = fileURLToPath(new URL("./public", import.meta.url));
@@ -27,6 +27,12 @@ http.createServer(async (req, res) => {
     for await (const c of req) { body += c; if (body.length > 20000) return send(res, [413, { error: "Request too large." }]); }
     return send(res, await round(body, req.headers["x-arena-code"], req.socket.remoteAddress));
   }
+  if (req.method === "POST" && url === "/api/share") {
+    let body = "";
+    for await (const c of req) { body += c; if (body.length > 40000) return send(res, [413, { error: "Request too large." }]); }
+    return send(res, await share(body));
+  }
+  if (req.method === "GET" && url.startsWith("/api/share/")) return send(res, await getShare(url.slice("/api/share/".length)));
   const path = join(PUBLIC, url === "/" ? "index.html" : url);
   if (!path.startsWith(PUBLIC)) return send(res, [403, { error: "Forbidden" }]);
   const file = await readFile(path).catch(() => null);

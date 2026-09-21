@@ -9,9 +9,12 @@ export const INK_ON = [false, false, false, true]; // text colour on each brand 
 export const HEX = ["#2F4BD1", "#9A3F7A", "#1E7F72", "#D9A21B"];
 export const STAGES = [["attention", "Noticed"], ["interest", "Interested"], ["belief", "Believed"], ["purchase", "Bought"]];
 export const OBJ_LABEL = { price: "price feels too high", trust: "doesn't believe the claims", relevance: "doesn't fit their needs or habits", unclear: "doesn't understand the offer", none: "no real objection" };
+export const OBJ_ORDER = ["price", "trust", "relevance", "unclear"];
+export const OBJ_FIX = { price: "the price or how it's framed", trust: "proof or credibility behind the claim", relevance: "who the message is speaking to", unclear: "how clearly the offer is explained" };
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const pct = (x) => Math.round(x * 100) + "%";
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const $ = (s) => document.querySelector(s);
 
 export function createResultsView() {
@@ -49,24 +52,26 @@ export function createResultsView() {
 
   function showSkeleton() {
     $("#results").classList.remove("hidden");
-    $("#csv").disabled = true;
+    $("#csv").disabled = true; $("#pdf").disabled = true; if ($("#share")) $("#share").disabled = true;
     $("#flags").innerHTML = "";
     $("#marketTitle").textContent = "Reading the room…";
     $("#sharebar").innerHTML = `<div class="skel" style="width:100%;height:100%;border-radius:0"></div>`;
     $("#legend").innerHTML = Array.from({ length: 3 }).map(() => `<i class="skel" style="width:110px;height:26px"></i>`).join("");
+    $("#tested").innerHTML = "";
     $("#segments").innerHTML = Array.from({ length: 4 }).map(() => `
       <div class="seg"><i class="skel skel-head"></i><div class="people">
         ${Array.from({ length: 3 }).map(() => `<div class="skel-row"><i class="skel skel-token"></i><i class="skel skel-line"></i></div>`).join("")}
       </div></div>`).join("");
     $("#detail").classList.add("hidden");
-    $("#funnels").innerHTML = ""; $("#heat").innerHTML = ""; $("#objections").innerHTML = "";
+    $("#funnels").innerHTML = ""; $("#heat").innerHTML = ""; $("#objections").innerHTML = ""; $("#segInsights").innerHTML = "";
+    $("#suggestSec").classList.add("hidden"); $("#deltaSec").classList.add("hidden");
   }
 
   function renderResults(rounds, animate) {
     const r = rounds[rounds.length - 1];
     const n = rounds.length;
     $("#results").classList.remove("hidden");
-    $("#csv").disabled = false;
+    $("#csv").disabled = false; $("#pdf").disabled = false; if ($("#share")) $("#share").disabled = false;
     $("#marketTitle").textContent = `Round ${n}: the market decided`;
     const col = (id) => r.slots[r.brands.findIndex((b) => b.id === id)];
     const color = (id) => id === "none" ? "#3A3934" : COLORS[col(id)];
@@ -87,6 +92,10 @@ export function createResultsView() {
       <div><span class="sw" style="background:${COLORS[r.slots[i]]}"></span><span>${esc(b.brand)}</span>
       <span class="pct">${pct(b.share)}</span>${deltaChip(b.share, prevShare(rounds, r.slots[i]))}</div>`).join("") +
       `<div><span class="sw" style="background:repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"></span><span>Bought nothing</span><span class="pct">${pct(r.noPurchase.share)}</span></div>`;
+
+    $("#tested").innerHTML = r.brands.map((b, i) => `
+      <div class="tcard" style="--c:${COLORS[r.slots[i]]}"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>
+      <span class="thead">${esc(b.headline)}</span><span class="tprice">${esc(b.price)}</span></div>`).join("");
 
     $("#segments").innerHTML = r.segments.map((s) => `
       <div class="seg"><h3>${esc(s)}</h3><div class="people">
@@ -115,14 +124,68 @@ export function createResultsView() {
     $("#heat").innerHTML = `<thead><tr><th>Segment</th>${r.brands.map((b) => `<th>${esc(b.brand)}</th>`).join("")}<th>Nothing</th></tr></thead><tbody>` +
       r.segments.map((s) => `<tr><td>${esc(s)}</td>${r.brands.map((b, i) => `<td class="cell" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell" style="${heat(r.noPurchase.bySegment[s], "#8E8A7B")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
 
-    $("#objections").innerHTML = r.brands.map((b) => {
-      const top = Object.entries(b.objections).filter(([k]) => k !== "none").sort((a, c) => c[1] - a[1]).slice(0, 2);
-      return `<div class="obj"><h3>${esc(b.brand)}</h3><p>${top.map(([k, v]) => `${objectionIcon(k)} <b>${pct(v)}</b> ${OBJ_LABEL[k]}`).join("; ")}.</p></div>`;
-    }).join("");
+    const brandIds = r.brands.map((b) => b.id);
+    $("#segInsights").innerHTML = `<ul class="seginsights">` + r.segments.map((s) => {
+      const segCustomers = r.customers.filter((c) => c.segment === s);
+      const counts = {};
+      segCustomers.forEach((c) => brandIds.forEach((id) => { const o = c.byBrand[id].objection; if (o !== "none") counts[o] = (counts[o] || 0) + 1; }));
+      const top = Object.entries(counts).sort((a, b2) => b2[1] - a[1])[0];
+      return top ? `<li><b>${esc(s)}</b> — mostly held back by ${objectionIcon(top[0])} ${OBJ_LABEL[top[0]]}</li>` : "";
+    }).join("") + `</ul>`;
 
+    const objHeat = (v) => `background:color-mix(in srgb, var(--bad) ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
+    $("#objections").innerHTML = `<div class="tablewrap"><table class="heat"><thead><tr><th>Objection</th>${r.brands.map((b) => `<th>${esc(b.brand)}</th>`).join("")}</tr></thead><tbody>` +
+      OBJ_ORDER.map((k) => `<tr><td>${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</td>${r.brands.map((b) => `<td class="cell" style="${objHeat(b.objections[k])}">${pct(b.objections[k])}</td>`).join("")}</tr>`).join("") +
+      `</tbody></table></div>` +
+      r.brands.map((b) => {
+        const [topK, topV] = Object.entries(b.objections).filter(([k]) => k !== "none").sort((a, c) => c[1] - a[1])[0];
+        return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <b>${pct(topV)}</b> ${OBJ_LABEL[topK]}.</p>`;
+      }).join("");
+
+    renderSuggestions(r);
+    renderDeltas(rounds);
     showDetail();
     renderHistory(rounds);
     $("#meta").textContent = `${r.model}, ${r.tokens.toLocaleString()} tokens, ${(r.ms / 1000).toFixed(1)}s`;
+  }
+
+  function renderSuggestions(r) {
+    $("#suggestSec").classList.remove("hidden");
+    const maxShare = Math.max(...r.brands.map((b) => b.share));
+    $("#suggestions").innerHTML = r.brands.map((b, i) => {
+      const vals = STAGES.map(([k]) => b.funnel[k]);
+      let worst = 0, gap = -1;
+      for (let j = 1; j < vals.length; j++) if (vals[j - 1] - vals[j] > gap) { gap = vals[j - 1] - vals[j]; worst = j; }
+      const dropFrom = STAGES[worst - 1][1].toLowerCase(), dropTo = STAGES[worst][1].toLowerCase();
+      const [topK, topV] = Object.entries(b.objections).filter(([k]) => k !== "none").sort((a, c) => c[1] - a[1])[0];
+      const leading = b.share === maxShare;
+      const body = leading
+        ? `Leading the round at ${pct(b.share)}, but ${pct(topV)} of customers still cite ${OBJ_LABEL[topK]}. Worth testing a fix before it costs share.`
+        : `Biggest drop is ${dropFrom} → ${dropTo} (${Math.round(gap * 100)} pts), and the top objection is ${OBJ_LABEL[topK]} (${pct(topV)}). Try testing ${OBJ_FIX[topK]} next round.`;
+      return `<div class="suggest" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3><p>${body}</p></div>`;
+    }).join("");
+  }
+
+  function choiceLabel(round, id) { if (id === "none") return "nothing"; const b = round.brands.find((x) => x.id === id); return b ? b.brand : id; }
+  function choiceSlot(round, id) { if (id === "none") return -1; const i = round.brands.findIndex((x) => x.id === id); return i < 0 ? -1 : round.slots[i]; }
+
+  function renderDeltas(rounds) {
+    if (rounds.length < 2) { $("#deltaSec").classList.add("hidden"); return; }
+    const prev = rounds[rounds.length - 2], curr = rounds[rounds.length - 1];
+    const prevById = Object.fromEntries(prev.customers.map((c) => [c.id, c]));
+    const switched = curr.customers.map((c) => {
+      const before = prevById[c.id];
+      if (!before) return null;
+      if (choiceSlot(prev, before.purchase) === choiceSlot(curr, c.purchase)) return null;
+      return { c, from: choiceLabel(prev, before.purchase), to: choiceLabel(curr, c.purchase), appeal: c.purchase === "none" ? null : c.byBrand[c.purchase]?.appeal };
+    }).filter(Boolean);
+    $("#deltaSec").classList.toggle("hidden", !switched.length);
+    if (!switched.length) return;
+    $("#deltas").innerHTML = switched.map(({ c, from, to, appeal }) => `
+      <div class="deltarow">${personaIcon(c, 20)}<span class="dname">${esc(c.name)}</span>
+        <span class="dmove"><span class="dfrom">${esc(from)}</span><span class="darrow">→</span><span class="dto">${esc(to)}</span></span>
+        ${appeal != null ? `<span class="dappeal">${pct(appeal)} appeal</span>` : ""}
+      </div>`).join("");
   }
 
   function renderHistory(rounds) {

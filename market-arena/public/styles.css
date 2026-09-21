@@ -66,6 +66,11 @@ h2{font:800 26px/1.2 var(--body);margin:0 0 4px;letter-spacing:-.015em}
 .error{color:#B3261E;font-weight:500}
 
 /* Persona editor (Practice mode) */
+.panel-size{display:flex;align-items:center;gap:8px;margin:0 0 14px;font-size:13px;color:var(--muted)}
+.psize{border:1px solid var(--line);background:none;border-radius:6px;padding:5px 12px;font:600 13px var(--mono);cursor:pointer;color:var(--ink)}
+.psize:hover{border-color:var(--ink)}
+.psize.active{background:var(--ink);border-color:var(--ink);color:var(--cream)}
+.caveat{font-size:13px;color:var(--bad);margin:0 0 16px;max-width:60ch}
 .personas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
 .pcard{background:var(--paper);border:1.5px solid var(--line);padding:14px 14px 10px;position:relative}
 .pcard label{display:block;font-size:12px;font-weight:500;margin:8px 0 3px;color:var(--muted)}
@@ -100,6 +105,11 @@ h2{font:800 26px/1.2 var(--body);margin:0 0 4px;letter-spacing:-.015em}
 .legend div{display:flex;align-items:baseline;gap:8px}
 .sw{width:12px;height:12px;display:inline-block;flex:none;transform:translateY(1px)}
 .legend .pct{font:600 26px var(--mono)}
+.tested{display:flex;flex-wrap:wrap;gap:10px 24px;margin-bottom:30px;padding-top:22px;border-top:1px solid #3A3934}
+.tcard{display:flex;align-items:baseline;gap:8px;font-size:13px;color:#B9B5A6;max-width:320px}
+.tcard b{color:var(--cream);font-size:14px}
+.tcard .thead{color:#D9D3C2}
+.tcard .tprice{font-family:var(--mono);color:#B9B5A6}
 .delta{font:500 13px var(--mono);padding:1px 6px;border-radius:3px}
 .up{background:var(--accent);color:var(--ink)}
 .down{background:#5C2A2A;color:#FFD9D4}
@@ -156,6 +166,24 @@ table.heat{border-collapse:collapse;width:100%;min-width:420px;font-size:14px}
 .obj h3{font:600 17px var(--display);margin:0 0 4px;display:flex;align-items:center;gap:8px}
 .obj p{margin:0;font-size:14px;color:var(--muted)}
 .obj p b{color:var(--ink);font-weight:500}
+.objsum{margin:5px 0;font-size:13.5px;color:var(--muted)}
+.objsum b{color:var(--ink);font-weight:500}
+.seginsights{list-style:none;margin:14px 0 0;padding:0;font-size:13.5px;color:var(--muted)}
+.seginsights li{padding:4px 0}
+.seginsights b{color:var(--ink);font-weight:500}
+
+.suggest{border:1px solid var(--line);border-radius:12px;padding:18px 20px;margin-bottom:14px;border-left:3px solid var(--c,var(--ink))}
+.suggest h3{font:600 16px var(--display);margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.suggest p{margin:0;font-size:14px;color:var(--muted);line-height:1.55}
+
+.deltarow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.deltarow:last-child{border-bottom:none}
+.deltarow .dname{font-weight:600;min-width:100px}
+.deltarow .dmove{display:flex;align-items:center;gap:8px;flex:1;font-family:var(--mono);font-size:13px}
+.deltarow .dfrom{color:var(--muted)}
+.deltarow .darrow{color:var(--faint)}
+.deltarow .dto{color:var(--ink);font-weight:600}
+.deltarow .dappeal{font-size:12px;color:var(--faint);font-family:var(--mono)}
 svg.history text{font:12px var(--mono);fill:var(--muted)}
 footer{border-top:2px solid var(--ink);padding:20px 0 40px;font-size:13px;color:var(--muted)}
 footer .row{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
@@ -580,3 +608,18 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 .s-credcol li svg{flex:none}
 .s-credcol.yes li svg{color:var(--good)}
 .s-credcol.no li svg{color:var(--bad)}
+
+/* Print / "Download PDF" — practice.html and facilitate.html only, via window.print() */
+@media print{
+  * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
+  body{font-size:12px}
+  header .toolbar, #directory, #pickerSection, #scenarioSection, #personasSection, #brandsSection,
+  .run-row, .detail, footer .credit, .person .conf{display:none!important}
+  header{border-bottom:none;padding:0 0 14px}
+  .brief span{display:inline}
+  .market{padding:20px 0 24px}
+  .funnel, .suggest, .tcard, .deltarow{break-inside:avoid}
+  table.heat{font-size:11px}
+  a[href]{text-decoration:none;color:inherit}
+  section, #results > div{break-inside:avoid-page}
+}

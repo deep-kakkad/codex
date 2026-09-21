@@ -22,6 +22,8 @@
       <button class="ghost hidden" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the customers</button>
       <button class="ghost hidden" id="changeScenario">Change scenario</button>
       <button class="ghost hidden" id="csv" disabled>Download results (CSV)</button>
+      <button class="ghost hidden" id="pdf" disabled>Download PDF</button>
+      <button class="ghost hidden" id="share" disabled>Copy share link</button>
       <button class="ghost hidden" id="reset">Start over</button>
     </div>
   </div>
@@ -59,6 +61,13 @@
     <div class="wrap">
       <h2>Your customers</h2>
       <p class="sub" id="personasSub">Segments come from whatever you type here — rename, add or remove freely.</p>
+      <div class="panel-size" id="panelSize">
+        <span>Panel size</span>
+        <button class="psize" data-size="8">8</button>
+        <button class="psize" data-size="12">12</button>
+        <button class="psize" data-size="16">16</button>
+      </div>
+      <p class="caveat hidden" id="panelCaveat">Fewer than 8 customers means a close split could just be noise — treat it as a direction to test further, not a final answer.</p>
       <div class="personas-grid" id="personas"></div>
     </div>
   </section>
@@ -84,6 +93,7 @@
         <div id="flags"></div>
         <div class="sharebar" id="sharebar" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
+        <div class="tested" id="tested"></div>
         <div class="segments" id="segments"></div>
         <div class="detail hidden" id="detail" aria-live="polite"></div>
       </div>
@@ -100,10 +110,27 @@
           <h2>Who buys what</h2>
           <p class="sub">Purchase share within each segment.</p>
           <div class="tablewrap"><table class="heat" id="heat"></table></div>
+          <div id="segInsights"></div>
           <h2 style="margin-top:36px">What's holding them back</h2>
-          <p class="sub">The most likely objection to each brand, averaged across all customers.</p>
+          <p class="sub">Every objection, against every brand. Darker means more customers cite it.</p>
           <div id="objections"></div>
         </div>
+      </div>
+    </section>
+
+    <section id="suggestSec" class="hidden">
+      <div class="wrap">
+        <h2>What to test next</h2>
+        <p class="sub">A starting point for the next round, based on each brand's biggest funnel drop and top objection.</p>
+        <div id="suggestions"></div>
+      </div>
+    </section>
+
+    <section id="deltaSec" class="hidden">
+      <div class="wrap">
+        <h2>Who changed their mind</h2>
+        <p class="sub">Customers whose choice flipped between the last two rounds.</p>
+        <div id="deltas"></div>
       </div>
     </section>
 
@@ -170,7 +197,7 @@ function renderSavedGrid() {
   $("#savedWrap").classList.toggle("hidden", !saved.length);
   $("#savedGrid").innerHTML = saved.map((s) => `
     <div class="picker-card" data-saved="${s.id}" style="cursor:default">
-      <span class="kicker">Saved ${new Date(s.savedAt).toLocaleDateString()}</span>
+      <span class="kicker">Saved ${new Date(s.savedAt).toLocaleDateString()}${s.rounds?.length ? ` · ${s.rounds.length} round${s.rounds.length > 1 ? "s" : ""}` : ""}</span>
       <h3>${esc(s.name)}</h3>
       <p>${esc(s.scenario.brief || "")}</p>
       <div style="margin-top:14px;display:flex;gap:14px">
@@ -180,22 +207,23 @@ function renderSavedGrid() {
     </div>`).join("");
   $("#savedGrid").onclick = (e) => {
     const loadId = e.target.dataset.load, delId = e.target.dataset.del;
-    if (loadId) { const s = saved.find((x) => x.id === loadId); if (s) loadScenario({ scenario: { ...s.scenario }, personas: s.personas.map((p) => ({ ...p })), teams: s.teams.map((t) => ({ ...t })) }); }
+    if (loadId) { const s = saved.find((x) => x.id === loadId); if (s) loadScenario({ scenario: { ...s.scenario }, personas: s.personas.map((p) => ({ ...p })), teams: s.teams.map((t) => ({ ...t })), rounds: (s.rounds || []).map((r) => ({ ...r })) }); }
     if (delId) { saveJSON(SAVED_KEY, saved.filter((x) => x.id !== delId)); renderSavedGrid(); }
   };
 }
 
-function loadScenario({ scenario, personas, teams }) {
-  state = { scenario, personas, teams, rounds: [] };
+function loadScenario({ scenario, personas, teams, rounds }) {
+  state = { scenario, personas, teams, rounds: rounds || [] };
   saveJSON(SESSION_KEY, state);
   showBuilder();
   view.resetOpen();
-  $("#results").classList.add("hidden"); $("#csv").disabled = true;
+  if (state.rounds.length) { view.renderResults(state.rounds, false); $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }
+  else { $("#results").classList.add("hidden"); $("#csv").disabled = true; $("#pdf").disabled = true; $("#share").disabled = true; }
 }
 
 function showBuilder() {
   $("#pickerSection").classList.add("hidden");
-  ["scenarioSection", "personasSection", "brandsSection", "toggleDir", "changeScenario", "csv", "reset"].forEach((id) => $("#" + id).classList.remove("hidden"));
+  ["scenarioSection", "personasSection", "brandsSection", "toggleDir", "changeScenario", "csv", "pdf", "share", "reset"].forEach((id) => $("#" + id).classList.remove("hidden"));
   $("#scenTitle").value = state.scenario.title || "";
   $("#scenBrief").value = state.scenario.brief || "";
   renderDirectory();
@@ -215,9 +243,35 @@ function renderDirectory() {
     `<div class="dir-seg"><h3>${esc(s)}</h3>${ps.map((p) => `<p>${personaIcon(p, 16)}<span><b>${esc(p.name)}</b>, ${esc(p.profile)}</span></p>`).join("")}</div>`).join("");
 }
 
+function resizePersonas(target) {
+  const L = PERSONA_LIMITS;
+  target = Math.max(L.minPersonas, Math.min(L.maxPersonas, target));
+  if (state.personas.length > target) {
+    while (state.personas.length > target) {
+      const counts = {};
+      state.personas.forEach((p) => (counts[p.segment || ""] = (counts[p.segment || ""] || 0) + 1));
+      const biggest = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
+      state.personas.splice(state.personas.map((p) => p.segment || "").lastIndexOf(biggest), 1);
+    }
+  } else if (state.personas.length < target) {
+    const segments = [...new Set(state.personas.map((p) => p.segment).filter(Boolean))];
+    while (state.personas.length < target) {
+      const seg = segments.length ? segments[state.personas.length % segments.length] : "";
+      state.personas.push({ id: `c${Date.now()}${state.personas.length}`, name: "", segment: seg, profile: "" });
+    }
+  }
+  save(); renderPersonas(); renderDirectory();
+}
+$("#panelSize").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-size]"); if (!btn) return;
+  resizePersonas(+btn.dataset.size);
+});
+
 function renderPersonas() {
   const L = PERSONA_LIMITS;
   $("#personasSub").textContent = `${state.personas.length}/${L.maxPersonas} customers, minimum ${L.minPersonas}. Segments come from whatever you type here — rename, add or remove freely.`;
+  document.querySelectorAll(".psize").forEach((b) => b.classList.toggle("active", +b.dataset.size === state.personas.length));
+  $("#panelCaveat").classList.toggle("hidden", state.personas.length >= 8);
   $("#personas").innerHTML = state.personas.map((p, i) => `
     <div class="pcard" data-i="${i}">
       <div class="pcard-head">${personaIcon(p)}<input class="pname" data-f="name" data-i="${i}" maxlength="${L.name}" value="${esc(p.name)}" placeholder="Name"></div>
@@ -288,9 +342,10 @@ $("#saveScenario").addEventListener("click", () => {
   const name = prompt("Name this scenario", state.scenario.title || "My scenario");
   if (!name) return;
   const saved = loadJSON(SAVED_KEY, []);
-  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })) });
+  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })) });
   saveJSON(SAVED_KEY, saved.slice(0, 20));
-  const status = $("#status"); status.className = "status"; status.textContent = "Saved to this browser.";
+  const status = $("#status"); status.className = "status";
+  status.textContent = state.rounds.length ? `Saved with ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""} to this browser.` : "Saved to this browser.";
 });
 
 $("#run").addEventListener("click", async () => {
@@ -329,13 +384,29 @@ $("#reset").addEventListener("click", () => {
   if (!confirm("Start over? This clears the current scenario, its customers and every round. Saved scenarios are unaffected.")) return;
   localStorage.removeItem(SESSION_KEY);
   state = null; view.resetOpen();
-  ["scenarioSection", "personasSection", "brandsSection", "toggleDir", "changeScenario", "csv", "reset"].forEach((id) => $("#" + id).classList.add("hidden"));
+  ["scenarioSection", "personasSection", "brandsSection", "toggleDir", "changeScenario", "csv", "pdf", "share", "reset"].forEach((id) => $("#" + id).classList.add("hidden"));
   $("#directory").classList.remove("open");
   $("#results").classList.add("hidden");
   $("#pickerSection").classList.remove("hidden");
   renderSavedGrid();
 });
 $("#csv").addEventListener("click", () => exportCsv(state.rounds, "market-arena-practice-results.csv"));
+$("#pdf").addEventListener("click", () => window.print());
+$("#share").addEventListener("click", async () => {
+  const btn = $("#share"), status = $("#status");
+  btn.disabled = true; status.className = "status"; status.textContent = "Creating a share link…";
+  try {
+    const round = state.rounds[state.rounds.length - 1];
+    const res = await fetch("/api/share", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ round, meta: { title: state.scenario.title, brief: state.scenario.brief } }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Couldn't create a share link.");
+    const url = `${location.origin}/shared.html?id=${data.id}`;
+    try { await navigator.clipboard.writeText(url); status.textContent = "Share link copied: " + url; }
+    catch { status.textContent = "Share link: " + url; }
+  } catch (err) { status.className = "status error"; status.textContent = err.message; }
+  btn.disabled = false;
+});
 
 init();
 </script>

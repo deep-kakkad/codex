@@ -21,6 +21,8 @@
       <span class="modebadge">Facilitate</span>
       <button class="ghost" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the customers</button>
       <button class="ghost" id="csv" disabled>Download results (CSV)</button>
+      <button class="ghost" id="pdf" disabled>Download PDF</button>
+      <button class="ghost" id="share" disabled>Copy share link</button>
       <button class="ghost" id="reset">Start a new game</button>
     </div>
   </div>
@@ -48,6 +50,7 @@
         <div id="flags"></div>
         <div class="sharebar" id="sharebar" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
+        <div class="tested" id="tested"></div>
         <div class="segments" id="segments"></div>
         <div class="detail hidden" id="detail" aria-live="polite"></div>
       </div>
@@ -64,10 +67,27 @@
           <h2>Who buys what</h2>
           <p class="sub">Purchase share within each segment.</p>
           <div class="tablewrap"><table class="heat" id="heat"></table></div>
+          <div id="segInsights"></div>
           <h2 style="margin-top:36px">What's holding them back</h2>
-          <p class="sub">The most likely objection to each brand, averaged across all customers.</p>
+          <p class="sub">Every objection, against every brand. Darker means more customers cite it.</p>
           <div id="objections"></div>
         </div>
+      </div>
+    </section>
+
+    <section id="suggestSec" class="hidden">
+      <div class="wrap">
+        <h2>What to test next</h2>
+        <p class="sub">A starting point for the next round, based on each brand's biggest funnel drop and top objection.</p>
+        <div id="suggestions"></div>
+      </div>
+    </section>
+
+    <section id="deltaSec" class="hidden">
+      <div class="wrap">
+        <h2>Who changed their mind</h2>
+        <p class="sub">Customers whose choice flipped between the last two rounds.</p>
+        <div id="deltas"></div>
       </div>
     </section>
 
@@ -194,9 +214,25 @@ $("#reset").addEventListener("click", () => {
   view.resetOpen();
   if (!confirm("Start a new game? This clears every round and resets the brands.")) return;
   state = { teams: config.defaults.map((t, i) => ({ ...t, slot: i })), rounds: [] }; save();
-  $("#results").classList.add("hidden"); $("#csv").disabled = true; renderEditor();
+  $("#results").classList.add("hidden"); $("#csv").disabled = true; $("#pdf").disabled = true; $("#share").disabled = true; renderEditor();
 });
 $("#csv").addEventListener("click", () => exportCsv(state.rounds, "market-arena-results.csv"));
+$("#pdf").addEventListener("click", () => window.print());
+$("#share").addEventListener("click", async () => {
+  const btn = $("#share"), status = $("#status");
+  btn.disabled = true; status.className = "status"; status.textContent = "Creating a share link…";
+  try {
+    const round = state.rounds[state.rounds.length - 1];
+    const res = await fetch("/api/share", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ round, meta: { title: config.scenario.title, brief: config.scenario.brief } }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Couldn't create a share link.");
+    const url = `${location.origin}/shared.html?id=${data.id}`;
+    try { await navigator.clipboard.writeText(url); status.textContent = "Share link copied: " + url; }
+    catch { status.textContent = "Share link: " + url; }
+  } catch (err) { status.className = "status error"; status.textContent = err.message; }
+  btn.disabled = false;
+});
 
 init();
 </script>

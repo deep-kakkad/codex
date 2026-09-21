@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shared round — Market Arena</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%23121212' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23FF5A36'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="mast">
+      <a class="brandmark" href="./"><span id="logoSlot"></span><h1>Market Arena</h1></a>
+      <p class="brief"><strong id="scTitle">Loading this round…</strong><span id="scBrief"></span></p>
+    </div>
+    <div class="toolbar">
+      <span class="modebadge">Shared round</span>
+      <button class="ghost hidden" id="csv" disabled>Download results (CSV)</button>
+      <button class="ghost hidden" id="pdf" disabled>Download PDF</button>
+      <a class="ghost" href="practice.html">Run your own arena →</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div id="results" class="hidden">
+    <div class="market">
+      <div class="wrap">
+        <h2 id="marketTitle">The market decided</h2>
+        <p class="sub">Share of purchases across all customers, including those who bought nothing.</p>
+        <div id="flags"></div>
+        <div class="sharebar" id="sharebar" aria-hidden="true"></div>
+        <div class="legend" id="legend"></div>
+        <div class="tested" id="tested"></div>
+        <div class="segments" id="segments"></div>
+        <div class="detail hidden" id="detail" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <section>
+      <div class="wrap grid2">
+        <div>
+          <h2>Where each brand leaks</h2>
+          <p class="sub">Average across customers. The biggest drop between two stages is where to work next round.</p>
+          <div id="funnels"></div>
+        </div>
+        <div>
+          <h2>Who buys what</h2>
+          <p class="sub">Purchase share within each segment.</p>
+          <div class="tablewrap"><table class="heat" id="heat"></table></div>
+          <div id="segInsights"></div>
+          <h2 style="margin-top:36px">What's holding them back</h2>
+          <p class="sub">Every objection, against every brand. Darker means more customers cite it.</p>
+          <div id="objections"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="suggestSec" class="hidden">
+      <div class="wrap">
+        <h2>What to test next</h2>
+        <p class="sub">A starting point for the next round, based on each brand's biggest funnel drop and top objection.</p>
+        <div id="suggestions"></div>
+      </div>
+    </section>
+
+    <section id="deltaSec" class="hidden">
+      <div class="wrap"><h2>Who changed their mind</h2><div id="deltas"></div></div>
+    </section>
+    <section id="historySec" class="hidden">
+      <div class="wrap"><h2>Share over the rounds</h2><div class="tablewrap" id="history"></div></div>
+    </section>
+  </div>
+  <div id="errorBox" class="wrap hidden" style="padding:60px 24px"><p class="status error" id="errorMsg"></p></div>
+</main>
+
+<footer>
+  <div class="wrap row">
+    <span>Customers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
+    <span id="meta" class="num"></span>
+  </div>
+  <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
+</footer>
+
+<script type="module">
+import { LOGO_MARK } from "./icons.js";
+import { createResultsView, exportCsv } from "./app-shared.js";
+
+document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
+const view = createResultsView();
+const $ = (s) => document.querySelector(s);
+let rounds = [];
+view.attachHandlers(() => rounds);
+
+function showError(msg) {
+  $("#scTitle").textContent = "Couldn't load this round";
+  $("#scBrief").textContent = "";
+  $("#errorMsg").textContent = msg;
+  $("#errorBox").classList.remove("hidden");
+}
+
+async function init() {
+  const id = new URLSearchParams(location.search).get("id");
+  if (!id) { showError("This link is missing its share id."); return; }
+  try {
+    const res = await fetch(`/api/share/${encodeURIComponent(id)}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Couldn't load this round.");
+    $("#scTitle").textContent = data.meta?.title || "A shared round";
+    $("#scBrief").textContent = data.meta?.brief || "";
+    rounds = [data.round];
+    view.renderResults(rounds, false);
+    ["csv", "pdf"].forEach((id2) => { $("#" + id2).classList.remove("hidden"); $("#" + id2).disabled = false; });
+  } catch (err) { showError(err.message); }
+}
+
+$("#csv").addEventListener("click", () => exportCsv(rounds, "market-arena-shared-result.csv"));
+$("#pdf").addEventListener("click", () => window.print());
+
+init();
+</script>
+</body>
+</html>
