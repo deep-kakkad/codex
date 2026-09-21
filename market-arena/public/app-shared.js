@@ -9,6 +9,8 @@ export const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
 export const INK_ON = [false, false, false, true]; // text colour on each contender swatch
 export const HEX = ["#2F4BD1", "#9A3F7A", "#1E7F72", "#D9A21B"];
 export const STAGES = [["attention", "Noticed"], ["interest", "Interested"], ["belief", "Believed"], ["purchase", "Bought"]];
+// The same four stages said out loud, for the written summary.
+const STAGE_PLAIN = { attention: "getting noticed", interest: "sounding appealing", belief: "being believed", purchase: "closing the choice" };
 export const OBJ_LABEL = { price: "price feels too high", trust: "doesn't believe the claims", relevance: "doesn't fit their needs or habits", unclear: "doesn't understand the offer", none: "no real objection" };
 export const OBJ_ORDER = ["price", "trust", "relevance", "unclear"];
 export const OBJ_FIX = { price: "the price or how it's framed", trust: "proof or credibility behind the claim", relevance: "who the message is speaking to", unclear: "how clearly the offer is explained" };
@@ -68,6 +70,7 @@ export function createResultsView() {
         ${Array.from({ length: 3 }).map(() => `<div class="skel-row"><i class="skel skel-token"></i><i class="skel skel-line"></i></div>`).join("")}
       </div></div>`).join("");
     $("#detail").classList.add("hidden");
+    $("#explain").innerHTML = ""; $("#heatKey").innerHTML = "";
     $("#pitches").innerHTML = ""; $("#funnels").innerHTML = ""; $("#heat").innerHTML = "";
     $("#objections").innerHTML = ""; $("#segInsights").innerHTML = "";
     ["#pitchSec", "#suggestSec", "#changesSec", "#deltaSec"].forEach((s) => $(s).classList.add("hidden"));
@@ -100,16 +103,21 @@ export function createResultsView() {
 
     const parts = [...r.brands.map((b, i) => ({ id: b.id, share: b.share, c: COLORS[r.slots[i]], ink: INK_ON[r.slots[i]] })),
                    { id: "none", share: r.noPurchase.share }];
+    // The "bought nothing" slice says so in words where it has room, so it doesn't
+    // read as a fourth product sitting next to the real ones.
+    const barLabel = (p) => p.id !== "none" ? (p.share >= .07 ? pct(p.share) : "")
+      : (p.share >= .16 ? `${pct(p.share)} bought nothing` : p.share >= .07 ? pct(p.share) : "");
     $("#sharebar").innerHTML = parts.map((p) =>
-      `<div class="${p.id === "none" ? "none" : ""}" style="flex-grow:${animate ? 0.0001 : p.share};${p.c ? `background:${p.c};color:${p.ink ? "var(--ink)" : "#fff"}` : ""}">${p.share >= .07 ? pct(p.share) : ""}</div>`).join("");
+      `<div class="${p.id === "none" ? "none" : ""}" style="flex-grow:${animate ? 0.0001 : p.share};${p.c ? `background:${p.c};color:${p.ink ? "var(--ink)" : "#fff"}` : ""}">${barLabel(p)}</div>`).join("");
     if (animate) requestAnimationFrame(() => requestAnimationFrame(() =>
       [...$("#sharebar").children].forEach((el, i) => el.style.flexGrow = parts[i].share)));
 
     $("#legend").innerHTML = r.brands.map((b, i) => `
       <div><span class="sw" style="background:${COLORS[r.slots[i]]}"></span><span>${esc(b.brand)}</span>
       <span class="pct num">${pct(b.share)}</span>${deltaChip(b.share, prev ? bySlot(prev, r.slots[i])?.share : null)}</div>`).join("") +
-      `<div><span class="sw" style="background:repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"></span><span>Bought nothing</span><span class="pct num">${pct(r.noPurchase.share)}</span></div>`;
+      `<div class="none-entry"><span class="sw" style="background:repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"></span><span>Bought nothing</span><span class="pct num">${pct(r.noPurchase.share)}</span></div>`;
 
+    renderExplain(r, prev);
     renderPitches(r);
 
     $("#segments").innerHTML = r.segments.map((s) => `
@@ -134,7 +142,8 @@ export function createResultsView() {
     }).join("");
 
     const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
-    $("#heat").innerHTML = `<thead><tr><th scope="col">Segment</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}<th scope="col">Nothing</th></tr></thead><tbody>` +
+    $("#heatKey").innerHTML = heatKey("share", "share of that segment");
+    $("#heat").innerHTML = `<thead><tr><th scope="col">Segment</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}<th scope="col">Bought nothing</th></tr></thead><tbody>` +
       r.segments.map((s) => `<tr><th scope="row">${esc(s)}</th>${r.brands.map((b, i) => `<td class="cell num" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell num" style="${heat(r.noPurchase.bySegment[s], "#8E8A7B")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
 
     const brandIds = r.brands.map((b) => b.id);
@@ -149,7 +158,7 @@ export function createResultsView() {
     const objHeat = (v) => `background:color-mix(in srgb, var(--bad) ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
     $("#objections").innerHTML = `<div class="tablewrap"><table class="heat"><thead><tr><th scope="col">Objection</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}</tr></thead><tbody>` +
       OBJ_ORDER.map((k) => `<tr><th scope="row">${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</th>${r.brands.map((b) => `<td class="cell num" style="${objHeat(b.objections[k])}">${pct(b.objections[k])}</td>`).join("")}</tr>`).join("") +
-      `</tbody></table></div>` +
+      `</tbody></table></div>` + heatKey("obj", "share of buyers citing it") +
       r.brands.map((b) => {
         const [topK, topV] = topObjection(b);
         return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <b class="num">${pct(topV)}</b> ${OBJ_LABEL[topK]}.</p>`;
@@ -161,6 +170,62 @@ export function createResultsView() {
     showDetail();
     renderHistory(rounds, idx);
     $("#meta").textContent = `${r.model}, ${r.tokens.toLocaleString()} tokens, ${(r.ms / 1000).toFixed(1)}s`;
+  }
+
+  const listWords = (xs) => xs.length < 2 ? (xs[0] || "") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
+
+  // Every sentence here is assembled from this round's own numbers — no model
+  // writes it, so it can't say anything the data doesn't. Causal wording stays
+  // hedged ("after you changed"), because a round shows correlation at best.
+  function renderExplain(r, prev) {
+    const ranked = [...r.brands].sort((a, b) => b.share - a.share);
+    const win = ranked[0], second = ranked[1];
+    const gapPts = Math.round((win.share - second.share) * 100);
+    const n = r.customers.length;
+    const lines = [];
+
+    if (gapPts < 5)
+      lines.push(`<b>${esc(win.brand)}</b> and <b>${esc(second.brand)}</b> finished level — ${pct(win.share)} against ${pct(second.share)}. Across ${n} buyers a gap that small isn't a result you can act on; treat it as a tie.`);
+    else
+      lines.push(`<b>${esc(win.brand)}</b> won this round with ${pct(win.share)} of buyer choices, ${gapPts} points clear of ${esc(second.brand)} on ${pct(second.share)}.`);
+
+    if (r.noPurchase.share >= .05) lines.push(`${pct(r.noPurchase.share)} of the panel bought nothing at all.`);
+
+    // The final stage is the share itself, so comparing it would just restate the
+    // first line; the useful question is where upstream the two separated.
+    const edge = STAGES.filter(([k]) => k !== "purchase").map(([k]) => [k, win.funnel[k] - second.funnel[k]]).sort((a, b) => b[1] - a[1])[0];
+    if (edge[1] > .03)
+      lines.push(`<b>${esc(win.brand)}</b>'s clearest advantage was in ${STAGE_PLAIN[edge[0]]}: ${pct(win.funnel[edge[0]])} against ${esc(second.brand)}'s ${pct(second.funnel[edge[0]])}.`);
+
+    const worstObj = OBJ_ORDER.map((k) => [k, r.brands.reduce((s, b) => s + b.objections[k], 0) / r.brands.length]).sort((a, b) => b[1] - a[1])[0];
+    lines.push(`The most common objection across every contender was that the ${OBJ_LABEL[worstObj[0]]} (${pct(worstObj[1])} on average).`);
+
+    const dissent = r.segments.map((s) => {
+      const best = [...r.brands].sort((a, b) => b.bySegment[s] - a.bySegment[s])[0];
+      return best.id === win.id ? null : { s, best };
+    }).filter(Boolean)[0];
+    if (dissent)
+      lines.push(`Not everyone agreed: <b>${esc(dissent.s)}</b> buyers went for ${esc(dissent.best.brand)} instead, on ${pct(dissent.best.bySegment[dissent.s])} of that segment.`);
+
+    if (prev) {
+      const move = r.brands.map((b, i) => {
+        const before = bySlot(prev, r.slots[i]);
+        if (!before) return null;
+        const d = Math.round((b.share - before.share) * 100);
+        if (Math.abs(d) < 5) return null;
+        return { b, d, changed: DIFF_FIELDS.filter(([f]) => (before[f] || "") !== (b[f] || "")).map(([, label]) => label.toLowerCase()) };
+      }).filter(Boolean).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
+      if (move)
+        lines.push(`<b>${esc(move.b.brand)}</b> ${move.d > 0 ? "gained" : "lost"} ${Math.abs(move.d)} points since the last round, ${move.changed.length ? `after you changed its ${listWords(move.changed)}` : "with no change to its own copy"}.`);
+    }
+
+    $("#explain").innerHTML = `<p class="explain-label">What happened</p>` + lines.map((l) => `<p>${l}</p>`).join("");
+  }
+
+  // One shared key for both heatmaps, built with the same colour-mix the cells use.
+  function heatKey(kind, note) {
+    const swatch = (v) => `background:color-mix(in srgb, ${kind === "obj" ? "var(--bad)" : "var(--ink)"} ${Math.round(v * 85)}%, transparent)`;
+    return `<div class="heatkey"><span class="num">0%</span>${[0, .25, .5, .75, 1].map((v) => `<i style="${swatch(v)}"></i>`).join("")}<span class="num">100%</span><span class="hk-note">${note}</span></div>`;
   }
 
   function biggestDrop(b) {

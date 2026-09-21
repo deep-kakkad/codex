@@ -35,6 +35,10 @@
       <h2 id="editorTitle">Launch your contenders</h2>
       <p class="sub">Each contender gets a name, a headline, a value proposition and a price. Every buyer sees all the ads side by side, then decides what to buy, or buys nothing.</p>
       <div class="brands" id="brands"></div>
+      <div class="adpreview" id="adPreview">
+        <p class="ap-label">What the buyers will see</p>
+        <div class="pitches" id="pitchPreview"></div>
+      </div>
       <div class="run-row">
         <button class="run" id="run">Run round 1</button>
         <span class="status" id="status" role="status" aria-live="polite"></span>
@@ -85,11 +89,12 @@
     <div class="market" id="secMarket">
       <div class="wrap">
         <h2 id="marketTitle">The market decided</h2>
-        <p class="sub">Share of purchases across all twelve buyers, including those who bought nothing.</p>
+        <p class="sub">Who each buyer picked when they saw all the ads together — including the ones who walked away.</p>
         <p class="roundnote" id="roundNote"></p>
         <div id="flags"></div>
         <div class="sharebar" id="sharebar" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
+        <div class="explain" id="explain"></div>
         <div class="segments" id="segments"></div>
         <div class="detail hidden" id="detail" aria-live="polite"></div>
       </div>
@@ -98,7 +103,7 @@
     <section id="pitchSec" class="hidden">
       <div class="wrap">
         <h2>What you put in the arena</h2>
-        <p class="sub">The ads these numbers came from.</p>
+        <p class="sub">The exact ads the buyers saw. Same buyers, same moment, different pitch.</p>
         <div class="pitches" id="pitches"></div>
       </div>
     </section>
@@ -107,16 +112,17 @@
       <div class="wrap grid2">
         <div id="secFunnels">
           <h2>Where each contender leaks</h2>
-          <p class="sub">Average across buyers. The biggest drop between two stages is where to work next round.</p>
+          <p class="sub">How far each contender got with the average buyer. The biggest gap between two bars is the thing to fix first.</p>
           <div id="funnels"></div>
         </div>
         <div id="secObjections">
           <h2>Who buys what</h2>
-          <p class="sub">Choice share within each segment.</p>
+          <p class="sub">The same result split by buyer type, so you can see who each pitch actually lands with.</p>
           <div class="tablewrap"><table class="heat" id="heat"></table></div>
+          <div id="heatKey"></div>
           <div id="segInsights"></div>
           <h2 style="margin-top:36px">What's holding them back</h2>
-          <p class="sub">Every objection, against every contender. Darker means more buyers cite it.</p>
+          <p class="sub">The reason buyers gave for not choosing each contender. Darker means more of them said it.</p>
           <div id="objections"></div>
         </div>
       </div>
@@ -125,7 +131,7 @@
     <section id="suggestSec" class="hidden">
       <div class="wrap">
         <h2>What to test next</h2>
-        <p class="sub">A starting point for the next round, based on each contender's biggest funnel drop and top objection.</p>
+        <p class="sub">One suggestion per contender, based on where it lost people and what they objected to.</p>
         <div id="suggestions"></div>
       </div>
     </section>
@@ -133,7 +139,7 @@
     <section id="changesSec" class="hidden">
       <div class="wrap">
         <h2>What you changed</h2>
-        <p class="sub">The rewrites between the previous round and this one.</p>
+        <p class="sub">What you rewrote since the last round — the cause behind any move in the numbers above.</p>
         <div id="changes"></div>
       </div>
     </section>
@@ -141,7 +147,7 @@
     <section id="deltaSec" class="hidden">
       <div class="wrap">
         <h2>Who changed their mind</h2>
-        <p class="sub">Buyers whose choice flipped between those two rounds.</p>
+        <p class="sub">Buyers who picked something different this time, and how strongly the new pick appealed to them.</p>
         <div id="deltas"></div>
       </div>
     </section>
@@ -149,7 +155,7 @@
     <section id="historySec" class="hidden">
       <div class="wrap">
         <h2>Share over the rounds</h2>
-        <p class="sub">Each line is one contender. Rewrites that land push the line up; the rest of the market pays for it.</p>
+        <p class="sub">Each line is one contender across rounds. When one goes up, another usually pays for it.</p>
         <div class="tablewrap" id="history"></div>
       </div>
     </section>
@@ -240,7 +246,21 @@ function renderEditor() {
   document.querySelectorAll("#brands [data-f]").forEach(updateCount);
   $("#run").textContent = `Run round ${state.rounds.length + 1}`;
   $("#editorTitle").textContent = state.rounds.length ? `Rework your contenders for round ${state.rounds.length + 1}` : "Launch your contenders";
+  renderPreview();
 }
+// The same cards the report will show, filled from whatever is typed right now —
+// the quickest way to see whether two pitches actually differ before spending a round.
+function renderPreview() {
+  const teams = state.teams;
+  document.getElementById("pitchPreview").innerHTML = teams.map((t) => `
+    <div class="pitch" style="--c:${COLORS[t.slot]}">
+      <div class="pitch-top"><span class="sw" style="background:var(--c)"></span><b>${esc(t.brand) || "<span class='ap-empty'>Unnamed</span>"}</b></div>
+      <h4>${t.headline ? esc(t.headline) : `<span class="ap-empty">No headline yet</span>`}</h4>
+      <p>${t.valueProp ? esc(t.valueProp) : `<span class="ap-empty">No value proposition yet</span>`}</p>
+      <div class="pitch-bottom"><span class="pitch-price num">${t.price ? esc(t.price) : `<span class="ap-empty">No price</span>`}</span></div>
+    </div>`).join("");
+}
+
 function updateCount(el) {
   const max = config.limits[el.dataset.f], n = el.value.trim().length;
   const c = document.querySelector(`.count[data-for="${el.id}"]`);
@@ -248,7 +268,7 @@ function updateCount(el) {
 }
 $("#brands").addEventListener("input", (e) => {
   const el = e.target; if (!el.dataset.f) return;
-  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateCount(el); save();
+  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateCount(el); save(); renderPreview();
 });
 $("#brands").addEventListener("click", (e) => {
   if (e.target.dataset.rm !== undefined) { state.teams.splice(+e.target.dataset.rm, 1); save(); renderEditor(); }

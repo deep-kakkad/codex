@@ -45,11 +45,12 @@
     <div class="market" id="secMarket">
       <div class="wrap">
         <h2 id="marketTitle">The market decided</h2>
-        <p class="sub">Share of purchases across all buyers, including those who bought nothing.</p>
+        <p class="sub">Who each buyer picked when they saw all the ads together — including the ones who walked away.</p>
         <p class="roundnote" id="roundNote"></p>
         <div id="flags"></div>
         <div class="sharebar" id="sharebar" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
+        <div class="explain" id="explain"></div>
         <div class="segments" id="segments"></div>
         <div class="detail hidden" id="detail" aria-live="polite"></div>
       </div>
@@ -58,7 +59,7 @@
     <section id="pitchSec" class="hidden">
       <div class="wrap">
         <h2>What went into the arena</h2>
-        <p class="sub">The ads these numbers came from.</p>
+        <p class="sub">The exact ads the buyers saw. Same buyers, same moment, different pitch.</p>
         <div class="pitches" id="pitches"></div>
       </div>
     </section>
@@ -67,16 +68,17 @@
       <div class="wrap grid2">
         <div id="secFunnels">
           <h2>Where each contender leaks</h2>
-          <p class="sub">Average across buyers. The biggest drop between two stages is where to work next round.</p>
+          <p class="sub">How far each contender got with the average buyer. The biggest gap between two bars is the thing to fix first.</p>
           <div id="funnels"></div>
         </div>
         <div id="secObjections">
           <h2>Who buys what</h2>
-          <p class="sub">Choice share within each segment.</p>
+          <p class="sub">The same result split by buyer type, so you can see who each pitch actually lands with.</p>
           <div class="tablewrap"><table class="heat" id="heat"></table></div>
+          <div id="heatKey"></div>
           <div id="segInsights"></div>
           <h2 style="margin-top:36px">What's holding them back</h2>
-          <p class="sub">Every objection, against every contender. Darker means more buyers cite it.</p>
+          <p class="sub">The reason buyers gave for not choosing each contender. Darker means more of them said it.</p>
           <div id="objections"></div>
         </div>
       </div>
@@ -85,7 +87,7 @@
     <section id="suggestSec" class="hidden">
       <div class="wrap">
         <h2>What to test next</h2>
-        <p class="sub">A starting point for the next round, based on each contender's biggest funnel drop and top objection.</p>
+        <p class="sub">One suggestion per contender, based on where it lost people and what they objected to.</p>
         <div id="suggestions"></div>
       </div>
     </section>
