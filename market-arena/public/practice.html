@@ -15,11 +15,11 @@
   <div class="wrap">
     <div class="mast">
       <a class="brandmark" href="./"><span id="logoSlot"></span><h1>Market Arena</h1></a>
-      <p class="brief"><strong>Test your own idea</strong><span>No class code needed. Pick an industry, rewrite the customers and the copy, see who'd actually buy.</span></p>
+      <p class="brief"><strong>Test your own idea</strong><span>No class code needed. Pick an industry, rewrite the buyers and the copy, see who'd actually buy.</span></p>
     </div>
     <div class="toolbar">
       <span class="modebadge">Practice</span>
-      <button class="ghost hidden" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the customers</button>
+      <button class="ghost hidden" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the buyers</button>
       <button class="ghost hidden" id="changeScenario">Change scenario</button>
       <button class="ghost hidden" id="csv" disabled>Download results (CSV)</button>
       <button class="ghost hidden" id="pdf" disabled>Download PDF</button>
@@ -34,85 +34,144 @@
   <section id="pickerSection">
     <div class="wrap">
       <h2>Pick a starting point</h2>
-      <p class="sub">Every template ships with a full set of customers and two example brands. Edit any of it — names, segments, personas, objections your customers face — before you run a round.</p>
+      <p class="sub">Every template ships with a full set of buyers and two example contenders. Edit any of it — names, segments, profiles, the ads themselves — before you run a round.</p>
       <div class="picker-grid" id="templateGrid"></div>
       <div id="savedWrap" class="hidden" style="margin-top:40px">
         <h2 style="font-size:22px">Your saved scenarios</h2>
-        <p class="sub">Stored in this browser only.</p>
+        <p class="sub">Stored in this browser only, with every round you've run.</p>
         <div class="picker-grid" id="savedGrid"></div>
       </div>
     </div>
   </section>
 
-  <section id="scenarioSection" class="hidden">
+  <div id="builder" class="hidden">
     <div class="wrap">
-      <h2>Describe your market</h2>
-      <p class="sub">A title and a one-line brief for your own reference — customers don't see this, only your ads.</p>
-      <div class="brand" style="--c:var(--accent);max-width:640px">
-        <label for="scenTitle">Market title</label>
-        <input id="scenTitle" class="name" maxlength="80">
-        <label for="scenBrief">Brief</label>
-        <textarea id="scenBrief" maxlength="280" style="min-height:60px"></textarea>
+      <div class="steps" id="stepNav" role="tablist" aria-label="Set up your arena">
+        <button class="step-tab" data-step="1" role="tab"><span class="sn">1</span>Market</button>
+        <button class="step-tab" data-step="2" role="tab"><span class="sn">2</span>Buyers</button>
+        <button class="step-tab" data-step="3" role="tab"><span class="sn">3</span>Pitches</button>
       </div>
     </div>
-  </section>
 
-  <section id="personasSection" class="hidden">
-    <div class="wrap">
-      <h2>Your customers</h2>
-      <p class="sub" id="personasSub">Segments come from whatever you type here — rename, add or remove freely.</p>
-      <div class="panel-size" id="panelSize">
-        <span>Panel size</span>
-        <button class="psize" data-size="8">8</button>
-        <button class="psize" data-size="12">12</button>
-        <button class="psize" data-size="16">16</button>
+    <section class="step" data-step="1">
+      <div class="wrap">
+        <h2>Describe your market</h2>
+        <p class="sub">A title and a one-line brief for your own reference — buyers don't see this, only your ads.</p>
+        <div class="brand" style="--c:var(--accent);max-width:640px">
+          <label for="scenTitle">Market title</label>
+          <input id="scenTitle" class="name" maxlength="80">
+          <label for="scenBrief">Brief</label>
+          <textarea id="scenBrief" maxlength="280" style="min-height:60px"></textarea>
+        </div>
+        <div class="step-go"><button class="ghost" data-goto="2">Next: buyers →</button></div>
       </div>
-      <p class="caveat hidden" id="panelCaveat">Fewer than 8 customers means a close split could just be noise — treat it as a direction to test further, not a final answer.</p>
-      <div class="personas-grid" id="personas"></div>
-    </div>
-  </section>
+    </section>
 
-  <section id="brandsSection" class="hidden">
+    <section class="step" data-step="2">
+      <div class="wrap">
+        <h2>Your buyers</h2>
+        <p class="sub" id="personasSub">Segments come from whatever you type here — rename, add or remove freely.</p>
+        <div class="panel-size" id="panelSize">
+          <span>Panel size</span>
+          <button class="psize" data-size="8">8</button>
+          <button class="psize" data-size="12">12</button>
+          <button class="psize" data-size="16">16</button>
+        </div>
+        <p class="caveat hidden" id="panelCaveat">Fewer than 8 buyers means a close split could just be noise — treat it as a direction to test further, not a final answer.</p>
+        <div class="personas-grid" id="personas"></div>
+        <div class="step-go"><button class="ghost" data-goto="3">Next: pitches →</button></div>
+      </div>
+    </section>
+
+    <section class="step" data-step="3">
+      <div class="wrap">
+        <h2 id="editorTitle">Launch your contenders</h2>
+        <p class="sub">Each contender gets a name, a headline, a value proposition and a price. Every buyer sees all the ads side by side, then decides what to buy, or buys nothing.</p>
+        <div class="brands" id="brands"></div>
+        <div class="run-row">
+          <button class="ghost" id="saveScenario">Save this scenario</button>
+          <button class="run" id="run">Run round 1</button>
+          <span class="status" id="status" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="builderBar" class="builderbar hidden">
+    <div class="wrap builderbar-inner">
+      <span class="bb-sum" id="bbSummary"></span>
+      <button class="ghost" id="editPitches">Edit pitches</button>
+      <button class="run small" id="runBar">Run next round</button>
+      <span class="status" id="barStatus" role="status" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <div id="ghost" class="ghost-report hidden">
     <div class="wrap">
-      <h2 id="editorTitle">Launch your brands</h2>
-      <p class="sub">Each brand gets a name, a headline, a value proposition and a price. Every customer sees all the ads side by side, then decides what to buy, or buys nothing.</p>
-      <div class="brands" id="brands"></div>
-      <div class="run-row">
-        <button class="ghost" id="saveScenario">Save this scenario</button>
-        <button class="run" id="run">Run round 1</button>
-        <span class="status" id="status" role="status" aria-live="polite"></span>
+      <p class="ghost-label">Preview — run a round to fill this in</p>
+      <div class="ghost-grid">
+        <div class="gcard"><span class="gtitle">Choice share</span><div class="gbar"><i style="flex:3"></i><i style="flex:2"></i><i style="flex:4"></i></div><div class="glines"><i></i><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">Every buyer's decision</span><div class="gdots">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">Decision funnel</span><div class="glines tall"><i></i><i></i><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">Objections</span><div class="ggrid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">What to test next</span><div class="glines"><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">Share over the rounds</span><div class="gchart"></div></div>
       </div>
     </div>
-  </section>
+  </div>
+
+  <div id="reportBar" class="reportbar hidden">
+    <div class="wrap reportbar-inner">
+      <div class="roundtabs hidden" id="roundTabs"></div>
+      <nav class="reportnav" id="reportNav" aria-label="Report sections">
+        <a href="#secMarket">Result</a>
+        <a href="#pitchSec">Pitches</a>
+        <a href="#secFunnels">Funnels</a>
+        <a href="#secObjections">Objections</a>
+        <a href="#suggestSec">Next test</a>
+        <a href="#changesSec">Changes</a>
+        <a href="#historySec">History</a>
+      </nav>
+    </div>
+  </div>
 
   <div id="results" class="hidden">
-    <div class="market">
+    <div class="market" id="secMarket">
       <div class="wrap">
         <h2 id="marketTitle">The market decided</h2>
-        <p class="sub">Share of purchases across all your customers, including those who bought nothing.</p>
+        <p class="sub">Share of purchases across all your buyers, including those who bought nothing.</p>
+        <p class="roundnote" id="roundNote"></p>
         <div id="flags"></div>
         <div class="sharebar" id="sharebar" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
-        <div class="tested" id="tested"></div>
         <div class="segments" id="segments"></div>
         <div class="detail hidden" id="detail" aria-live="polite"></div>
       </div>
     </div>
 
+    <section id="pitchSec" class="hidden">
+      <div class="wrap">
+        <h2>What you put in the arena</h2>
+        <p class="sub">The ads these numbers came from.</p>
+        <div class="pitches" id="pitches"></div>
+      </div>
+    </section>
+
     <section>
       <div class="wrap grid2">
-        <div>
-          <h2>Where each brand leaks</h2>
-          <p class="sub">Average across customers. The biggest drop between two stages is where to work next round.</p>
+        <div id="secFunnels">
+          <h2>Where each contender leaks</h2>
+          <p class="sub">Average across buyers. The biggest drop between two stages is where to work next round.</p>
           <div id="funnels"></div>
         </div>
-        <div>
+        <div id="secObjections">
           <h2>Who buys what</h2>
-          <p class="sub">Purchase share within each segment.</p>
+          <p class="sub">Choice share within each segment.</p>
           <div class="tablewrap"><table class="heat" id="heat"></table></div>
           <div id="segInsights"></div>
           <h2 style="margin-top:36px">What's holding them back</h2>
-          <p class="sub">Every objection, against every brand. Darker means more customers cite it.</p>
+          <p class="sub">Every objection, against every contender. Darker means more buyers cite it.</p>
           <div id="objections"></div>
         </div>
       </div>
@@ -121,15 +180,23 @@
     <section id="suggestSec" class="hidden">
       <div class="wrap">
         <h2>What to test next</h2>
-        <p class="sub">A starting point for the next round, based on each brand's biggest funnel drop and top objection.</p>
+        <p class="sub">A starting point for the next round, based on each contender's biggest funnel drop and top objection.</p>
         <div id="suggestions"></div>
+      </div>
+    </section>
+
+    <section id="changesSec" class="hidden">
+      <div class="wrap">
+        <h2>What you changed</h2>
+        <p class="sub">The rewrites between the previous round and this one.</p>
+        <div id="changes"></div>
       </div>
     </section>
 
     <section id="deltaSec" class="hidden">
       <div class="wrap">
         <h2>Who changed their mind</h2>
-        <p class="sub">Customers whose choice flipped between the last two rounds.</p>
+        <p class="sub">Buyers whose choice flipped between those two rounds.</p>
         <div id="deltas"></div>
       </div>
     </section>
@@ -137,7 +204,7 @@
     <section id="historySec" class="hidden">
       <div class="wrap">
         <h2>Share over the rounds</h2>
-        <p class="sub">Each line is one brand. Rewrites that land push the line up; the rest of the market pays for it.</p>
+        <p class="sub">Each line is one contender. Rewrites that land push the line up; the rest of the market pays for it.</p>
         <div class="tablewrap" id="history"></div>
       </div>
     </section>
@@ -146,7 +213,7 @@
 
 <footer>
   <div class="wrap row">
-    <span>Customers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
+    <span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
     <span id="meta" class="num"></span>
   </div>
   <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
@@ -167,8 +234,16 @@ const loadJSON = (k, fb) => { try { return JSON.parse(localStorage.getItem(k)) ?
 const saveJSON = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 
 let TEMPLATES = [], LIMITS, PERSONA_LIMITS;
-let state = null; // { scenario:{title,brief}, personas:[{id,name,segment,profile}], teams:[{brand,headline,valueProp,price,slot}], rounds:[] }
+let state = null; // { scenario:{title,brief}, personas:[…], teams:[…], rounds:[] }
 view.attachHandlers(() => state?.rounds || []);
+
+// One status line, two places to show it: the editor's run row before the first
+// round, and the collapsed bar afterwards.
+function setStatus(text, isError) {
+  ["#status", "#barStatus"].forEach((s) => {
+    const el = $(s); el.className = isError ? "status error" : "status"; el.textContent = text;
+  });
+}
 
 async function init() {
   const data = await (await fetch("/api/templates")).json();
@@ -176,7 +251,10 @@ async function init() {
   renderTemplateGrid();
   renderSavedGrid();
   const session = loadJSON(SESSION_KEY, null);
-  if (session?.personas?.length) { state = session; showBuilder(); if (state.rounds.length) view.renderResults(state.rounds, false); }
+  if (session?.personas?.length) {
+    state = session; showBuilder();
+    if (state.rounds.length) { view.renderResults(state.rounds, false); collapseBuilder(true); }
+  }
 }
 
 function renderTemplateGrid() {
@@ -189,7 +267,8 @@ function renderTemplateGrid() {
   $("#templateGrid").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-tpl]"); if (!btn) return;
     const t = TEMPLATES.find((x) => x.id === btn.dataset.tpl);
-    loadScenario({ scenario: { title: t.scenario.title, brief: t.scenario.brief }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) });
+    loadScenario({ scenario: { title: t.scenario.title, brief: t.scenario.brief }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) },
+      t.id === "blank" ? 1 : 3);
   });
 }
 function renderSavedGrid() {
@@ -207,29 +286,72 @@ function renderSavedGrid() {
     </div>`).join("");
   $("#savedGrid").onclick = (e) => {
     const loadId = e.target.dataset.load, delId = e.target.dataset.del;
-    if (loadId) { const s = saved.find((x) => x.id === loadId); if (s) loadScenario({ scenario: { ...s.scenario }, personas: s.personas.map((p) => ({ ...p })), teams: s.teams.map((t) => ({ ...t })), rounds: (s.rounds || []).map((r) => ({ ...r })) }); }
+    if (loadId) { const s = saved.find((x) => x.id === loadId); if (s) loadScenario({ scenario: { ...s.scenario }, personas: s.personas.map((p) => ({ ...p })), teams: s.teams.map((t) => ({ ...t })), rounds: (s.rounds || []).map((r) => ({ ...r })) }, 3); }
     if (delId) { saveJSON(SAVED_KEY, saved.filter((x) => x.id !== delId)); renderSavedGrid(); }
   };
 }
 
-function loadScenario({ scenario, personas, teams, rounds }) {
+function loadScenario({ scenario, personas, teams, rounds }, startStep) {
   state = { scenario, personas, teams, rounds: rounds || [] };
   saveJSON(SESSION_KEY, state);
   showBuilder();
   view.resetOpen();
-  if (state.rounds.length) { view.renderResults(state.rounds, false); $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); }
-  else { $("#results").classList.add("hidden"); $("#csv").disabled = true; $("#pdf").disabled = true; $("#share").disabled = true; }
+  goToStep(startStep || 3);
+  if (state.rounds.length) {
+    view.renderResults(state.rounds, false);
+    collapseBuilder(true);
+    $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  } else {
+    collapseBuilder(false);
+    $("#results").classList.add("hidden");
+    ["#csv", "#pdf", "#share"].forEach((s) => ($(s).disabled = true));
+  }
 }
 
 function showBuilder() {
   $("#pickerSection").classList.add("hidden");
-  ["scenarioSection", "personasSection", "brandsSection", "toggleDir", "changeScenario", "csv", "pdf", "share", "reset"].forEach((id) => $("#" + id).classList.remove("hidden"));
+  ["builder", "toggleDir", "changeScenario", "csv", "pdf", "share", "reset"].forEach((id) => $("#" + id).classList.remove("hidden"));
   $("#scenTitle").value = state.scenario.title || "";
   $("#scenBrief").value = state.scenario.brief || "";
   renderDirectory();
   renderPersonas();
   renderBrands();
 }
+
+// After a round the editor folds into a one-line bar, so reading results and
+// rewriting copy don't fight each other for the same screen.
+function collapseBuilder(collapsed) {
+  $("#builder").classList.toggle("collapsed", collapsed);
+  $("#builderBar").classList.toggle("hidden", !collapsed);
+  $("#ghost").classList.toggle("hidden", collapsed || !state || state.rounds.length > 0);
+  if (collapsed) {
+    const n = state.rounds.length;
+    $("#bbSummary").textContent = `${state.teams.length} contenders · ${state.personas.length} buyers · ${n} round${n > 1 ? "s" : ""} run`;
+    $("#runBar").textContent = `Run round ${n + 1}`;
+  }
+}
+
+function goToStep(n) {
+  document.querySelectorAll("#builder .step").forEach((el) => el.classList.toggle("active", +el.dataset.step === n));
+  document.querySelectorAll(".step-tab").forEach((el) => {
+    const on = +el.dataset.step === n;
+    el.classList.toggle("active", on); el.setAttribute("aria-selected", String(on));
+  });
+}
+$("#stepNav").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-step]"); if (!btn) return;
+  goToStep(+btn.dataset.step);
+});
+$("#builder").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-goto]"); if (!btn) return;
+  goToStep(+btn.dataset.goto);
+  $("#stepNav").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+});
+$("#editPitches").addEventListener("click", () => {
+  collapseBuilder(false);
+  goToStep(3);
+  $("#stepNav").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+});
 
 function save() { saveJSON(SESSION_KEY, state); }
 
@@ -269,7 +391,7 @@ $("#panelSize").addEventListener("click", (e) => {
 
 function renderPersonas() {
   const L = PERSONA_LIMITS;
-  $("#personasSub").textContent = `${state.personas.length}/${L.maxPersonas} customers, minimum ${L.minPersonas}. Segments come from whatever you type here — rename, add or remove freely.`;
+  $("#personasSub").textContent = `${state.personas.length}/${L.maxPersonas} buyers, minimum ${L.minPersonas}. Segments come from whatever you type here — rename, add or remove freely.`;
   document.querySelectorAll(".psize").forEach((b) => b.classList.toggle("active", +b.dataset.size === state.personas.length));
   $("#panelCaveat").classList.toggle("hidden", state.personas.length >= 8);
   $("#personas").innerHTML = state.personas.map((p, i) => `
@@ -278,8 +400,8 @@ function renderPersonas() {
       <label>Segment</label><input data-f="segment" data-i="${i}" maxlength="${L.segment}" value="${esc(p.segment)}" placeholder="e.g. Budget-conscious students">
       <label>Profile <span class="count" data-for="profile-${i}"></span></label>
       <textarea data-f="profile" data-i="${i}" id="profile-${i}" placeholder="Age, role or life stage, what they care about, what they're skeptical of.">${esc(p.profile)}</textarea>
-      ${state.personas.length > L.minPersonas ? `<button class="premove" data-rm="${i}">Remove ${esc(p.name || "this customer")}</button>` : ""}
-    </div>`).join("") + (state.personas.length < L.maxPersonas ? `<button class="padd" id="addPersona">+ Add a customer</button>` : "");
+      ${state.personas.length > L.minPersonas ? `<button class="premove" data-rm="${i}">Remove ${esc(p.name || "this buyer")}</button>` : ""}
+    </div>`).join("") + (state.personas.length < L.maxPersonas ? `<button class="padd" id="addPersona">+ Add a buyer</button>` : "");
   document.querySelectorAll("#personas [data-f=profile]").forEach(updatePersonaCount);
 }
 function updatePersonaCount(el) {
@@ -306,18 +428,18 @@ function renderBrands() {
   const L = LIMITS;
   $("#brands").innerHTML = state.teams.map((t, i) => `
     <div class="brand" style="--c:${COLORS[t.slot]}">
-      <label for="brand-${i}">Brand name <span class="count" data-for="brand-${i}"></span></label>
+      <label for="brand-${i}">Contender name <span class="count" data-for="brand-${i}"></span></label>
       <input id="brand-${i}" class="name" data-i="${i}" data-f="brand" maxlength="${L.brand + 20}" value="${esc(t.brand)}">
       ${FIELDS.map(([f, lab, tag]) => `
         <label for="${f}-${i}">${lab} <span class="count" data-for="${f}-${i}"></span></label>
         ${tag === "input"
           ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
           : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
-      ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this brand")}</button>` : ""}
-    </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a brand</button>` : "");
+      ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this contender")}</button>` : ""}
+    </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a contender</button>` : "");
   document.querySelectorAll("#brands [data-f]").forEach(updateBrandCount);
   $("#run").textContent = `Run round ${state.rounds.length + 1}`;
-  $("#editorTitle").textContent = state.rounds.length ? `Rework your brands for round ${state.rounds.length + 1}` : "Launch your brands";
+  $("#editorTitle").textContent = state.rounds.length ? `Rework your contenders for round ${state.rounds.length + 1}` : "Launch your contenders";
 }
 function updateBrandCount(el) {
   const max = LIMITS[el.dataset.f], n = el.value.trim().length;
@@ -344,13 +466,13 @@ $("#saveScenario").addEventListener("click", () => {
   const saved = loadJSON(SAVED_KEY, []);
   saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })) });
   saveJSON(SAVED_KEY, saved.slice(0, 20));
-  const status = $("#status"); status.className = "status";
-  status.textContent = state.rounds.length ? `Saved with ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""} to this browser.` : "Saved to this browser.";
+  setStatus(state.rounds.length ? `Saved with ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""} to this browser.` : "Saved to this browser.", false);
 });
 
-$("#run").addEventListener("click", async () => {
-  const btn = $("#run"), status = $("#status");
-  btn.disabled = true; status.className = "status"; status.textContent = `Showing your ads to ${state.personas.length} customers…`;
+async function runRound() {
+  const buttons = [$("#run"), $("#runBar")];
+  buttons.forEach((b) => (b.disabled = true));
+  setStatus(`Showing your ads to ${state.personas.length} buyers…`, false);
   view.showSkeleton();
   try {
     const res = await fetch("/api/round", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -363,28 +485,31 @@ $("#run").addEventListener("click", async () => {
     if (!res.ok) throw new Error(data.error || "The round didn't run. Try again.");
     data.slots = state.teams.map((t) => t.slot);
     state.rounds.push(data); save();
-    status.textContent = ""; view.resetOpen();
+    setStatus("", false); view.resetOpen();
     renderBrands(); view.renderResults(state.rounds, true);
+    collapseBuilder(true);
     $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  } catch (err) { status.className = "status error"; status.textContent = err.message; $("#results").classList.add("hidden"); }
-  btn.disabled = false;
-});
+  } catch (err) { setStatus(err.message, true); $("#results").classList.add("hidden"); }
+  buttons.forEach((b) => (b.disabled = false));
+}
+$("#run").addEventListener("click", runRound);
+$("#runBar").addEventListener("click", runRound);
 
 $("#toggleDir").addEventListener("click", (e) => {
   const d = $("#directory"), o = d.classList.toggle("open");
-  e.target.setAttribute("aria-expanded", o); e.target.textContent = o ? "Hide the customers" : "Meet the customers";
+  e.target.setAttribute("aria-expanded", o); e.target.textContent = o ? "Hide the buyers" : "Meet the buyers";
 });
 $("#changeScenario").addEventListener("click", () => {
-  ["scenarioSection", "personasSection", "brandsSection", "results"].forEach((id) => $("#" + id).classList.add("hidden"));
+  ["builder", "builderBar", "results", "ghost", "reportBar"].forEach((id) => $("#" + id).classList.add("hidden"));
   $("#directory").classList.remove("open");
   $("#pickerSection").classList.remove("hidden");
   renderSavedGrid();
 });
 $("#reset").addEventListener("click", () => {
-  if (!confirm("Start over? This clears the current scenario, its customers and every round. Saved scenarios are unaffected.")) return;
+  if (!confirm("Start over? This clears the current scenario, its buyers and every round. Saved scenarios are unaffected.")) return;
   localStorage.removeItem(SESSION_KEY);
   state = null; view.resetOpen();
-  ["scenarioSection", "personasSection", "brandsSection", "toggleDir", "changeScenario", "csv", "pdf", "share", "reset"].forEach((id) => $("#" + id).classList.add("hidden"));
+  ["builder", "builderBar", "ghost", "reportBar", "toggleDir", "changeScenario", "csv", "pdf", "share", "reset"].forEach((id) => $("#" + id).classList.add("hidden"));
   $("#directory").classList.remove("open");
   $("#results").classList.add("hidden");
   $("#pickerSection").classList.remove("hidden");
@@ -393,18 +518,18 @@ $("#reset").addEventListener("click", () => {
 $("#csv").addEventListener("click", () => exportCsv(state.rounds, "market-arena-practice-results.csv"));
 $("#pdf").addEventListener("click", () => window.print());
 $("#share").addEventListener("click", async () => {
-  const btn = $("#share"), status = $("#status");
-  btn.disabled = true; status.className = "status"; status.textContent = "Creating a share link…";
+  const btn = $("#share");
+  btn.disabled = true; setStatus("Creating a share link…", false);
   try {
     const round = state.rounds[state.rounds.length - 1];
     const res = await fetch("/api/share", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ round, meta: { title: state.scenario.title, brief: state.scenario.brief } }) });
+      body: JSON.stringify({ round, meta: { title: state.scenario.title, brief: state.scenario.brief, round: state.rounds.length } }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Couldn't create a share link.");
     const url = `${location.origin}/shared.html?id=${data.id}`;
-    try { await navigator.clipboard.writeText(url); status.textContent = "Share link copied: " + url; }
-    catch { status.textContent = "Share link: " + url; }
-  } catch (err) { status.className = "status error"; status.textContent = err.message; }
+    try { await navigator.clipboard.writeText(url); setStatus("Share link copied: " + url, false); }
+    catch { setStatus("Share link: " + url, false); }
+  } catch (err) { setStatus(err.message, true); }
   btn.disabled = false;
 });
 

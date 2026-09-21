@@ -21,19 +21,19 @@ async function ask(state, questions, attempt = 0) {
   return res.json();
 }
 
-const FIELD = { brand: "brand name", headline: "headline", valueProp: "value proposition", price: "price" };
+const FIELD = { brand: "name", headline: "headline", valueProp: "value proposition", price: "price" };
 export function validateTeams(teams) {
   if (!Array.isArray(teams) || teams.length < LIMITS.minTeams || teams.length > LIMITS.maxTeams)
-    return `Enter between ${LIMITS.minTeams} and ${LIMITS.maxTeams} brands.`;
+    return `Enter between ${LIMITS.minTeams} and ${LIMITS.maxTeams} contenders.`;
   const seen = new Set();
   for (const [i, t] of teams.entries()) {
     for (const f of Object.keys(FIELD)) {
       const v = typeof t?.[f] === "string" ? t[f].trim() : "";
-      if (!v) return `Brand ${i + 1} is missing its ${FIELD[f]}.`;
-      if (v.length > LIMITS[f]) return `Brand ${i + 1}'s ${FIELD[f]} is over ${LIMITS[f]} characters.`;
+      if (!v) return `Contender ${i + 1} is missing its ${FIELD[f]}.`;
+      if (v.length > LIMITS[f]) return `Contender ${i + 1}'s ${FIELD[f]} is over ${LIMITS[f]} characters.`;
     }
     const key = t.brand.trim().toLowerCase();
-    if (seen.has(key)) return `Two brands are called "${t.brand.trim()}". Give each brand its own name.`;
+    if (seen.has(key)) return `Two contenders are called "${t.brand.trim()}". Give each one its own name.`;
     seen.add(key);
   }
   return null;
@@ -44,16 +44,16 @@ export function validatePersonas(personas) {
   if (personas == null) return null;
   const L = PERSONA_LIMITS;
   if (!Array.isArray(personas) || personas.length < L.minPersonas || personas.length > L.maxPersonas)
-    return `Enter between ${L.minPersonas} and ${L.maxPersonas} customers.`;
+    return `Enter between ${L.minPersonas} and ${L.maxPersonas} buyers.`;
   const seen = new Set();
   for (const [i, p] of personas.entries()) {
     for (const f of Object.keys(PFIELD)) {
       const v = typeof p?.[f] === "string" ? p[f].trim() : "";
-      if (!v) return `Customer ${i + 1} is missing a ${PFIELD[f]}.`;
-      if (v.length > L[f]) return `Customer ${i + 1}'s ${PFIELD[f]} is over ${L[f]} characters.`;
+      if (!v) return `Buyer ${i + 1} is missing a ${PFIELD[f]}.`;
+      if (v.length > L[f]) return `Buyer ${i + 1}'s ${PFIELD[f]} is over ${L[f]} characters.`;
     }
     const key = String(p.id ?? i);
-    if (seen.has(key)) return `Two customers share the same id.`;
+    if (seen.has(key)) return `Two buyers share the same id.`;
     seen.add(key);
   }
   return null;

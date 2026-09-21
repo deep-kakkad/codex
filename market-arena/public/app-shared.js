@@ -1,48 +1,53 @@
-// Rendering engine shared by Facilitate and Practice mode. Both pages ship the
-// same results markup (#results, #sharebar, #legend, #segments, #detail, #funnels,
-// #heat, #objections, #historySec/#history, #meta) and each keeps its own
-// `rounds` array; this module only reads/writes those fixed element ids.
+// Rendering engine shared by Facilitate, Practice and the read-only shared view.
+// Every page ships the same report markup (#results, #reportBar/#roundTabs/#reportNav,
+// #sharebar, #legend, #pitches, #segments, #detail, #funnels, #heat, #objections,
+// #suggestions, #changes, #deltas, #history, #meta) and keeps its own `rounds`
+// array; this module owns which round is on screen and only touches those ids.
 import { personaIcon, objectionIcon, stageIcon } from "./icons.js";
 
 export const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
-export const INK_ON = [false, false, false, true]; // text colour on each brand swatch
+export const INK_ON = [false, false, false, true]; // text colour on each contender swatch
 export const HEX = ["#2F4BD1", "#9A3F7A", "#1E7F72", "#D9A21B"];
 export const STAGES = [["attention", "Noticed"], ["interest", "Interested"], ["belief", "Believed"], ["purchase", "Bought"]];
 export const OBJ_LABEL = { price: "price feels too high", trust: "doesn't believe the claims", relevance: "doesn't fit their needs or habits", unclear: "doesn't understand the offer", none: "no real objection" };
 export const OBJ_ORDER = ["price", "trust", "relevance", "unclear"];
 export const OBJ_FIX = { price: "the price or how it's framed", trust: "proof or credibility behind the claim", relevance: "who the message is speaking to", unclear: "how clearly the offer is explained" };
+// Which contender fields the round-over-round diff compares, in display order.
+const DIFF_FIELDS = [["brand", "Name"], ["headline", "Headline"], ["valueProp", "Value proposition"], ["price", "Price"]];
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const pct = (x) => Math.round(x * 100) + "%";
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const $ = (s) => document.querySelector(s);
+const has = (s) => Boolean(document.querySelector(s));
 
 export function createResultsView() {
   let open = null;
+  let viewIndex = null; // null means "whatever the latest round is"
   let getRounds = () => [];
 
-  function prevShare(rounds, slot) {
-    if (rounds.length < 2) return null;
-    const prev = rounds[rounds.length - 2];
-    const i = prev.slots.indexOf(slot);
-    return i < 0 ? null : prev.brands[i].share;
-  }
+  const indexFor = (rounds) => viewIndex == null ? rounds.length - 1 : Math.min(Math.max(viewIndex, 0), rounds.length - 1);
+  const viewedRound = () => { const rounds = getRounds(); return rounds.length ? rounds[indexFor(rounds)] : null; };
+
   function deltaChip(now, before) {
     if (before == null) return "";
     const d = Math.round((now - before) * 100);
     if (d === 0) return `<span class="delta flat">±0</span>`;
     return `<span class="delta ${d > 0 ? "up" : "down"}">${d > 0 ? "+" : "−"}${Math.abs(d)} pts</span>`;
   }
+  // Contenders are matched across rounds by slot, not by id: ids are positional
+  // per round, so adding or removing one mid-session would otherwise silently
+  // compare two different contenders.
+  const bySlot = (round, slot) => { const i = round.slots.indexOf(slot); return i < 0 ? null : round.brands[i]; };
 
   function detailHtml(c, r) {
-    return `<button class="x" id="closeDetail">Close</button><h3>${esc(c.name)}, ${esc(c.segment.toLowerCase())}</h3><p>${esc(c.profile)}</p><div class="tablewrap"><table><thead><tr><th>Brand</th><th class="n">Noticed</th><th class="n">Interested</th><th class="n">Believed</th><th class="n">Would buy</th><th>Main objection</th></tr></thead><tbody>` +
+    return `<button class="x" id="closeDetail">Close</button><h3>${esc(c.name)}, ${esc(c.segment.toLowerCase())}</h3><p>${esc(c.profile)}</p><div class="tablewrap"><table><thead><tr><th>Contender</th><th class="n">Noticed</th><th class="n">Interested</th><th class="n">Believed</th><th class="n">Would buy</th><th>Main objection</th></tr></thead><tbody>` +
       r.brands.map((b) => { const x = c.byBrand[b.id];
         return `<tr><td>${esc(b.brand)}</td><td class="num">${pct(x.attention)}</td><td class="num">${pct(x.appeal)}</td><td class="num">${pct(x.belief)}</td><td class="num">${pct(c.purchaseProbs[b.id] || 0)}</td><td>${OBJ_LABEL[x.objection]}</td></tr>`; }).join("") +
       `</tbody></table></div>`;
   }
   function showDetail() {
-    const rounds = getRounds();
-    const r = rounds[rounds.length - 1];
+    const r = viewedRound();
     const d = $("#detail");
     document.querySelectorAll(".person").forEach((x) => x.setAttribute("aria-expanded", String(x.dataset.p === open)));
     const c = r?.customers.find((x) => x.id === open);
@@ -52,34 +57,46 @@ export function createResultsView() {
 
   function showSkeleton() {
     $("#results").classList.remove("hidden");
-    $("#csv").disabled = true; $("#pdf").disabled = true; if ($("#share")) $("#share").disabled = true;
+    if (has("#ghost")) $("#ghost").classList.add("hidden");
+    $("#csv").disabled = true; $("#pdf").disabled = true; if (has("#share")) $("#share").disabled = true;
     $("#flags").innerHTML = "";
     $("#marketTitle").textContent = "Reading the room…";
     $("#sharebar").innerHTML = `<div class="skel" style="width:100%;height:100%;border-radius:0"></div>`;
     $("#legend").innerHTML = Array.from({ length: 3 }).map(() => `<i class="skel" style="width:110px;height:26px"></i>`).join("");
-    $("#tested").innerHTML = "";
     $("#segments").innerHTML = Array.from({ length: 4 }).map(() => `
       <div class="seg"><i class="skel skel-head"></i><div class="people">
         ${Array.from({ length: 3 }).map(() => `<div class="skel-row"><i class="skel skel-token"></i><i class="skel skel-line"></i></div>`).join("")}
       </div></div>`).join("");
     $("#detail").classList.add("hidden");
-    $("#funnels").innerHTML = ""; $("#heat").innerHTML = ""; $("#objections").innerHTML = ""; $("#segInsights").innerHTML = "";
-    $("#suggestSec").classList.add("hidden"); $("#deltaSec").classList.add("hidden");
+    $("#pitches").innerHTML = ""; $("#funnels").innerHTML = ""; $("#heat").innerHTML = "";
+    $("#objections").innerHTML = ""; $("#segInsights").innerHTML = "";
+    ["#pitchSec", "#suggestSec", "#changesSec", "#deltaSec"].forEach((s) => $(s).classList.add("hidden"));
   }
 
-  function renderResults(rounds, animate) {
-    const r = rounds[rounds.length - 1];
-    const n = rounds.length;
+  // index: omit to show the latest round, or pass one to view an earlier round.
+  function renderResults(rounds, animate, index) {
+    viewIndex = index == null ? null : index;
+    const idx = indexFor(rounds);
+    const r = rounds[idx];
+    const prev = idx > 0 ? rounds[idx - 1] : null;
+    const latest = idx === rounds.length - 1;
+
     $("#results").classList.remove("hidden");
-    $("#csv").disabled = false; $("#pdf").disabled = false; if ($("#share")) $("#share").disabled = false;
-    $("#marketTitle").textContent = `Round ${n}: the market decided`;
+    if (has("#ghost")) $("#ghost").classList.add("hidden");
+    if (has("#reportBar")) $("#reportBar").classList.remove("hidden");
+    $("#csv").disabled = false; $("#pdf").disabled = false; if (has("#share")) $("#share").disabled = false;
+    $("#marketTitle").textContent = `Round ${idx + 1}: the market decided`;
+    $("#roundNote").textContent = latest ? "" : `Viewing an earlier round. Round ${rounds.length} is the latest.`;
+
     const col = (id) => r.slots[r.brands.findIndex((b) => b.id === id)];
     const color = (id) => id === "none" ? "#3A3934" : COLORS[col(id)];
     const inkOn = (id) => id !== "none" && INK_ON[col(id)];
     const nameOf = (id) => id === "none" ? "nothing" : r.brands.find((b) => b.id === id).brand;
 
+    renderRoundTabs(rounds, idx);
+
     $("#flags").innerHTML = r.brands.filter((b) => b.flagged).map((b) =>
-      `<p class="flag"><b>${esc(b.brand)}</b>'s ad reads like it's talking to the judges, not to customers. Rewrite it as real marketing copy.</p>`).join("");
+      `<p class="flag"><b>${esc(b.brand)}</b>'s ad reads like it's talking to the judges, not to buyers. Rewrite it as real marketing copy.</p>`).join("");
 
     const parts = [...r.brands.map((b, i) => ({ id: b.id, share: b.share, c: COLORS[r.slots[i]], ink: INK_ON[r.slots[i]] })),
                    { id: "none", share: r.noPurchase.share }];
@@ -90,12 +107,10 @@ export function createResultsView() {
 
     $("#legend").innerHTML = r.brands.map((b, i) => `
       <div><span class="sw" style="background:${COLORS[r.slots[i]]}"></span><span>${esc(b.brand)}</span>
-      <span class="pct">${pct(b.share)}</span>${deltaChip(b.share, prevShare(rounds, r.slots[i]))}</div>`).join("") +
-      `<div><span class="sw" style="background:repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"></span><span>Bought nothing</span><span class="pct">${pct(r.noPurchase.share)}</span></div>`;
+      <span class="pct num">${pct(b.share)}</span>${deltaChip(b.share, prev ? bySlot(prev, r.slots[i])?.share : null)}</div>`).join("") +
+      `<div><span class="sw" style="background:repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"></span><span>Bought nothing</span><span class="pct num">${pct(r.noPurchase.share)}</span></div>`;
 
-    $("#tested").innerHTML = r.brands.map((b, i) => `
-      <div class="tcard" style="--c:${COLORS[r.slots[i]]}"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>
-      <span class="thead">${esc(b.headline)}</span><span class="tprice">${esc(b.price)}</span></div>`).join("");
+    renderPitches(r);
 
     $("#segments").innerHTML = r.segments.map((s) => `
       <div class="seg"><h3>${esc(s)}</h3><div class="people">
@@ -112,17 +127,15 @@ export function createResultsView() {
       document.querySelectorAll(".token").forEach((t) => t.style.setProperty("--tc", t.dataset.final))));
 
     $("#funnels").innerHTML = r.brands.map((b, i) => {
-      const vals = STAGES.map(([k]) => b.funnel[k]);
-      let worst = 0, gap = -1;
-      for (let j = 1; j < vals.length; j++) if (vals[j - 1] - vals[j] > gap) { gap = vals[j - 1] - vals[j]; worst = j; }
+      const { worst, gap } = biggestDrop(b);
       return `<div class="funnel" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3>
         ${STAGES.map(([k, lab]) => `<div class="frow"><span class="flab">${stageIcon(k)}${lab}</span><span class="track"><i style="width:${pct(b.funnel[k])}"></i></span><span class="num">${pct(b.funnel[k])}</span></div>`).join("")}
-        <p class="drop">Biggest drop: ${STAGES[worst - 1][1].toLowerCase()} → ${STAGES[worst][1].toLowerCase()}.</p></div>`;
+        <p class="drop">Biggest drop: ${STAGES[worst - 1][1].toLowerCase()} → ${STAGES[worst][1].toLowerCase()} (${Math.round(gap * 100)} pts).</p></div>`;
     }).join("");
 
     const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
-    $("#heat").innerHTML = `<thead><tr><th>Segment</th>${r.brands.map((b) => `<th>${esc(b.brand)}</th>`).join("")}<th>Nothing</th></tr></thead><tbody>` +
-      r.segments.map((s) => `<tr><td>${esc(s)}</td>${r.brands.map((b, i) => `<td class="cell" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell" style="${heat(r.noPurchase.bySegment[s], "#8E8A7B")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
+    $("#heat").innerHTML = `<thead><tr><th scope="col">Segment</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}<th scope="col">Nothing</th></tr></thead><tbody>` +
+      r.segments.map((s) => `<tr><th scope="row">${esc(s)}</th>${r.brands.map((b, i) => `<td class="cell num" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell num" style="${heat(r.noPurchase.bySegment[s], "#8E8A7B")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
 
     const brandIds = r.brands.map((b) => b.id);
     $("#segInsights").innerHTML = `<ul class="seginsights">` + r.segments.map((s) => {
@@ -134,44 +147,80 @@ export function createResultsView() {
     }).join("") + `</ul>`;
 
     const objHeat = (v) => `background:color-mix(in srgb, var(--bad) ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
-    $("#objections").innerHTML = `<div class="tablewrap"><table class="heat"><thead><tr><th>Objection</th>${r.brands.map((b) => `<th>${esc(b.brand)}</th>`).join("")}</tr></thead><tbody>` +
-      OBJ_ORDER.map((k) => `<tr><td>${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</td>${r.brands.map((b) => `<td class="cell" style="${objHeat(b.objections[k])}">${pct(b.objections[k])}</td>`).join("")}</tr>`).join("") +
+    $("#objections").innerHTML = `<div class="tablewrap"><table class="heat"><thead><tr><th scope="col">Objection</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}</tr></thead><tbody>` +
+      OBJ_ORDER.map((k) => `<tr><th scope="row">${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</th>${r.brands.map((b) => `<td class="cell num" style="${objHeat(b.objections[k])}">${pct(b.objections[k])}</td>`).join("")}</tr>`).join("") +
       `</tbody></table></div>` +
       r.brands.map((b) => {
-        const [topK, topV] = Object.entries(b.objections).filter(([k]) => k !== "none").sort((a, c) => c[1] - a[1])[0];
-        return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <b>${pct(topV)}</b> ${OBJ_LABEL[topK]}.</p>`;
+        const [topK, topV] = topObjection(b);
+        return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <b class="num">${pct(topV)}</b> ${OBJ_LABEL[topK]}.</p>`;
       }).join("");
 
     renderSuggestions(r);
-    renderDeltas(rounds);
+    renderChanges(r, prev);
+    renderDeltas(r, prev);
     showDetail();
-    renderHistory(rounds);
+    renderHistory(rounds, idx);
     $("#meta").textContent = `${r.model}, ${r.tokens.toLocaleString()} tokens, ${(r.ms / 1000).toFixed(1)}s`;
+  }
+
+  function biggestDrop(b) {
+    const vals = STAGES.map(([k]) => b.funnel[k]);
+    let worst = 1, gap = -1;
+    for (let j = 1; j < vals.length; j++) if (vals[j - 1] - vals[j] > gap) { gap = vals[j - 1] - vals[j]; worst = j; }
+    return { worst, gap };
+  }
+  const topObjection = (b) => Object.entries(b.objections).filter(([k]) => k !== "none").sort((a, c) => c[1] - a[1])[0];
+
+  // The ads themselves, shown as cards, so the report says what produced the numbers.
+  function renderPitches(r) {
+    $("#pitchSec").classList.remove("hidden");
+    const maxShare = Math.max(...r.brands.map((b) => b.share));
+    $("#pitches").innerHTML = r.brands.map((b, i) => `
+      <div class="pitch ${b.share === maxShare ? "lead" : ""}" style="--c:${COLORS[r.slots[i]]}">
+        <div class="pitch-top"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>${b.share === maxShare ? `<span class="pitch-lead">LEADING</span>` : ""}</div>
+        <h4>${esc(b.headline)}</h4>
+        <p>${esc(b.valueProp)}</p>
+        <div class="pitch-bottom"><span class="pitch-price num">${esc(b.price)}</span><span class="pitch-share num">${pct(b.share)}</span></div>
+      </div>`).join("");
   }
 
   function renderSuggestions(r) {
     $("#suggestSec").classList.remove("hidden");
     const maxShare = Math.max(...r.brands.map((b) => b.share));
     $("#suggestions").innerHTML = r.brands.map((b, i) => {
-      const vals = STAGES.map(([k]) => b.funnel[k]);
-      let worst = 0, gap = -1;
-      for (let j = 1; j < vals.length; j++) if (vals[j - 1] - vals[j] > gap) { gap = vals[j - 1] - vals[j]; worst = j; }
+      const { worst, gap } = biggestDrop(b);
       const dropFrom = STAGES[worst - 1][1].toLowerCase(), dropTo = STAGES[worst][1].toLowerCase();
-      const [topK, topV] = Object.entries(b.objections).filter(([k]) => k !== "none").sort((a, c) => c[1] - a[1])[0];
-      const leading = b.share === maxShare;
-      const body = leading
-        ? `Leading the round at ${pct(b.share)}, but ${pct(topV)} of customers still cite ${OBJ_LABEL[topK]}. Worth testing a fix before it costs share.`
+      const [topK, topV] = topObjection(b);
+      const body = b.share === maxShare
+        ? `Leading the round at ${pct(b.share)}, but ${pct(topV)} of buyers still cite ${OBJ_LABEL[topK]}. Worth testing a fix before it costs share.`
         : `Biggest drop is ${dropFrom} → ${dropTo} (${Math.round(gap * 100)} pts), and the top objection is ${OBJ_LABEL[topK]} (${pct(topV)}). Try testing ${OBJ_FIX[topK]} next round.`;
       return `<div class="suggest" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3><p>${body}</p></div>`;
     }).join("");
   }
 
-  function choiceLabel(round, id) { if (id === "none") return "nothing"; const b = round.brands.find((x) => x.id === id); return b ? b.brand : id; }
-  function choiceSlot(round, id) { if (id === "none") return -1; const i = round.brands.findIndex((x) => x.id === id); return i < 0 ? -1 : round.slots[i]; }
+  // What you actually rewrote between the previous round and this one — the other
+  // half of the share delta, so a move in the numbers has a visible cause.
+  function renderChanges(r, prev) {
+    if (!prev) { $("#changesSec").classList.add("hidden"); return; }
+    const blocks = r.brands.map((b, i) => {
+      const before = bySlot(prev, r.slots[i]);
+      if (!before) return `<div class="change new" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3><p class="change-none">New this round.</p></div>`;
+      const rows = DIFF_FIELDS.filter(([f]) => (before[f] || "") !== (b[f] || "")).map(([f, label]) => `
+        <div class="change-row"><span class="cf">${label}</span>
+          <span class="cwas">${esc(before[f] || "—")}</span>
+          <span class="carrow">→</span>
+          <span class="cnow">${esc(b[f] || "—")}</span></div>`).join("");
+      if (!rows) return "";
+      return `<div class="change" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3>${rows}</div>`;
+    }).filter(Boolean);
+    $("#changesSec").classList.toggle("hidden", !blocks.length);
+    $("#changes").innerHTML = blocks.join("");
+  }
 
-  function renderDeltas(rounds) {
-    if (rounds.length < 2) { $("#deltaSec").classList.add("hidden"); return; }
-    const prev = rounds[rounds.length - 2], curr = rounds[rounds.length - 1];
+  function renderDeltas(curr, prev) {
+    if (!prev) { $("#deltaSec").classList.add("hidden"); return; }
+    const choiceLabel = (round, id) => { if (id === "none") return "nothing"; const b = round.brands.find((x) => x.id === id); return b ? b.brand : id; };
+    const choiceSlot = (round, id) => { if (id === "none") return -1; const i = round.brands.findIndex((x) => x.id === id); return i < 0 ? -1 : round.slots[i]; };
     const prevById = Object.fromEntries(prev.customers.map((c) => [c.id, c]));
     const switched = curr.customers.map((c) => {
       const before = prevById[c.id];
@@ -184,11 +233,19 @@ export function createResultsView() {
     $("#deltas").innerHTML = switched.map(({ c, from, to, appeal }) => `
       <div class="deltarow">${personaIcon(c, 20)}<span class="dname">${esc(c.name)}</span>
         <span class="dmove"><span class="dfrom">${esc(from)}</span><span class="darrow">→</span><span class="dto">${esc(to)}</span></span>
-        ${appeal != null ? `<span class="dappeal">${pct(appeal)} appeal</span>` : ""}
+        ${appeal != null ? `<span class="dappeal num">${pct(appeal)} appeal</span>` : ""}
       </div>`).join("");
   }
 
-  function renderHistory(rounds) {
+  function renderRoundTabs(rounds, idx) {
+    const tabs = $("#roundTabs");
+    if (!tabs) return;
+    tabs.classList.toggle("hidden", rounds.length < 2);
+    tabs.innerHTML = rounds.length < 2 ? "" : `<span class="rt-label">Round</span>` + rounds.map((_, i) =>
+      `<button class="rtab ${i === idx ? "active" : ""}" data-round="${i}" aria-current="${i === idx}">${i + 1}</button>`).join("");
+  }
+
+  function renderHistory(rounds, idx) {
     const R = rounds;
     $("#historySec").classList.toggle("hidden", R.length < 2);
     if (R.length < 2) return;
@@ -199,7 +256,8 @@ export function createResultsView() {
     const slots = [...new Set(R.flatMap((r) => r.slots))];
     let svg = `<svg class="history" viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px;max-width:860px;display:block" role="img" aria-label="Market share by round">`;
     [0, .25, .5, .75, 1].filter((v) => v <= max).forEach((v) => svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="#D9D3C2"/><text x="${P.l - 8}" y="${y(v) + 4}" text-anchor="end">${pct(v)}</text>`);
-    R.forEach((_, i) => svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle">R${i + 1}</text>`);
+    if (idx != null) svg += `<line x1="${x(idx)}" x2="${x(idx)}" y1="${P.t}" y2="${H - P.b}" stroke="#151515" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+    R.forEach((_, i) => svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" style="${i === idx ? "font-weight:700;fill:#151515" : ""}">R${i + 1}</text>`);
     slots.forEach((s) => {
       const pts = R.map((r, i) => { const k = r.slots.indexOf(s); return k < 0 ? null : [x(i), y(r.brands[k].share), r.brands[k].brand]; });
       const segs = pts.filter(Boolean);
@@ -211,6 +269,31 @@ export function createResultsView() {
     $("#history").innerHTML = svg + "</svg>";
   }
 
+  // Highlights the report-nav link for whichever section is currently on screen.
+  function watchSections() {
+    const nav = $("#reportNav");
+    if (!nav || !("IntersectionObserver" in window)) return;
+    const links = [...nav.querySelectorAll("a")];
+    const setActive = (href) => links.forEach((a) => a.classList.toggle("active", a.getAttribute("href") === href));
+    // Two sections sit side by side on a wide screen, so a click has to win over
+    // the observer until the scroll it triggered has settled.
+    let clickedUntil = 0;
+    nav.addEventListener("click", (e) => {
+      const a = e.target.closest("a"); if (!a) return;
+      clickedUntil = Date.now() + 900;
+      setActive(a.getAttribute("href"));
+    });
+    const seen = new Map();
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => seen.set(e.target.id, e.intersectionRatio));
+      if (Date.now() < clickedUntil) return;
+      let bestId = null, best = 0;
+      seen.forEach((ratio, id) => { if (ratio > best) { best = ratio; bestId = id; } });
+      if (bestId) setActive("#" + bestId);
+    }, { threshold: [0, .15, .4, .75] });
+    links.forEach((a) => { const el = document.querySelector(a.getAttribute("href")); if (el) io.observe(el); });
+  }
+
   function attachHandlers(getRoundsFn) {
     getRounds = getRoundsFn;
     $("#detail").addEventListener("click", (e) => { if (e.target.id === "closeDetail") { open = null; showDetail(); } });
@@ -219,14 +302,20 @@ export function createResultsView() {
       open = open === btn.dataset.p ? null : btn.dataset.p;
       showDetail();
     });
+    if (has("#roundTabs")) $("#roundTabs").addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-round]"); if (!btn) return;
+      open = null;
+      renderResults(getRounds(), false, +btn.dataset.round);
+    });
+    watchSections();
   }
-  function resetOpen() { open = null; }
+  function resetOpen() { open = null; viewIndex = null; }
 
   return { renderResults, renderHistory, attachHandlers, resetOpen, showSkeleton };
 }
 
 export function exportCsv(rounds, filename) {
-  const rows = [["round", "brand", "headline", "value_proposition", "price", "market_share", "noticed", "interested", "believed", ...rounds[0].segments.map((s) => "share_" + s)]];
+  const rows = [["round", "contender", "headline", "value_proposition", "price", "choice_share", "noticed", "interested", "believed", ...rounds[0].segments.map((s) => "share_" + s)]];
   rounds.forEach((r, i) => r.brands.forEach((b) => rows.push([i + 1, b.brand, b.headline, b.valueProp, b.price, b.share, b.funnel.attention, b.funnel.interest, b.funnel.belief, ...r.segments.map((s) => b.bySegment[s])])));
   const csv = rows.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
   const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: filename });

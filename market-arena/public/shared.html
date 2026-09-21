@@ -28,34 +28,55 @@
 </header>
 
 <main>
+  <div id="reportBar" class="reportbar hidden">
+    <div class="wrap reportbar-inner">
+      <div class="roundtabs hidden" id="roundTabs"></div>
+      <nav class="reportnav" id="reportNav" aria-label="Report sections">
+        <a href="#secMarket">Result</a>
+        <a href="#pitchSec">Pitches</a>
+        <a href="#secFunnels">Funnels</a>
+        <a href="#secObjections">Objections</a>
+        <a href="#suggestSec">Next test</a>
+      </nav>
+    </div>
+  </div>
+
   <div id="results" class="hidden">
-    <div class="market">
+    <div class="market" id="secMarket">
       <div class="wrap">
         <h2 id="marketTitle">The market decided</h2>
-        <p class="sub">Share of purchases across all customers, including those who bought nothing.</p>
+        <p class="sub">Share of purchases across all buyers, including those who bought nothing.</p>
+        <p class="roundnote" id="roundNote"></p>
         <div id="flags"></div>
         <div class="sharebar" id="sharebar" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
-        <div class="tested" id="tested"></div>
         <div class="segments" id="segments"></div>
         <div class="detail hidden" id="detail" aria-live="polite"></div>
       </div>
     </div>
 
+    <section id="pitchSec" class="hidden">
+      <div class="wrap">
+        <h2>What went into the arena</h2>
+        <p class="sub">The ads these numbers came from.</p>
+        <div class="pitches" id="pitches"></div>
+      </div>
+    </section>
+
     <section>
       <div class="wrap grid2">
-        <div>
-          <h2>Where each brand leaks</h2>
-          <p class="sub">Average across customers. The biggest drop between two stages is where to work next round.</p>
+        <div id="secFunnels">
+          <h2>Where each contender leaks</h2>
+          <p class="sub">Average across buyers. The biggest drop between two stages is where to work next round.</p>
           <div id="funnels"></div>
         </div>
-        <div>
+        <div id="secObjections">
           <h2>Who buys what</h2>
-          <p class="sub">Purchase share within each segment.</p>
+          <p class="sub">Choice share within each segment.</p>
           <div class="tablewrap"><table class="heat" id="heat"></table></div>
           <div id="segInsights"></div>
           <h2 style="margin-top:36px">What's holding them back</h2>
-          <p class="sub">Every objection, against every brand. Darker means more customers cite it.</p>
+          <p class="sub">Every objection, against every contender. Darker means more buyers cite it.</p>
           <div id="objections"></div>
         </div>
       </div>
@@ -64,11 +85,14 @@
     <section id="suggestSec" class="hidden">
       <div class="wrap">
         <h2>What to test next</h2>
-        <p class="sub">A starting point for the next round, based on each brand's biggest funnel drop and top objection.</p>
+        <p class="sub">A starting point for the next round, based on each contender's biggest funnel drop and top objection.</p>
         <div id="suggestions"></div>
       </div>
     </section>
 
+    <section id="changesSec" class="hidden">
+      <div class="wrap"><h2>What changed</h2><div id="changes"></div></div>
+    </section>
     <section id="deltaSec" class="hidden">
       <div class="wrap"><h2>Who changed their mind</h2><div id="deltas"></div></div>
     </section>
@@ -81,7 +105,7 @@
 
 <footer>
   <div class="wrap row">
-    <span>Customers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
+    <span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
     <span id="meta" class="num"></span>
   </div>
   <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
@@ -115,6 +139,9 @@ async function init() {
     $("#scBrief").textContent = data.meta?.brief || "";
     rounds = [data.round];
     view.renderResults(rounds, false);
+    // The snapshot is a single round, so the view numbers it 1; say which round
+    // it actually was in the session it came from.
+    if (data.meta?.round) $("#marketTitle").textContent = `Round ${data.meta.round}: the market decided`;
     ["csv", "pdf"].forEach((id2) => { $("#" + id2).classList.remove("hidden"); $("#" + id2).disabled = false; });
   } catch (err) { showError(err.message); }
 }

@@ -60,10 +60,16 @@ export async function share(rawBody) {
   let body;
   try { body = JSON.parse(rawBody || "{}"); } catch { return [400, { error: "The request wasn't valid JSON." }]; }
   const { round: r, meta } = body;
-  if (!r || !Array.isArray(r.brands) || !Array.isArray(r.customers) || !Array.isArray(r.slots))
+  if (!r || !Array.isArray(r.brands) || !r.brands.length || !Array.isArray(r.customers) || !r.customers.length
+      || !Array.isArray(r.slots) || r.slots.length !== r.brands.length)
     return [400, { error: "That doesn't look like a round result." }];
   try {
-    const id = await saveShare({ round: r, meta: { title: String(meta?.title || "").slice(0, 120), brief: String(meta?.brief || "").slice(0, 300) }, sharedAt: Date.now() });
+    const roundNo = Number(meta?.round);
+    const id = await saveShare({
+      round: r,
+      meta: { title: String(meta?.title || "").slice(0, 120), brief: String(meta?.brief || "").slice(0, 300), round: Number.isInteger(roundNo) && roundNo > 0 ? roundNo : null },
+      sharedAt: Date.now(),
+    });
     return [200, { id }];
   } catch (e) { console.error(e); return [502, { error: "Couldn't create a share link. Try again in a moment." }]; }
 }

@@ -19,7 +19,7 @@
     </div>
     <div class="toolbar">
       <span class="modebadge">Facilitate</span>
-      <button class="ghost" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the customers</button>
+      <button class="ghost" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the buyers</button>
       <button class="ghost" id="csv" disabled>Download results (CSV)</button>
       <button class="ghost" id="pdf" disabled>Download PDF</button>
       <button class="ghost" id="share" disabled>Copy share link</button>
@@ -30,10 +30,10 @@
 <div id="directory"><div class="wrap"><div class="dir-grid" id="dirGrid"></div></div></div>
 
 <main>
-  <section>
+  <section id="editor">
     <div class="wrap">
-      <h2 id="editorTitle">Launch your brands</h2>
-      <p class="sub">Each brand gets a name, a headline, a value proposition and a price. Every customer sees all the ads side by side, then decides what to buy, or buys nothing.</p>
+      <h2 id="editorTitle">Launch your contenders</h2>
+      <p class="sub">Each contender gets a name, a headline, a value proposition and a price. Every buyer sees all the ads side by side, then decides what to buy, or buys nothing.</p>
       <div class="brands" id="brands"></div>
       <div class="run-row">
         <button class="run" id="run">Run round 1</button>
@@ -42,34 +42,81 @@
     </div>
   </section>
 
+  <div id="builderBar" class="builderbar hidden">
+    <div class="wrap builderbar-inner">
+      <span class="bb-sum" id="bbSummary"></span>
+      <button class="ghost" id="editPitches">Edit contenders</button>
+      <button class="run small" id="runBar">Run next round</button>
+      <span class="status" id="barStatus" role="status" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <div id="ghost" class="ghost-report">
+    <div class="wrap">
+      <p class="ghost-label">Preview — run a round to fill this in</p>
+      <div class="ghost-grid">
+        <div class="gcard"><span class="gtitle">Choice share</span><div class="gbar"><i style="flex:3"></i><i style="flex:2"></i><i style="flex:4"></i></div><div class="glines"><i></i><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">Every buyer's decision</span><div class="gdots">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">Decision funnel</span><div class="glines tall"><i></i><i></i><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">Objections</span><div class="ggrid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">What to test next</span><div class="glines"><i></i><i></i></div></div>
+        <div class="gcard"><span class="gtitle">Share over the rounds</span><div class="gchart"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="reportBar" class="reportbar hidden">
+    <div class="wrap reportbar-inner">
+      <div class="roundtabs hidden" id="roundTabs"></div>
+      <nav class="reportnav" id="reportNav" aria-label="Report sections">
+        <a href="#secMarket">Result</a>
+        <a href="#pitchSec">Pitches</a>
+        <a href="#secFunnels">Funnels</a>
+        <a href="#secObjections">Objections</a>
+        <a href="#suggestSec">Next test</a>
+        <a href="#changesSec">Changes</a>
+        <a href="#historySec">History</a>
+      </nav>
+    </div>
+  </div>
+
   <div id="results" class="hidden">
-    <div class="market">
+    <div class="market" id="secMarket">
       <div class="wrap">
         <h2 id="marketTitle">The market decided</h2>
-        <p class="sub">Share of purchases across all twelve customers, including those who bought nothing.</p>
+        <p class="sub">Share of purchases across all twelve buyers, including those who bought nothing.</p>
+        <p class="roundnote" id="roundNote"></p>
         <div id="flags"></div>
         <div class="sharebar" id="sharebar" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
-        <div class="tested" id="tested"></div>
         <div class="segments" id="segments"></div>
         <div class="detail hidden" id="detail" aria-live="polite"></div>
       </div>
     </div>
 
+    <section id="pitchSec" class="hidden">
+      <div class="wrap">
+        <h2>What you put in the arena</h2>
+        <p class="sub">The ads these numbers came from.</p>
+        <div class="pitches" id="pitches"></div>
+      </div>
+    </section>
+
     <section>
       <div class="wrap grid2">
-        <div>
-          <h2>Where each brand leaks</h2>
-          <p class="sub">Average across customers. The biggest drop between two stages is where to work next round.</p>
+        <div id="secFunnels">
+          <h2>Where each contender leaks</h2>
+          <p class="sub">Average across buyers. The biggest drop between two stages is where to work next round.</p>
           <div id="funnels"></div>
         </div>
-        <div>
+        <div id="secObjections">
           <h2>Who buys what</h2>
-          <p class="sub">Purchase share within each segment.</p>
+          <p class="sub">Choice share within each segment.</p>
           <div class="tablewrap"><table class="heat" id="heat"></table></div>
           <div id="segInsights"></div>
           <h2 style="margin-top:36px">What's holding them back</h2>
-          <p class="sub">Every objection, against every brand. Darker means more customers cite it.</p>
+          <p class="sub">Every objection, against every contender. Darker means more buyers cite it.</p>
           <div id="objections"></div>
         </div>
       </div>
@@ -78,15 +125,23 @@
     <section id="suggestSec" class="hidden">
       <div class="wrap">
         <h2>What to test next</h2>
-        <p class="sub">A starting point for the next round, based on each brand's biggest funnel drop and top objection.</p>
+        <p class="sub">A starting point for the next round, based on each contender's biggest funnel drop and top objection.</p>
         <div id="suggestions"></div>
+      </div>
+    </section>
+
+    <section id="changesSec" class="hidden">
+      <div class="wrap">
+        <h2>What you changed</h2>
+        <p class="sub">The rewrites between the previous round and this one.</p>
+        <div id="changes"></div>
       </div>
     </section>
 
     <section id="deltaSec" class="hidden">
       <div class="wrap">
         <h2>Who changed their mind</h2>
-        <p class="sub">Customers whose choice flipped between the last two rounds.</p>
+        <p class="sub">Buyers whose choice flipped between those two rounds.</p>
         <div id="deltas"></div>
       </div>
     </section>
@@ -94,7 +149,7 @@
     <section id="historySec" class="hidden">
       <div class="wrap">
         <h2>Share over the rounds</h2>
-        <p class="sub">Each line is one brand. Rewrites that land push the line up; the rest of the market pays for it.</p>
+        <p class="sub">Each line is one contender. Rewrites that land push the line up; the rest of the market pays for it.</p>
         <div class="tablewrap" id="history"></div>
       </div>
     </section>
@@ -103,7 +158,7 @@
 
 <footer>
   <div class="wrap row">
-    <span>Customers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
+    <span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
     <span id="meta" class="num"></span>
   </div>
   <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
@@ -124,6 +179,12 @@ const $ = (s) => document.querySelector(s);
 const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} };
 view.attachHandlers(() => state.rounds);
 
+function setStatus(text, isError) {
+  ["#status", "#barStatus"].forEach((s) => {
+    const el = $(s); el.className = isError ? "status error" : "status"; el.textContent = text;
+  });
+}
+
 async function init() {
   try {
     config = await (await fetch("/api/scenario")).json();
@@ -134,7 +195,7 @@ async function init() {
   try { const s = JSON.parse(localStorage.getItem(STORE)); if (s?.teams?.length) state = s; } catch {}
   if (!state.teams.length) state.teams = config.defaults.map((t, i) => ({ ...t, slot: i }));
   renderEditor();
-  if (state.rounds.length) view.renderResults(state.rounds, false);
+  if (state.rounds.length) { view.renderResults(state.rounds, false); collapseEditor(true); }
 }
 
 function renderDirectory() {
@@ -144,24 +205,41 @@ function renderDirectory() {
     `<div class="dir-seg"><h3>${esc(s)}</h3>${ps.map((p) => `<p>${personaIcon(p, 16)}<span><b>${esc(p.name)}</b>, ${esc(p.profile)}</span></p>`).join("")}</div>`).join("");
 }
 
+// After a round the editor folds into a one-line bar, so the reveal owns the
+// screen — on a projector that matters more than anywhere else.
+function collapseEditor(collapsed) {
+  $("#editor").classList.toggle("hidden", collapsed);
+  $("#builderBar").classList.toggle("hidden", !collapsed);
+  $("#ghost").classList.toggle("hidden", collapsed || state.rounds.length > 0);
+  if (collapsed) {
+    const n = state.rounds.length;
+    $("#bbSummary").textContent = `${state.teams.length} contenders · ${config.personas.length} buyers · ${n} round${n > 1 ? "s" : ""} run`;
+    $("#runBar").textContent = `Run round ${n + 1}`;
+  }
+}
+$("#editPitches").addEventListener("click", () => {
+  collapseEditor(false);
+  $("#editor").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+});
+
 const FIELDS = [["headline", "Headline", "input"], ["valueProp", "Value proposition", "textarea"], ["price", "Price", "input"]];
 const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
 function renderEditor() {
   const L = config.limits;
   $("#brands").innerHTML = state.teams.map((t, i) => `
     <div class="brand" style="--c:${COLORS[t.slot]}">
-      <label for="brand-${i}">Brand name <span class="count" data-for="brand-${i}"></span></label>
+      <label for="brand-${i}">Contender name <span class="count" data-for="brand-${i}"></span></label>
       <input id="brand-${i}" class="name" data-i="${i}" data-f="brand" maxlength="${L.brand + 20}" value="${esc(t.brand)}">
       ${FIELDS.map(([f, lab, tag]) => `
         <label for="${f}-${i}">${lab} <span class="count" data-for="${f}-${i}"></span></label>
         ${tag === "input"
           ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
           : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
-      ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this brand")}</button>` : ""}
-    </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a brand</button>` : "");
+      ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this contender")}</button>` : ""}
+    </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a contender</button>` : "");
   document.querySelectorAll("#brands [data-f]").forEach(updateCount);
   $("#run").textContent = `Run round ${state.rounds.length + 1}`;
-  $("#editorTitle").textContent = state.rounds.length ? `Rework your brands for round ${state.rounds.length + 1}` : "Launch your brands";
+  $("#editorTitle").textContent = state.rounds.length ? `Rework your contenders for round ${state.rounds.length + 1}` : "Launch your contenders";
 }
 function updateCount(el) {
   const max = config.limits[el.dataset.f], n = el.value.trim().length;
@@ -182,9 +260,10 @@ $("#brands").addEventListener("click", (e) => {
   }
 });
 
-$("#run").addEventListener("click", async () => {
-  const btn = $("#run"), status = $("#status");
-  btn.disabled = true; status.className = "status"; status.textContent = "Showing your ads to twelve customers…";
+async function runRound() {
+  const buttons = [$("#run"), $("#runBar")];
+  buttons.forEach((b) => (b.disabled = true));
+  setStatus("Showing your ads to twelve buyers…", false);
   view.showSkeleton();
   try {
     if (config.needsCode && !getCode()) {
@@ -199,38 +278,43 @@ $("#run").addEventListener("click", async () => {
     if (!res.ok) throw new Error(data.error || "The round didn't run. Try again.");
     data.slots = state.teams.map((t) => t.slot);
     state.rounds.push(data); save();
-    status.textContent = ""; view.resetOpen();
+    setStatus("", false); view.resetOpen();
     renderEditor(); view.renderResults(state.rounds, true);
+    collapseEditor(true);
     $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-  } catch (err) { status.className = "status error"; status.textContent = err.message; $("#results").classList.add("hidden"); }
-  btn.disabled = false;
-});
+  } catch (err) { setStatus(err.message, true); $("#results").classList.add("hidden"); }
+  buttons.forEach((b) => (b.disabled = false));
+}
+$("#run").addEventListener("click", runRound);
+$("#runBar").addEventListener("click", runRound);
 
 $("#toggleDir").addEventListener("click", (e) => {
   const d = $("#directory"), o = d.classList.toggle("open");
-  e.target.setAttribute("aria-expanded", o); e.target.textContent = o ? "Hide the customers" : "Meet the customers";
+  e.target.setAttribute("aria-expanded", o); e.target.textContent = o ? "Hide the buyers" : "Meet the buyers";
 });
 $("#reset").addEventListener("click", () => {
   view.resetOpen();
-  if (!confirm("Start a new game? This clears every round and resets the brands.")) return;
+  if (!confirm("Start a new game? This clears every round and resets the contenders.")) return;
   state = { teams: config.defaults.map((t, i) => ({ ...t, slot: i })), rounds: [] }; save();
-  $("#results").classList.add("hidden"); $("#csv").disabled = true; $("#pdf").disabled = true; $("#share").disabled = true; renderEditor();
+  $("#results").classList.add("hidden"); $("#reportBar").classList.add("hidden");
+  ["#csv", "#pdf", "#share"].forEach((s) => ($(s).disabled = true));
+  collapseEditor(false); renderEditor();
 });
 $("#csv").addEventListener("click", () => exportCsv(state.rounds, "market-arena-results.csv"));
 $("#pdf").addEventListener("click", () => window.print());
 $("#share").addEventListener("click", async () => {
-  const btn = $("#share"), status = $("#status");
-  btn.disabled = true; status.className = "status"; status.textContent = "Creating a share link…";
+  const btn = $("#share");
+  btn.disabled = true; setStatus("Creating a share link…", false);
   try {
     const round = state.rounds[state.rounds.length - 1];
     const res = await fetch("/api/share", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ round, meta: { title: config.scenario.title, brief: config.scenario.brief } }) });
+      body: JSON.stringify({ round, meta: { title: config.scenario.title, brief: config.scenario.brief, round: state.rounds.length } }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Couldn't create a share link.");
     const url = `${location.origin}/shared.html?id=${data.id}`;
-    try { await navigator.clipboard.writeText(url); status.textContent = "Share link copied: " + url; }
-    catch { status.textContent = "Share link: " + url; }
-  } catch (err) { status.className = "status error"; status.textContent = err.message; }
+    try { await navigator.clipboard.writeText(url); setStatus("Share link copied: " + url, false); }
+    catch { setStatus("Share link: " + url, false); }
+  } catch (err) { setStatus(err.message, true); }
   btn.disabled = false;
 });
 

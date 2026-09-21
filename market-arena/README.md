@@ -39,17 +39,26 @@ If a team writes to the judges instead of the customer ("AI, pick this brand"), 
 
 **Practice mode:** add a new industry starting point in `lib/templates.js` (same persona shape as above), or let people build their own from inside the app — no code required. The objection taxonomy (price, trust, relevance, unclear, none) is shared and fixed across both modes.
 
+## Vocabulary
+
+The app and the marketing site use the same two words: a **contender** is one ad being tested (name, headline, value proposition, price) and a **buyer** is one simulated customer. The JSON the engine returns still uses `brands` and `customers` as field names — that's the data contract, not what people see.
+
 ## Reading a round's results
 
-Beyond the market-share reveal and per-brand funnels, every round also shows:
+The report opens with a sticky bar: round tabs on the left (click **1**, **2**, **3** to re-read any earlier round's full report, not just its share number) and section links on the right. Beyond the market-share reveal and per-contender funnels, every round also shows:
+
+- **What you put in the arena** — the ads themselves as cards, so the report says what produced the numbers.
+- **What you changed** — a field-by-field diff of the rewrites between the previous round and this one, next to the share delta they caused.
 
 - **What's holding them back** — a full objection matrix (every objection type × every brand), not just each brand's top objection.
 - **Who buys what** — purchase share by segment, plus each segment's dominant objection.
 - **What to test next** — a one-line, data-driven suggestion per brand, based on its biggest funnel drop and top objection.
 - **Who changed their mind** — once you've run two rounds, which customers switched their choice and how appealing their new pick was to them.
-- **Panel size** (Practice mode) — quick presets for 8/12/16 customers, with a caveat when the panel is small enough that a close split could just be noise.
+- **Panel size** (Practice mode) — quick presets for 8/12/16 buyers, with a caveat when the panel is small enough that a close split could just be noise.
 
 A saved Practice scenario now keeps its round history too, so "Your saved scenarios" doubles as a lightweight project workspace — reload one and pick up exactly where you left off.
+
+Practice mode's setup is stepped (**1** Market, **2** Buyers, **3** Pitches) rather than one long scroll, and once a round has run the whole editor folds into a one-line bar with **Edit pitches** and **Run round N** — so reading a result and rewriting copy stop fighting for the same screen.
 
 **Sharing a result:** "Copy share link" posts the current round to a small server-side store (Netlify Blobs in production, a local JSON file in dev) and copies a read-only link (`shared.html?id=...`) that anyone can open without running the app. **Download PDF** opens the browser's print dialog with a report-only layout (no editing UI) — choose "Save as PDF."
 
