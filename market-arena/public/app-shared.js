@@ -13,6 +13,11 @@ export const STAGES = [["attention", "Noticed"], ["interest", "Interested"], ["b
 const STAGE_PLAIN = { attention: "getting noticed", interest: "sounding appealing", belief: "being believed", purchase: "closing the choice" };
 export const OBJ_LABEL = { price: "price feels too high", trust: "doesn't believe the claims", relevance: "doesn't fit their needs or habits", unclear: "doesn't understand the offer", none: "no real objection" };
 export const OBJ_ORDER = ["price", "trust", "relevance", "unclear"];
+// OBJ_LABEL stands alone in a table cell; it is not a noun phrase, so it cannot be
+// dropped into a sentence. These two are the forms prose actually needs: a noun after
+// "cite" or "held back by", and a full clause after "was that".
+export const OBJ_NOUN = { price: "the price", trust: "doubt about the claims", relevance: "poor fit with their needs", unclear: "an unclear offer", none: "no real objection" };
+export const OBJ_CLAUSE = { price: "the price feels too high", trust: "buyers don't believe the claims", relevance: "it doesn't fit their needs or habits", unclear: "buyers don't understand the offer", none: "buyers had no real objection" };
 export const OBJ_FIX = { price: "the price or how it's framed", trust: "proof or credibility behind the claim", relevance: "who the message is speaking to", unclear: "how clearly the offer is explained" };
 // Which contender fields the round-over-round diff compares, in display order.
 const DIFF_FIELDS = [["brand", "Name"], ["headline", "Headline"], ["valueProp", "Value proposition"], ["price", "Price"]];
@@ -152,7 +157,7 @@ export function createResultsView() {
       const counts = {};
       segCustomers.forEach((c) => brandIds.forEach((id) => { const o = c.byBrand[id].objection; if (o !== "none") counts[o] = (counts[o] || 0) + 1; }));
       const top = Object.entries(counts).sort((a, b2) => b2[1] - a[1])[0];
-      return top ? `<li><b>${esc(s)}</b> — mostly held back by ${objectionIcon(top[0])} ${OBJ_LABEL[top[0]]}</li>` : "";
+      return top ? `<li><b>${esc(s)}</b> — mostly held back by ${objectionIcon(top[0])} ${OBJ_NOUN[top[0]]}</li>` : "";
     }).join("") + `</ul>`;
 
     const objHeat = (v) => `background:color-mix(in srgb, var(--bad) ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
@@ -161,7 +166,7 @@ export function createResultsView() {
       `</tbody></table></div>` + heatKey("obj", "share of buyers citing it") +
       r.brands.map((b) => {
         const [topK, topV] = topObjection(b);
-        return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <b class="num">${pct(topV)}</b> ${OBJ_LABEL[topK]}.</p>`;
+        return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <b class="num">${pct(topV)}</b> cite ${OBJ_NOUN[topK]}.</p>`;
       }).join("");
 
     renderSuggestions(r);
@@ -199,7 +204,7 @@ export function createResultsView() {
       lines.push(`<b>${esc(win.brand)}</b>'s clearest advantage was in ${STAGE_PLAIN[edge[0]]}: ${pct(win.funnel[edge[0]])} against ${esc(second.brand)}'s ${pct(second.funnel[edge[0]])}.`);
 
     const worstObj = OBJ_ORDER.map((k) => [k, r.brands.reduce((s, b) => s + b.objections[k], 0) / r.brands.length]).sort((a, b) => b[1] - a[1])[0];
-    lines.push(`The most common objection across every contender was that the ${OBJ_LABEL[worstObj[0]]} (${pct(worstObj[1])} on average).`);
+    lines.push(`The most common objection across every contender was that ${OBJ_CLAUSE[worstObj[0]]} (${pct(worstObj[1])} on average).`);
 
     const dissent = r.segments.map((s) => {
       const best = [...r.brands].sort((a, b) => b.bySegment[s] - a.bySegment[s])[0];
@@ -258,8 +263,8 @@ export function createResultsView() {
       const dropFrom = STAGES[worst - 1][1].toLowerCase(), dropTo = STAGES[worst][1].toLowerCase();
       const [topK, topV] = topObjection(b);
       const body = b.share === maxShare
-        ? `Leading the round at ${pct(b.share)}, but ${pct(topV)} of buyers still cite ${OBJ_LABEL[topK]}. Worth testing a fix before it costs share.`
-        : `Biggest drop is ${dropFrom} → ${dropTo} (${Math.round(gap * 100)} pts), and the top objection is ${OBJ_LABEL[topK]} (${pct(topV)}). Try testing ${OBJ_FIX[topK]} next round.`;
+        ? `Leading the round at ${pct(b.share)}, but ${pct(topV)} of buyers still cite ${OBJ_NOUN[topK]}. Worth testing a fix before it costs share.`
+        : `Biggest drop is ${dropFrom} → ${dropTo} (${Math.round(gap * 100)} pts), and the top objection is ${OBJ_NOUN[topK]} (${pct(topV)}). Try testing ${OBJ_FIX[topK]} next round.`;
       return `<div class="suggest" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3><p>${body}</p></div>`;
     }).join("");
   }
