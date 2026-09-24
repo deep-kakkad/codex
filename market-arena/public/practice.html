@@ -15,10 +15,9 @@
   <div class="wrap">
     <div class="mast">
       <a class="brandmark" href="./"><span id="logoSlot"></span><h1>Market Arena</h1></a>
-      <p class="brief"><strong>Test your own idea</strong><span>No class code needed. Pick an industry, rewrite the buyers and the copy, see who'd actually buy.</span></p>
+      <p class="brief"><strong>Competitive message testing</strong><span>Put your pitch against the alternatives in front of the same buyers. See which one wins, and where the others lose people.</span></p>
     </div>
     <div class="toolbar">
-      <span class="modebadge">Practice</span>
       <button class="ghost hidden" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the buyers</button>
       <button class="ghost hidden" id="changeScenario">Switch project</button>
       <button class="ghost hidden" id="csv" disabled>Download results (CSV)</button>
@@ -286,7 +285,7 @@
 
 <footer>
   <div class="wrap row">
-    <span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
+    <span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a way to decide what deserves a real test, not as market research.</span>
     <span id="meta" class="num"></span>
   </div>
   <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
@@ -471,7 +470,7 @@ function renderPersonas() {
   $("#personas").innerHTML = state.personas.map((p, i) => `
     <div class="pcard" data-i="${i}">
       <div class="pcard-head">${personaIcon(p)}<input class="pname" data-f="name" data-i="${i}" maxlength="${L.name}" value="${esc(p.name)}" placeholder="Name"></div>
-      <label>Segment</label><input data-f="segment" data-i="${i}" maxlength="${L.segment}" value="${esc(p.segment)}" placeholder="e.g. Budget-conscious students">
+      <label>Segment</label><input data-f="segment" data-i="${i}" maxlength="${L.segment}" value="${esc(p.segment)}" placeholder="e.g. Price-sensitive SMB buyers">
       <label>Profile <span class="count" data-for="profile-${i}"></span></label>
       <textarea data-f="profile" data-i="${i}" id="profile-${i}" placeholder="Age, role or life stage, what they care about, what they're skeptical of.">${esc(p.profile)}</textarea>
       ${state.personas.length > L.minPersonas ? `<button class="premove" data-rm="${i}">Remove ${esc(p.name || "this buyer")}</button>` : ""}
