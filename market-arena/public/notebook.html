@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Market Arena — working notebook</title>
+<meta name="description" content="Run marketing pitches as experiments: state a prediction, change one variable, see what the modelled panel decided, and record what to test with real people next.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23F5F1E8'/%3E%3Crect x='3' y='4' width='3' height='8' fill='%232D5B8E'/%3E%3Crect x='7' y='6' width='3' height='6' fill='%236E3F73'/%3E%3Crect x='11' y='3' width='3' height='9' fill='%23C9541F'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="notebook.css">
+</head>
+<body>
+
+<header class="nb-head">
+  <div class="nb-head-in">
+    <a class="nb-mark" href="./"><span id="logoSlot"></span>Market Arena</a>
+    <span class="nb-proj" id="projName">…</span>
+    <button class="btn quiet no-print" id="exportBtn">Export</button>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <section class="cover">
+    <h1 id="coverTitle">The working notebook</h1>
+    <p class="lede" id="coverLede">One change at a time, against the same buyers, with the prediction written down before the result arrives.</p>
+    <div class="meta" id="coverMeta"></div>
+  </section>
+
+  <!-- The experiment about to be run. Regions 1-3 of the card. -->
+  <section id="draftHost"></section>
+
+  <!-- The most recent completed experiment, all six regions. -->
+  <section id="latestHost"></section>
+
+  <!-- Everything before that, one line each. -->
+  <section id="logHost"></section>
+
+  <footer class="nb-foot">
+    <p>Buyers are modelled by TypeSafe's Jev model, not surveyed. Every contender is shown to each buyer in a different order so position can't decide the winner. Use a result to choose what deserves a real test, not as a measurement of a real market.</p>
+    <p style="margin-top:8px"><a href="practice.html">Full report view</a> · <a href="lens.html">Decision lens</a> · <a href="./">Home</a></p>
+  </footer>
+</div>
+
+<script type="module">
+import { LOGO_MARK } from "./icons.js";
+import { findTeamProblem } from "./validate.js";
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = (v) => `${Math.round(v * 100)}%`;
+const ID_COLOR = ["var(--id-1)", "var(--id-2)", "var(--id-3)", "var(--id-4)"];
+const colorFor = (slot) => ID_COLOR[slot % ID_COLOR.length];
+const expId = (n) => `EXP-${String(n).padStart(2, "0")}`;
+
+const NB_KEY = "market-arena-notebook-v1";
+const SESSION_KEY = "market-arena-practice-session";
+const FIELDS = [["headline", "Headline"], ["valueProp", "Value proposition"], ["price", "Price"], ["brand", "Name"]];
+
+let state = null;
+let busy = false;
+
+$("#logoSlot").innerHTML = LOGO_MARK(20);
+
+/* ------------------------------------------------------------------ storage */
+const load = (k, f) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; } catch { return f; } };
+const save = () => { try { localStorage.setItem(NB_KEY, JSON.stringify(state)); } catch {} };
+
+/* ------------------------------------------------------------------ analysis
+   Written for the notebook rather than reused from the report, because the notebook
+   asks a different question: not "what happened" but "was the prediction right, and
+   what does that leave you to find out from a person". */
+
+const winnerOf = (round) => [...round.brands].sort((a, b) => b.share - a.share)[0];
+const slotOfBrand = (round, id) => round.slots?.[round.brands.findIndex((b) => b.id === id)] ?? 0;
+const panelOf = (round) => round.panel ?? round.customers.length;
+const picksOf = (round, id) => {
+  const src = id === "none" ? round.noPurchase : round.brands.find((b) => b.id === id);
+  return src?.picks ?? round.customers.filter((c) => c.purchase === id).length;
+};
+
+const OBJ_NOUN = {
+  price: "the price", trust: "doubt about the claims",
+  relevance: "poor fit with their needs", unclear: "an unclear offer", none: "no real objection",
+};
+// What a person, not a model, could actually settle about each objection.
+const HUMAN_TEST = {
+  price: "Put the same offer at two prices in front of real buyers and watch which one converts — the model is far less price-sensitive than markets usually are, so this is the number least safe to take from here.",
+  trust: "Ask five real buyers what would make this claim believable, then test the version carrying that proof.",
+  relevance: "Check you are describing the buyer you actually sell to. Five customer interviews will tell you faster than another round here.",
+  unclear: "Show the headline to five people for five seconds each and ask what the product does. If they can't say, the problem is comprehension, not persuasion.",
+  none: "No single objection dominates, so the next thing to learn is whether real buyers care about the category at all. Test demand, not wording.",
+};
+
+function interpret(round, prev) {
+  const ranked = [...round.brands].sort((a, b) => b.share - a.share);
+  const win = ranked[0], second = ranked[1];
+  const n = panelOf(round);
+  const gap = Math.round((win.share - second.share) * 100);
+  const out = [];
+
+  out.push(gap < 5
+    ? `<b>${esc(win.brand)}</b> and <b>${esc(second.brand)}</b> finished level — ${pct(win.share)} against ${pct(second.share)}, picked outright by ${picksOf(round, win.id)} and ${picksOf(round, second.id)} of ${n} buyers. A gap this small is not a result; treat the two as tied.`
+    : `<b>${esc(win.brand)}</b> took the round on ${pct(win.share)} average choice probability, ${gap} points clear of ${esc(second.brand)}. ${picksOf(round, win.id)} of ${n} buyers picked it outright.`);
+
+  const nonePicks = picksOf(round, "none");
+  if (nonePicks > 0) out.push(`${nonePicks} of ${n} buyers bought nothing at all, which is a category problem rather than a copy problem.`);
+
+  if (prev) {
+    const before = prev.brands.find((b) => b.brand === win.brand);
+    if (before) {
+      const move = Math.round((win.share - before.share) * 100);
+      out.push(Math.abs(move) < 2
+        ? `The change moved <b>${esc(win.brand)}</b> by ${Math.abs(move)} point${Math.abs(move) === 1 ? "" : "s"} — effectively nothing. Whatever you altered is not what this market is deciding on.`
+        : `<b>${esc(win.brand)}</b> moved ${move > 0 ? "up" : "down"} ${Math.abs(move)} points against the previous experiment.`);
+    }
+  }
+  return out;
+}
+
+function nextHumanTest(round) {
+  const win = winnerOf(round);
+  const entries = Object.entries(win.objections || {}).filter(([k]) => k !== "none").sort((a, b) => b[1] - a[1]);
+  const [key, val] = entries[0] || ["none", 0];
+  return `<b>${esc(win.brand)}</b> led, but ${pct(val)} of buyers still cite ${OBJ_NOUN[key]}. ${HUMAN_TEST[key]}`;
+}
+
+/* Diff the current contenders against the ones the last experiment ran, so the card
+   can name the one variable that changed rather than asking the user to remember. */
+function diffAgainst(baseline, teams) {
+  if (!baseline) return null;
+  for (const t of teams) {
+    const was = baseline.find((b) => b.slot === t.slot);
+    if (!was) continue;
+    for (const [f, label] of FIELDS) {
+      if ((was[f] || "").trim() !== (t[f] || "").trim())
+        return { slot: t.slot, brand: t.brand, field: f, label, was: was[f] || "", now: t[f] || "" };
+    }
+  }
+  return null;
+}
+
+/* ------------------------------------------------------------------ render */
+
+function renderCover() {
+  $("#projName").textContent = state.scenario?.title || "Untitled project";
+  $("#coverTitle").textContent = state.scenario?.title || "The working notebook";
+  $("#coverLede").textContent = state.scenario?.brief || "One change at a time, against the same buyers, with the prediction written down before the result arrives.";
+  const done = state.entries.length;
+  const scored = state.entries.filter((e) => e.predicted != null && !isTooClose(e));
+  const hits = scored.filter((e) => e.predicted === winnerSlot(e)).length;
+  $("#coverMeta").innerHTML = [
+    `<span><b>${state.personas.length}</b> buyers</span>`,
+    `<span><b>${state.teams.length}</b> contenders</span>`,
+    `<span><b>${done}</b> experiment${done === 1 ? "" : "s"} run</span>`,
+    scored.length ? `<span>predictions right: <b>${hits} of ${scored.length}</b></span>` : "",
+  ].join("");
+}
+
+const winnerSlot = (entry) => entry.result ? slotOfBrand(entry.result, winnerOf(entry.result).id) : null;
+const isTooClose = (entry) => {
+  const r = [...entry.result.brands].sort((a, b) => b.share - a.share);
+  return entry.predicted !== "none" && Math.round((r[0].share - r[1].share) * 100) < 5;
+};
+
+function predictionRow(selected) {
+  return state.teams.map((t) => `
+    <button class="pred-opt" data-pred="${t.slot}" aria-pressed="${selected === t.slot}" style="--c:${colorFor(t.slot)}">
+      <span class="dot"></span>${esc(t.brand || "Unnamed")}
+    </button>`).join("") + `
+    <button class="pred-opt" data-pred="none" aria-pressed="${selected === "none"}">
+      <span class="dot" style="background:var(--faint)"></span>Nobody buys
+    </button>`;
+}
+
+function renderDraft() {
+  const n = state.entries.length + 1;
+  const baseline = state.entries.length ? state.entries[state.entries.length - 1].teams : null;
+  const changed = diffAgainst(baseline, state.teams);
+  const d = state.draft;
+
+  $("#draftHost").innerHTML = `
+    <article class="exp" id="draftCard">
+      <div class="exp-head">
+        <span class="exp-id">${expId(n)}</span>
+        <h2 class="exp-title">${state.entries.length ? "Change one thing" : "Baseline run"}</h2>
+        <span class="exp-when">not yet run</span>
+      </div>
+
+      <div class="region">
+        <p class="region-label"><span class="n">1</span>Prediction</p>
+        <p class="hint">Commit before you run. A prediction you write afterwards teaches you nothing.</p>
+        <div class="pred-row">${predictionRow(d.predicted)}</div>
+        <textarea class="nb" id="predWhy" rows="2" placeholder="Why do you expect that? One line is enough.">${esc(d.why || "")}</textarea>
+      </div>
+
+      <div class="region">
+        <p class="region-label"><span class="n">2</span>Held fixed</p>
+        <ul class="fixed-list">
+          <li><span class="k">Buyers</span><span>${state.personas.length} buyers across ${new Set(state.personas.map((p) => p.segment)).size} segments, unchanged from the first experiment</span></li>
+          <li><span class="k">Order</span><span>Rotated per buyer, so no contender gains from being listed first</span></li>
+          <li><span class="k">Contenders</span><span>${state.teams.length} in the arena${changed ? `, all but ${esc(changed.brand)}'s ${changed.label.toLowerCase()} untouched` : ""}</span></li>
+        </ul>
+      </div>
+
+      <div class="region">
+        <p class="region-label"><span class="n">3</span>Changed variable</p>
+        ${changed ? `
+          <div class="change">
+            <span class="who">${esc(changed.brand)} · ${esc(changed.label)}</span>
+            <span class="was">${esc(changed.was) || "(empty)"}</span>
+            <span class="arrow">↓</span>
+            <span class="now">${esc(changed.now) || "(empty)"}</span>
+          </div>
+          <p class="hint" style="margin-top:12px">Everything else is identical to ${expId(state.entries.length)}. Edit below to change something different.</p>`
+          : `<p class="hint">${state.entries.length ? "Nothing changed yet — edit a field below and it will be recorded here as the variable under test." : "First run, so there is nothing to change against. This becomes the baseline every later experiment is measured from."}</p>`}
+        <div class="slots" style="margin-top:16px">${state.teams.map((t, i) => slotEditor(t, i, baseline)).join("")}</div>
+      </div>
+
+      <div class="runbar no-print">
+        <span class="note" id="runNote">${d.predicted == null ? "Pick what you expect to win, then run." : "Prediction recorded. Run the experiment."}</span>
+        <span class="status" id="status"></span>
+        <button class="btn primary" id="runBtn">Run ${expId(n)}</button>
+      </div>
+    </article>`;
+}
+
+function slotEditor(t, i, baseline) {
+  const was = baseline?.find((b) => b.slot === t.slot);
+  const dirty = (f) => was && (was[f] || "").trim() !== (t[f] || "").trim();
+  const field = (f, label, tag) => `
+    <div class="${dirty(f) ? "edited" : ""}">
+      <label for="nb-${f}-${i}">${label}</label>
+      ${tag === "textarea"
+        ? `<textarea class="nb" id="nb-${f}-${i}" data-i="${i}" data-f="${f}" rows="2">${esc(t[f] || "")}</textarea>`
+        : `<input class="nb" id="nb-${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f] || "")}">`}
+    </div>`;
+  return `
+    <div class="slot" style="--c:${colorFor(t.slot)}">
+      <div class="slot-head"><span class="dot"></span><span class="nm">${esc(t.brand || "Unnamed contender")}</span></div>
+      <div class="slot-grid">
+        ${field("brand", "Name", "input")}
+        ${field("price", "Price", "input")}
+      </div>
+      ${field("headline", "Headline", "input")}
+      ${field("valueProp", "Value proposition", "textarea")}
+    </div>`;
+}
+
+function resultRows(round) {
+  const n = panelOf(round);
+  const rows = round.brands.map((b) => {
+    const slot = slotOfBrand(round, b.id);
+    return `
+      <div class="res-row" style="--c:${colorFor(slot)}">
+        <span class="res-name"><span class="dot"></span><span>${esc(b.brand)}</span></span>
+        <span class="res-track"><span class="res-fill" style="width:${pct(b.share)}"></span></span>
+        <span class="res-num"><b>${pct(b.share)}</b><span class="of">${picksOf(round, b.id)} of ${n} picked</span></span>
+      </div>`;
+  }).join("");
+  const none = `
+    <div class="res-row none">
+      <span class="res-name"><span class="dot" style="background:var(--faint)"></span><span>Bought nothing</span></span>
+      <span class="res-track"><span class="res-fill" style="width:${pct(round.noPurchase.share)}"></span></span>
+      <span class="res-num"><b>${pct(round.noPurchase.share)}</b><span class="of">${picksOf(round, "none")} of ${n} picked</span></span>
+    </div>`;
+  return `<div class="res-rows">${rows}${none}</div>
+    <p class="defn">The percentage is <b>average choice probability</b> across all ${n} buyers. The count is <b>outright picks</b> — buyers whose top choice it was. They differ because a buyer leaning 40/35/25 contributes to all three percentages but is only counted once.</p>`;
+}
+
+function verdictFor(entry) {
+  if (entry.predicted == null) return "";
+  const ranked = [...entry.result.brands].sort((a, b) => b.share - a.share);
+  const gap = Math.round((ranked[0].share - ranked[1].share) * 100);
+  const predictedNone = entry.predicted === "none";
+  const hit = predictedNone ? picksOf(entry.result, "none") > 0 : entry.predicted === winnerSlot(entry);
+  // Identical payloads move share by around a point, so a win inside a few points is
+  // not evidence about anyone's prediction. Scoring it either way would be a lie.
+  const tooClose = !predictedNone && gap < 5;
+  const predName = predictedNone ? "nobody would buy"
+    : `${esc(entry.teams.find((t) => t.slot === entry.predicted)?.brand || "that contender")} would win`;
+  const winName = esc(winnerOf(entry.result).brand);
+
+  const label = tooClose ? "Too close to score" : hit ? "Prediction held" : "Prediction missed";
+  const body = tooClose
+    ? `You said <b>${predName}</b>. <b>${winName}</b> came out ahead by ${gap} point${gap === 1 ? "" : "s"} — close enough that an identical re-run could reverse it. This experiment doesn't settle the prediction either way.`
+    : `You said <b>${predName}</b>. The panel chose <b>${winName}</b>.${hit ? "" : " That gap is the part worth understanding \u2014 your model of this buyer is wrong somewhere."}`;
+
+  return `<span class="verdict ${tooClose ? "tie" : hit ? "hit" : "miss"}">${label}</span>
+    <p>${body}</p>
+    ${entry.why ? `<p class="hint">Your reasoning: \u201c${esc(entry.why)}\u201d</p>` : ""}`;
+}
+
+function renderLatest() {
+  const entry = state.entries[state.entries.length - 1];
+  if (!entry) {
+    $("#latestHost").innerHTML = `<div class="empty"><p><b>No experiments yet.</b></p><p>Write a prediction above and run the baseline.</p></div>`;
+    return;
+  }
+  const prev = state.entries.length > 1 ? state.entries[state.entries.length - 2].result : null;
+  const changed = entry.changed;
+  $("#latestHost").innerHTML = `
+    <article class="exp">
+      <div class="exp-head">
+        <span class="exp-id">${expId(state.entries.length)}</span>
+        <h2 class="exp-title">${changed ? `${esc(changed.brand)}: ${esc(changed.label.toLowerCase())}` : "Baseline"}</h2>
+        <span class="exp-when">${new Date(entry.at).toLocaleString()}</span>
+      </div>
+
+      <div class="region">
+        <p class="region-label"><span class="n">1</span>Prediction</p>
+        ${entry.predicted == null ? `<p class="hint">No prediction was recorded for this experiment.</p>` : verdictFor(entry)}
+      </div>
+
+      <div class="region">
+        <p class="region-label"><span class="n">2</span>Held fixed</p>
+        <ul class="fixed-list">
+          <li><span class="k">Buyers</span><span>${panelOf(entry.result)} buyers across ${entry.result.segments.length} segments</span></li>
+          <li><span class="k">Order</span><span>Rotated per buyer</span></li>
+          <li><span class="k">Model</span><span>${esc(entry.result.model || "jev")} · ${entry.result.tokens?.toLocaleString?.() || "?"} tokens · ${entry.result.ms}ms</span></li>
+        </ul>
+      </div>
+
+      <div class="region">
+        <p class="region-label"><span class="n">3</span>Changed variable</p>
+        ${changed ? `<div class="change">
+            <span class="who">${esc(changed.brand)} · ${esc(changed.label)}</span>
+            <span class="was">${esc(changed.was) || "(empty)"}</span>
+            <span class="arrow">↓</span>
+            <span class="now">${esc(changed.now) || "(empty)"}</span>
+          </div>` : `<p class="hint">Baseline run — nothing was changed, because there was nothing to change against.</p>`}
+      </div>
+
+      <div class="region">
+        <p class="region-label"><span class="n">4</span>Modelled result</p>
+        ${resultRows(entry.result)}
+      </div>
+
+      <div class="region interp">
+        <p class="region-label"><span class="n">5</span>Interpretation</p>
+        ${interpret(entry.result, prev).map((l) => `<p>${l}</p>`).join("")}
+      </div>
+
+      <div class="region">
+        <p class="region-label"><span class="n">6</span>Next human test</p>
+        <p class="next">${nextHumanTest(entry.result)}</p>
+      </div>
+    </article>`;
+}
+
+function renderLog() {
+  const older = state.entries.slice(0, -1).reverse();
+  if (!older.length) { $("#logHost").innerHTML = ""; return; }
+  $("#logHost").innerHTML = `
+    <div class="log-head"><h2>Earlier experiments</h2><span class="count">${older.length}</span></div>
+    ${older.map((e) => {
+      const i = state.entries.indexOf(e) + 1;
+      const win = winnerOf(e.result);
+      const close = e.predicted != null && isTooClose(e);
+      const hit = e.predicted != null && !close && e.predicted === winnerSlot(e);
+      return `
+        <div class="entry">
+          <span class="entry-id">${expId(i)}</span>
+          <div class="entry-body">
+            <p class="entry-line">${e.changed
+              ? `Changed <span class="em">${esc(e.changed.brand)}</span>'s ${esc(e.changed.label.toLowerCase())} — <span class="em">${esc(win.brand)}</span> took the round on ${pct(win.share)}.`
+              : `Baseline — <span class="em">${esc(win.brand)}</span> took the round on ${pct(win.share)}.`}</p>
+            <p class="entry-sub">${picksOf(e.result, win.id)} of ${panelOf(e.result)} picked it · ${new Date(e.at).toLocaleDateString()}</p>
+          </div>
+          ${e.predicted == null ? "" : `<span class="verdict ${close ? "tie" : hit ? "hit" : "miss"}">${close ? "Too close" : hit ? "Called it" : "Missed"}</span>`}
+        </div>`;
+    }).join("")}`;
+}
+
+function render() { renderCover(); renderDraft(); renderLatest(); renderLog(); }
+
+/* ------------------------------------------------------------------ events */
+
+document.addEventListener("click", (e) => {
+  const pred = e.target.closest("[data-pred]");
+  if (pred) {
+    const v = pred.dataset.pred;
+    state.draft.predicted = state.draft.predicted === (v === "none" ? "none" : +v) ? null : (v === "none" ? "none" : +v);
+    save(); renderDraft();
+    return;
+  }
+  if (e.target.id === "runBtn") run();
+  if (e.target.id === "exportBtn") window.print();
+});
+
+document.addEventListener("input", (e) => {
+  const el = e.target;
+  if (el.id === "predWhy") { state.draft.why = el.value; save(); return; }
+  if (el.dataset?.f != null && el.dataset?.i != null) {
+    state.teams[+el.dataset.i][el.dataset.f] = el.value;
+    save();
+  }
+});
+
+// Re-rendering on every keystroke would steal focus, so the changed-variable panel
+// and the slot headings catch up when the field is left instead.
+document.addEventListener("change", (e) => {
+  if (e.target.dataset?.f != null) { renderDraft(); renderCover(); }
+});
+
+async function run() {
+  if (busy) return;
+  const teams = state.teams.map(({ brand, headline, valueProp, price }) => ({ brand, headline, valueProp, price }));
+
+  // Refuse before anything says the round is under way.
+  const problem = findTeamProblem(teams);
+  if (problem) {
+    const el = problem.index == null ? null : $(`#nb-${problem.field}-${problem.index}`);
+    $("#status").textContent = problem.message;
+    $("#status").classList.add("error");
+    if (el) { el.focus({ preventScroll: true }); el.scrollIntoView({ block: "center", behavior: "smooth" }); }
+    return;
+  }
+
+  busy = true;
+  const btn = $("#runBtn"); btn.disabled = true;
+  $("#status").classList.remove("error");
+  $("#status").textContent = `Showing the ads to ${state.personas.length} buyers…`;
+
+  try {
+    const res = await fetch("/api/round", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        mode: "practice", teams,
+        personas: state.personas.map(({ id, name, segment, profile }) => ({ id, name, segment, profile })),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "The experiment didn't run. Try again.");
+    data.slots = state.teams.map((t) => t.slot);
+
+    const baseline = state.entries.length ? state.entries[state.entries.length - 1].teams : null;
+    state.entries.push({
+      at: Date.now(),
+      predicted: state.draft.predicted,
+      why: state.draft.why || "",
+      teams: state.teams.map((t) => ({ ...t })),
+      changed: diffAgainst(baseline, state.teams),
+      result: data,
+    });
+    state.draft = { predicted: null, why: "" };
+    save(); render();
+    $("#latestHost").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  } catch (err) {
+    $("#status").textContent = err.message;
+    $("#status").classList.add("error");
+  } finally {
+    busy = false;
+    const b = $("#runBtn"); if (b) b.disabled = false;
+  }
+}
+
+/* ------------------------------------------------------------------ boot */
+
+async function boot() {
+  state = load(NB_KEY, null);
+
+  if (!state) {
+    // Carry over whatever project the main app already has, so the notebook is not a
+    // separate universe the user has to set up twice.
+    const session = load(SESSION_KEY, null);
+    if (session?.teams?.length && session?.personas?.length) {
+      state = {
+        scenario: session.scenario, personas: session.personas,
+        teams: session.teams.map((t) => ({ ...t })),
+        entries: (session.rounds || []).map((r, i) => ({
+          at: Date.now() - (session.rounds.length - i) * 1000,
+          predicted: null, why: "",
+          teams: session.teams.map((t) => ({ ...t })),
+          changed: null, result: r,
+        })),
+        draft: { predicted: null, why: "" },
+      };
+    }
+  }
+
+  if (!state) {
+    try {
+      const { templates } = await (await fetch("/api/templates")).json();
+      const t = templates[0];
+      state = {
+        scenario: t.scenario, personas: t.personas,
+        teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })),
+        entries: [], draft: { predicted: null, why: "" },
+      };
+    } catch {
+      $("#draftHost").innerHTML = `<div class="empty"><p><b>Couldn't load a starting market.</b></p><p>Open <a href="practice.html">the main app</a>, set up a project, then come back.</p></div>`;
+      return;
+    }
+  }
+
+  state.teams.forEach((t, i) => { if (t.slot == null) t.slot = i; });
+  state.draft = state.draft || { predicted: null, why: "" };
+  save();
+  render();
+}
+
+boot();
+</script>
+</body>
+</html>

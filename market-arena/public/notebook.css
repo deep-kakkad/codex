@@ -1,0 +1,335 @@
+/* Market Arena — working notebook.
+   A third build, parallel to the main app and to lens.html. The organising object is
+   the experiment card: prediction, what was held fixed, what changed, what the model
+   returned, what it means, and what to test with real people next. The same card is
+   the setup form, the debrief and the export, so there is one thing to learn.
+
+   Colour discipline: orange means "an action you can take" and nothing else. Blue,
+   plum, teal and ochre mean "contender 1..4" and nothing else — assigned by slot, so a
+   contender keeps its colour across every experiment in the log. Nothing decorative
+   uses either set. */
+
+:root {
+  /* paper and ink */
+  --paper:      #F5F1E8;
+  --paper-2:    #FBF8F2;
+  --paper-sunk: #EDE7DA;
+  --ink:        #1B1815;
+  --ink-2:      #5A524A;
+  --faint:      #8C8177;
+  --rule:       #DCD3C4;
+  --rule-firm:  #C4B9A6;
+
+  /* action — orange appears nowhere else */
+  --action:      #C9541F;
+  --action-ink:  #FFFFFF;
+  --action-soft: #F7E7DC;
+
+  /* contender identities, fixed by slot */
+  --id-1: #2D5B8E;  /* blue  */
+  --id-2: #6E3F73;  /* plum  */
+  --id-3: #1F6B63;  /* teal  */
+  --id-4: #8A6A1F;  /* ochre */
+
+  /* outcome, kept apart from both sets above */
+  --hit:       #2F6B43;
+  --hit-soft:  #E4EFE5;
+  --miss:      #A33224;
+  --miss-soft: #F7E4E1;
+
+  /* type */
+  --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  --sans:  "Instrument Sans", system-ui, -apple-system, sans-serif;
+  --mono:  "IBM Plex Mono", ui-monospace, Menlo, monospace;
+
+  /* 4 / 8 steps */
+  --s1: 4px;  --s2: 8px;  --s3: 12px; --s4: 16px;
+  --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px;
+
+  --r-card: 14px;
+  --r-in:   10px;
+  --max:    1200px;
+  --control: 44px;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 16px/1.6 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: var(--max); margin: 0 auto; padding-inline: var(--s5); }
+
+/* ---------------------------------------------------------------- chrome
+   Context sits quieter than the task: one rule, no fills, no colour, and a single
+   primary action that lives in the same place on every screen. */
+.nb-head {
+  position: sticky; top: 0; z-index: 30;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid var(--rule);
+}
+.nb-head-in {
+  max-width: var(--max); margin: 0 auto; padding: var(--s3) var(--s5);
+  display: flex; align-items: center; gap: var(--s4);
+}
+.nb-mark {
+  display: flex; align-items: center; gap: var(--s2);
+  font: 600 13px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink); text-decoration: none; white-space: nowrap;
+}
+.nb-mark svg { width: 20px; height: 20px; }
+.nb-proj {
+  font: 400 14px/1.3 var(--sans); color: var(--ink-2);
+  border-left: 1px solid var(--rule); padding-left: var(--s4);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1;
+}
+.nb-head .btn { margin-left: auto; }
+
+/* ---------------------------------------------------------------- controls */
+.btn {
+  min-height: var(--control); padding: 0 var(--s5);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2);
+  border: 1px solid var(--rule-firm); border-radius: var(--r-in);
+  background: var(--paper-2); color: var(--ink);
+  font: 500 15px/1 var(--sans); cursor: pointer;
+  transition: background .14s ease, border-color .14s ease;
+}
+.btn:hover { background: var(--paper-sunk); }
+.btn:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+
+.btn.primary {
+  background: var(--action); border-color: var(--action); color: var(--action-ink);
+  font-weight: 600;
+}
+.btn.primary:hover { background: #B1481A; border-color: #B1481A; }
+
+.btn.quiet {
+  min-height: 34px; padding: 0 var(--s3); background: none; border-color: transparent;
+  color: var(--ink-2); font-size: 14px;
+}
+.btn.quiet:hover { background: var(--paper-sunk); color: var(--ink); }
+
+/* ---------------------------------------------------------------- cover */
+.cover { padding-block: var(--s8) var(--s6); border-bottom: 1px solid var(--rule); }
+.cover h1 {
+  font: 400 clamp(38px, 6vw, 60px)/1.04 var(--serif);
+  letter-spacing: -.015em; margin: 0 0 var(--s4); text-wrap: balance; max-width: 18ch;
+}
+.cover .lede {
+  font: 400 18px/1.62 var(--serif); color: var(--ink-2); max-width: 60ch; margin: 0;
+}
+.cover .meta {
+  margin-top: var(--s5); display: flex; flex-wrap: wrap; gap: var(--s2) var(--s5);
+  font: 500 13px/1 var(--mono); color: var(--faint); letter-spacing: .04em;
+}
+.cover .meta b { color: var(--ink); font-weight: 600; }
+
+/* ---------------------------------------------------------------- the card */
+.exp {
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  border-radius: var(--r-card);
+  margin-block: var(--s6);
+  overflow: hidden;
+}
+.exp-head {
+  display: flex; align-items: baseline; gap: var(--s4); flex-wrap: wrap;
+  padding: var(--s5) var(--s5) var(--s4);
+  border-bottom: 1px solid var(--rule);
+}
+.exp-id {
+  font: 600 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--action);
+}
+.exp-title {
+  font: 500 clamp(22px, 2.6vw, 30px)/1.2 var(--sans);
+  letter-spacing: -.012em; margin: 0; flex: 1; min-width: 12ch;
+}
+.exp-when { font: 400 13px/1 var(--mono); color: var(--faint); }
+
+/* six regions, one per line of the method */
+.region { padding: var(--s5); border-bottom: 1px solid var(--rule); }
+.region:last-child { border-bottom: 0; }
+.region-label {
+  font: 600 11px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase;
+  color: var(--faint); margin: 0 0 var(--s3); display: flex; align-items: center; gap: var(--s2);
+}
+.region-label .n {
+  display: inline-grid; place-items: center; width: 17px; height: 17px;
+  border: 1px solid var(--rule-firm); border-radius: 50%; font-size: 9px; color: var(--ink-2);
+}
+.region p { margin: 0 0 var(--s3); }
+.region p:last-child { margin-bottom: 0; }
+.region .hint { font-size: 14px; color: var(--ink-2); }
+
+/* prediction */
+.pred-row { display: flex; flex-wrap: wrap; gap: var(--s2); margin-bottom: var(--s3); }
+.pred-opt {
+  min-height: var(--control); padding: 0 var(--s4);
+  display: inline-flex; align-items: center; gap: var(--s2);
+  border: 1px solid var(--rule-firm); border-radius: var(--r-in);
+  background: var(--paper); font: 500 15px/1 var(--sans); color: var(--ink); cursor: pointer;
+}
+.pred-opt .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--c, var(--faint)); }
+.pred-opt[aria-pressed="true"] { border-color: var(--ink); background: var(--paper-sunk); box-shadow: inset 0 0 0 1px var(--ink); }
+.pred-opt:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+
+textarea.nb, input.nb {
+  width: 100%; padding: var(--s3); background: var(--paper);
+  border: 1px solid var(--rule-firm); border-radius: var(--r-in);
+  font: 400 15px/1.55 var(--sans); color: var(--ink); resize: vertical;
+}
+textarea.nb:focus, input.nb:focus { outline: 2px solid var(--action); outline-offset: 1px; border-color: var(--action); }
+textarea.nb::placeholder, input.nb::placeholder { color: var(--faint); }
+
+/* verdict on the prediction, once the result is in */
+.verdict {
+  display: inline-flex; align-items: center; gap: var(--s2);
+  padding: var(--s2) var(--s3); border-radius: var(--r-in);
+  font: 600 13px/1 var(--mono); letter-spacing: .04em; margin-bottom: var(--s3);
+}
+.verdict.hit  { background: var(--hit-soft);  color: var(--hit); }
+.verdict.miss { background: var(--miss-soft); color: var(--miss); }
+/* A round too close to call cannot score a prediction either way. */
+.verdict.tie  { background: var(--paper-sunk); color: var(--ink-2); }
+
+/* held fixed / changed */
+.fixed-list { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--s2); }
+.fixed-list li {
+  display: flex; gap: var(--s3); align-items: baseline;
+  font-size: 15px; color: var(--ink-2);
+}
+.fixed-list .k {
+  font: 500 12px/1.5 var(--mono); color: var(--faint); letter-spacing: .04em;
+  min-width: 96px; text-transform: uppercase;
+}
+
+.change {
+  display: grid; gap: var(--s2); padding: var(--s4);
+  border: 1px solid var(--action); border-radius: var(--r-in); background: var(--action-soft);
+}
+.change .who { font: 600 13px/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; }
+.change .was, .change .now { font-size: 15px; }
+.change .was { color: var(--ink-2); text-decoration: line-through; text-decoration-color: var(--faint); }
+.change .now { color: var(--ink); font-weight: 500; }
+.change .arrow { font: 400 13px var(--mono); color: var(--action); }
+
+/* editable contenders in setup */
+.slots { display: grid; gap: var(--s3); }
+.slot {
+  display: grid; gap: var(--s2); padding: var(--s4);
+  border: 1px solid var(--rule); border-left: 3px solid var(--c, var(--rule-firm));
+  border-radius: var(--r-in); background: var(--paper);
+}
+.slot-head { display: flex; align-items: center; gap: var(--s2); }
+.slot-head .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--c); }
+.slot-head .nm { font: 600 15px/1 var(--sans); }
+.slot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--s2); }
+.slot label { font: 500 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--faint); display: block; margin-bottom: var(--s1); }
+.slot .edited input, .slot .edited textarea { border-color: var(--action); background: var(--action-soft); }
+
+/* result */
+.res-rows { display: grid; gap: var(--s3); }
+/* Wide enough for "Bought nothing", and names wrap rather than clip: a contender can
+   carry 30 characters and a truncated label is worse than a second line. */
+.res-row { display: grid; grid-template-columns: minmax(112px, 172px) 1fr auto; gap: var(--s3); align-items: center; }
+.res-name { font: 500 15px/1.3 var(--sans); display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }
+.res-name .dot { width: 10px; height: 10px; border-radius: 3px; background: var(--c); flex: none; position: relative; top: -1px; }
+.res-name span { min-width: 0; overflow-wrap: anywhere; }
+.res-track { height: 26px; background: var(--paper-sunk); border-radius: 5px; overflow: hidden; }
+.res-fill { display: block; height: 100%; background: var(--c, var(--faint)); border-radius: 5px; transition: width .5s cubic-bezier(.2,.7,.3,1); }
+.res-num { font: 500 14px/1 var(--mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.res-num b { font-weight: 600; font-size: 16px; }
+.res-num .of { color: var(--faint); font-size: 12px; display: block; margin-top: 3px; }
+.res-row.none .res-fill { background: repeating-linear-gradient(135deg, var(--faint) 0 3px, var(--rule-firm) 3px 6px); }
+
+.defn { margin-top: var(--s4); font-size: 14px; color: var(--ink-2); max-width: 74ch; }
+.defn b { color: var(--ink); font-weight: 600; }
+
+/* interpretation + next test */
+/* Exclude the eyebrow: `.interp p` outranks `.region-label` on specificity and would
+   otherwise restyle the label as body text. */
+.interp p:not(.region-label) { font: 400 16px/1.65 var(--sans); }
+.interp p:not(.region-label) + p { margin-top: var(--s3); }
+.next {
+  border-left: 3px solid var(--action); padding-left: var(--s4);
+  font: 400 16px/1.6 var(--sans);
+}
+.next b { font-weight: 600; }
+
+/* run bar */
+.runbar {
+  display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap;
+  padding: var(--s5); background: var(--paper-sunk);
+}
+.runbar .note { font-size: 14px; color: var(--ink-2); flex: 1; min-width: 14ch; }
+.runbar .status { font: 500 14px/1.4 var(--mono); color: var(--ink-2); }
+.runbar .status.error { color: var(--miss); }
+
+/* ---------------------------------------------------------------- log */
+.log-head {
+  display: flex; align-items: baseline; gap: var(--s4);
+  margin-top: var(--s8); padding-bottom: var(--s3); border-bottom: 1px solid var(--rule-firm);
+}
+.log-head h2 { font: 400 28px/1.2 var(--serif); margin: 0; }
+.log-head .count { font: 500 13px/1 var(--mono); color: var(--faint); margin-left: auto; }
+
+.entry {
+  border-bottom: 1px solid var(--rule); padding-block: var(--s4);
+  display: grid; grid-template-columns: 74px 1fr auto; gap: var(--s4); align-items: start;
+}
+.entry-id { font: 600 12px/1.5 var(--mono); letter-spacing: .1em; color: var(--action); }
+.entry-body { min-width: 0; }
+.entry-line { font-size: 15px; margin: 0 0 var(--s1); }
+.entry-line .em { font-weight: 600; }
+.entry-sub { font: 400 13px/1.5 var(--mono); color: var(--faint); margin: 0; }
+.entry .verdict { margin: 0; }
+
+.empty {
+  padding: var(--s7) var(--s5); text-align: center; color: var(--ink-2);
+  border: 1px dashed var(--rule-firm); border-radius: var(--r-card); background: var(--paper-2);
+}
+.empty p { margin: 0 0 var(--s2); }
+
+footer.nb-foot {
+  margin-top: var(--s8); padding-block: var(--s5) var(--s8);
+  border-top: 1px solid var(--rule); font-size: 14px; color: var(--faint);
+}
+footer.nb-foot a { color: var(--ink-2); }
+
+/* ---------------------------------------------------------------- phone */
+@media (max-width: 640px) {
+  .wrap { padding-inline: var(--s4); }
+  .nb-proj { display: none; }
+  .cover { padding-block: var(--s6) var(--s5); }
+  .region { padding: var(--s4); }
+  .res-row { grid-template-columns: 1fr auto; }
+  .res-track { grid-column: 1 / -1; order: 3; }
+  .entry { grid-template-columns: 1fr; gap: var(--s2); }
+  .entry > .verdict { justify-self: start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ---------------------------------------------------------------- export
+   The card is the export. Printing drops the chrome and the editors and keeps the
+   six regions, so a printed page and an on-screen card say the same thing. */
+@media print {
+  :root { --paper: #fff; --paper-2: #fff; --paper-sunk: #fff; }
+  .nb-head, .runbar, .btn, .no-print { display: none !important; }
+  body { font-size: 12pt; }
+  .exp { break-inside: avoid; border-color: #bbb; margin-block: 16pt; }
+  .cover { padding-block: 0 12pt; }
+  .entry { break-inside: avoid; }
+  a[href]::after { content: ""; }
+}
