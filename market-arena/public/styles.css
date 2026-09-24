@@ -88,8 +88,11 @@ h2{font:800 26px/1.2 var(--body);margin:0 0 4px;letter-spacing:-.015em}
 
 /* Template / mode picker */
 .picker-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
-.picker-card{display:block;text-align:left;background:var(--paper);border:1.5px solid var(--ink);padding:20px;cursor:pointer;text-decoration:none;color:inherit}
-.picker-card:hover{background:var(--accent)}
+.picker-card{position:relative;display:block;text-align:left;background:var(--paper);border:1.5px solid var(--ink);padding:20px 20px 20px 22px;cursor:pointer;text-decoration:none;color:inherit;transition:transform .12s ease,box-shadow .12s ease}
+.picker-card::before{content:"";position:absolute;inset:0 auto 0 0;width:0;background:var(--accent);transition:width .12s ease}
+.picker-card:hover,.picker-card:focus-visible{transform:translateY(-2px);box-shadow:4px 4px 0 var(--ink)}
+.picker-card:hover::before,.picker-card:focus-visible::before{width:6px}
+.picker-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .picker-card .kicker{font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:block;margin-bottom:6px}
 .picker-card h3{font:600 24px var(--display);margin:0 0 8px}
 .picker-card p{margin:0;color:var(--muted);font-size:14px}
@@ -764,3 +767,26 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 /* An invalid field says so where the user is looking, not only in the status line. */
 #builder .invalid{border-color:var(--bad);outline:2px solid color-mix(in srgb,var(--bad) 30%,transparent);outline-offset:1px}
 .fielderr{margin:4px 0 0;font:500 12.5px/1.45 var(--body);color:var(--bad)}
+
+/* ---- Picker: cases carry their own mark and tint, so four cases read as four
+   places to begin rather than four paragraphs. The tint is the only colour on a
+   card, and it never touches text, so contrast is never in question. ---- */
+.picker-card .card-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.picker-card .casemark{flex:none}
+.picker-card .card-top .kicker{margin:0}
+.picker-card .card-go{display:block;margin-top:14px;font:600 13px var(--mono);color:var(--tint,var(--ink));letter-spacing:.03em}
+.ownwrap{margin-top:44px;padding-top:32px;border-top:1px solid var(--line)}
+.ownwrap .picker-grid{grid-template-columns:minmax(240px,420px)}
+
+/* ---- Buyers, grouped by segment. Three people in one segment previously shared
+   nothing visually; now the group has a heading, a rule and a colour, and each
+   buyer's face carries that same colour, so membership reads without being read. ---- */
+.segblocks{display:grid;gap:30px}
+.segblock{display:grid;gap:12px}
+.segname{display:flex;align-items:center;gap:10px;margin:0;font:600 15px var(--display);
+  padding-bottom:8px;border-bottom:1.5px solid var(--seg)}
+.segdot{width:10px;height:10px;border-radius:3px;background:var(--seg);flex:none}
+.segcount{margin-left:auto;font:500 12px var(--mono);color:var(--muted);letter-spacing:.04em}
+.pcard{border-left:3px solid var(--seg)}
+.pcard-head .buyerface{flex:none}
+.padd{margin-top:4px}

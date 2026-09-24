@@ -15,7 +15,6 @@
   <div class="wrap">
     <div class="mast">
       <a class="brandmark" href="./"><span id="logoSlot"></span><h1>Market Arena</h1></a>
-      <p class="brief"><strong>Competitive message testing</strong><span>Put your pitch against the alternatives in front of the same buyers. See which one wins, and where the others lose people.</span></p>
     </div>
     <div class="toolbar">
       <button class="ghost hidden" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the buyers</button>
@@ -32,9 +31,14 @@
 <main>
   <section id="pickerSection">
     <div class="wrap">
-      <h2>Pick a starting point</h2>
-      <p class="sub">Every template ships with a full set of buyers and two example contenders. Edit any of it — names, segments, profiles, the ads themselves — before you run a round.</p>
+      <h2>Start from a ready-made case</h2>
+      <p class="sub">Each case comes with a market, a full panel of buyers and two example versions to edit. Nothing is fixed — change any of it before you run.</p>
       <div class="picker-grid" id="templateGrid"></div>
+      <div class="ownwrap">
+        <h2>Or describe your own market</h2>
+        <p class="sub">Start from an empty sheet and write the market, the buyers and the versions yourself.</p>
+        <div class="picker-grid" id="blankGrid"></div>
+      </div>
       <div id="savedWrap" class="hidden" style="margin-top:40px">
         <h2 style="font-size:22px">Your saved projects</h2>
         <p class="sub">Stored in this browser only, with every round you've run.</p>
@@ -54,12 +58,12 @@
 
     <section class="step" data-step="1">
       <div class="wrap">
-        <h2>Describe your market</h2>
-        <p class="sub">A title and a one-line brief for your own reference — buyers don't see this, only your ads.</p>
+        <h2>Set the scene</h2>
+        <p class="sub">Name this scenario and say what is going on in the market. This is for you and your team — buyers never see it, they only see the ads.</p>
         <div class="brand" style="--c:var(--accent);max-width:640px">
-          <label for="scenTitle">Market title</label>
+          <label for="scenTitle">Scenario name</label>
           <input id="scenTitle" class="name" maxlength="80">
-          <label for="scenBrief">Brief</label>
+          <label for="scenBrief">What is happening in this market?</label>
           <textarea id="scenBrief" maxlength="280" style="min-height:60px"></textarea>
         </div>
         <div class="step-go"><button class="ghost" data-goto="2">Next: buyers →</button></div>
@@ -72,20 +76,21 @@
         <p class="sub" id="personasSub">Segments come from whatever you type here — rename, add or remove freely.</p>
         <div class="panel-size" id="panelSize">
           <span>Panel size</span>
+          <button class="psize" data-size="4">4</button>
           <button class="psize" data-size="8">8</button>
           <button class="psize" data-size="12">12</button>
           <button class="psize" data-size="16">16</button>
         </div>
         <p class="caveat hidden" id="panelCaveat">Fewer than 8 buyers means a close split could just be noise — treat it as a direction to test further, not a final answer.</p>
-        <div class="personas-grid" id="personas"></div>
+        <div class="segblocks" id="personas"></div>
         <div class="step-go"><button class="ghost" data-goto="3">Next: pitches →</button></div>
       </div>
     </section>
 
     <section class="step" data-step="3">
       <div class="wrap">
-        <h2 id="editorTitle">Launch your contenders</h2>
-        <p class="sub">Each contender gets a name, a headline, a value proposition and a price. Every buyer sees all the ads side by side, then decides what to buy, or buys nothing.</p>
+        <h2 id="editorTitle">Write the versions you want to test</h2>
+        <p class="sub">Give each version a name, a headline, a value proposition and a price. Every buyer sees all of them side by side, then picks one — or walks away.</p>
         <div class="brands" id="brands"></div>
         <div class="adpreview" id="adPreview">
           <p class="ap-label">What the buyers will see</p>
@@ -292,7 +297,7 @@
 </footer>
 
 <script type="module">
-import { LOGO_MARK, personaIcon } from "./icons.js";
+import { LOGO_MARK, personaIcon, caseMark, caseTint, buyerFace, segmentTint } from "./icons.js";
 import { createResultsView, exportCsv, esc } from "./app-shared.js";
 import { findTeamProblem, findPersonaProblem } from "./validate.js";
 
@@ -331,17 +336,27 @@ async function init() {
 }
 
 function renderTemplateGrid() {
-  $("#templateGrid").innerHTML = TEMPLATES.map((t) => `
-    <button class="picker-card" data-tpl="${t.id}">
-      <span class="kicker">${esc(t.industry)}</span>
+  const card = (t) => `
+    <button class="picker-card" data-tpl="${t.id}" style="--tint:${caseTint(t.id)}">
+      <span class="card-top">${caseMark(t.id)}<span class="kicker">${esc(t.industry)}</span></span>
       <h3>${esc(t.scenario.title)}</h3>
       <p>${esc(t.scenario.brief)}</p>
-    </button>`).join("");
+      <span class="card-go">${t.id === "blank" ? "Start from scratch" : "Open this case"} &rarr;</span>
+    </button>`;
+  // The blank sheet is a different kind of decision from picking a case, so it gets
+  // its own group below rather than sitting as a fifth equal tile.
+  $("#templateGrid").innerHTML = TEMPLATES.filter((t) => t.id !== "blank").map(card).join("");
+  $("#blankGrid").innerHTML = TEMPLATES.filter((t) => t.id === "blank").map(card).join("");
+  $("#blankGrid").addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-tpl]"); if (!btn) return;
+    const t = TEMPLATES.find((x) => x.id === btn.dataset.tpl);
+    loadScenario({ scenario: { title: "", brief: "" }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) }, 1);
+  });
   $("#templateGrid").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-tpl]"); if (!btn) return;
     const t = TEMPLATES.find((x) => x.id === btn.dataset.tpl);
     loadScenario({ scenario: { title: t.scenario.title, brief: t.scenario.brief }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) },
-      t.id === "blank" ? 1 : 3);
+      1);
   });
 }
 function renderSavedGrid() {
@@ -364,8 +379,13 @@ function renderSavedGrid() {
   };
 }
 
+const DEFAULT_PANEL = 8;
 function loadScenario({ scenario, personas, teams, rounds }, startStep) {
   state = { scenario, personas, teams, rounds: rounds || [] };
+  // Keep every buyer the case shipped with. Panels open at 8, and sizing back up
+  // should hand back the written profiles rather than empty cards.
+  state.personaPool = personas.map((p) => ({ ...p }));
+  if (!rounds?.length && state.personas.length > DEFAULT_PANEL) resizePersonas(DEFAULT_PANEL);
   saveJSON(SESSION_KEY, state);
   showBuilder();
   view.resetOpen();
@@ -449,6 +469,11 @@ function resizePersonas(target) {
       state.personas.splice(state.personas.map((p) => p.segment || "").lastIndexOf(biggest), 1);
     }
   } else if (state.personas.length < target) {
+    const have = new Set(state.personas.map((p) => p.id));
+    for (const p of state.personaPool || []) {
+      if (state.personas.length >= target) break;
+      if (!have.has(p.id)) { state.personas.push({ ...p }); have.add(p.id); }
+    }
     const segments = [...new Set(state.personas.map((p) => p.segment).filter(Boolean))];
     while (state.personas.length < target) {
       const seg = segments.length ? segments[state.personas.length % segments.length] : "";
@@ -467,14 +492,23 @@ function renderPersonas() {
   $("#personasSub").textContent = `${state.personas.length}/${L.maxPersonas} buyers, minimum ${L.minPersonas}. Segments come from whatever you type here — rename, add or remove freely.`;
   document.querySelectorAll(".psize").forEach((b) => b.classList.toggle("active", +b.dataset.size === state.personas.length));
   $("#panelCaveat").classList.toggle("hidden", state.personas.length >= 8);
-  $("#personas").innerHTML = state.personas.map((p, i) => `
-    <div class="pcard" data-i="${i}">
-      <div class="pcard-head">${personaIcon(p)}<input class="pname" data-f="name" data-i="${i}" maxlength="${L.name}" value="${esc(p.name)}" placeholder="Name"></div>
+  const segOrder = [...new Set(state.personas.map((p) => p.segment || ""))];
+  const cardFor = (p, i) => `
+    <div class="pcard" data-i="${i}" style="--seg:${segmentTint(segOrder.indexOf(p.segment || ""))}">
+      <div class="pcard-head">${buyerFace(p, segOrder.indexOf(p.segment || ""), 44)}<input class="pname" data-f="name" data-i="${i}" maxlength="${L.name}" value="${esc(p.name)}" placeholder="Name"></div>
       <label>Segment</label><input data-f="segment" data-i="${i}" maxlength="${L.segment}" value="${esc(p.segment)}" placeholder="e.g. Price-sensitive SMB buyers">
       <label>Profile <span class="count" data-for="profile-${i}"></span></label>
       <textarea data-f="profile" data-i="${i}" id="profile-${i}" placeholder="Age, role or life stage, what they care about, what they're skeptical of.">${esc(p.profile)}</textarea>
       ${state.personas.length > L.minPersonas ? `<button class="premove" data-rm="${i}">Remove ${esc(p.name || "this buyer")}</button>` : ""}
-    </div>`).join("") + (state.personas.length < L.maxPersonas ? `<button class="padd" id="addPersona">+ Add a buyer</button>` : "");
+    </div>`;
+
+  $("#personas").innerHTML = segOrder.map((seg, si) => {
+    const members = state.personas.map((p, i) => [p, i]).filter(([p]) => (p.segment || "") === seg);
+    return `<section class="segblock" style="--seg:${segmentTint(si)}">
+      <h3 class="segname"><span class="segdot"></span>${esc(seg || "No segment yet")}<span class="segcount">${members.length} buyer${members.length === 1 ? "" : "s"}</span></h3>
+      <div class="personas-grid">${members.map(([p, i]) => cardFor(p, i)).join("")}</div>
+    </section>`;
+  }).join("") + (state.personas.length < L.maxPersonas ? `<button class="padd" id="addPersona">+ Add a buyer</button>` : "");
   document.querySelectorAll("#personas [data-f=profile]").forEach(updatePersonaCount);
 }
 function updatePersonaCount(el) {
@@ -512,7 +546,7 @@ function renderBrands() {
     </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a contender</button>` : "");
   document.querySelectorAll("#brands [data-f]").forEach(updateBrandCount);
   $("#run").textContent = `Run round ${state.rounds.length + 1}`;
-  $("#editorTitle").textContent = state.rounds.length ? `Rework your contenders for round ${state.rounds.length + 1}` : "Launch your contenders";
+  $("#editorTitle").textContent = state.rounds.length ? `Rework your versions for round ${state.rounds.length + 1}` : "Write the versions you want to test";
   renderPreview();
 }
 // The same cards the report will show, filled from whatever is typed right now —

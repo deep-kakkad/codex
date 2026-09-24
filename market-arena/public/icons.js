@@ -94,3 +94,93 @@ export function checkIcon(size = 14) {
 export function crossIcon(size = 14) {
   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>`;
 }
+
+// A mark per starting case, so the picker reads as four distinct places to begin
+// rather than four paragraphs. Hand-drawn in the same 24-unit grid as the archetype
+// icons above; the tint is the case's own, and it is the only colour on the card.
+const CASE_MARKS = {
+  "cpg-coffee": { tint: "#7A4A21", d: "M4 8h11v7a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z M15 10h3a2.5 2.5 0 0 1 0 5h-3 M7 2v3 M11 2v3" },
+  "saas-projectflow": { tint: "#2D5B8E", d: "M4 5h7v6H4z M13 5h7v3h-7z M13 13h7v6h-7z M4 13h7v6H4z" },
+  "retail-dtc": { tint: "#6E3F73", d: "M6 7h12l1 13H5z M9 7V5a3 3 0 0 1 6 0v2 M9 11v1 M15 11v1" },
+  "fintech-app": { tint: "#1F6B63", d: "M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z M10 17h4 M9 7h6 M9 10h6" },
+  blank: { tint: "#6B6B66", d: "M6 3h8l4 4v14H6z M14 3v4h4 M9 12h6 M9 16h4" },
+};
+
+export const caseMark = (id, size = 30) => {
+  const m = CASE_MARKS[id] || CASE_MARKS.blank;
+  return `<svg class="casemark" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" aria-hidden="true" style="--tint:${m.tint}">
+    ${m.d.split(" M").map((seg, i) => `<path d="${i ? "M" + seg : seg}" stroke="var(--tint)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>`).join("")}
+  </svg>`;
+};
+export const caseTint = (id) => (CASE_MARKS[id] || CASE_MARKS.blank).tint;
+
+/* ---------------------------------------------------------------------------
+   Buyer faces.
+
+   Drawn here rather than fetched, for three reasons: a buyer profile can describe
+   a real customer segment, and sending that to a third-party avatar service would
+   leak it; an external request per buyer is 16 requests that can fail; and the app
+   has no build step to bundle an avatar package into.
+
+   DiceBear's CC0 styles (Lorelei, Notionists, Open Peeps) would be the off-the-shelf
+   answer if those constraints ever change — public domain, no attribution owed.
+
+   Everything is deterministic from the buyer's id, so a face never changes under
+   the user, and the ring colour is the segment's, so buyers in the same segment
+   read as a group at a glance. --------------------------------------------------- */
+
+// Segment tints, assigned by the segment's position in the panel. Distinct in hue
+// and roughly matched in lightness so no segment looks more important than another.
+export const SEGMENT_TINTS = ["#2D5B8E", "#6E3F73", "#1F6B63", "#8A5A1F", "#7A3B4E", "#3F5B2C"];
+export const segmentTint = (i) => SEGMENT_TINTS[i % SEGMENT_TINTS.length];
+
+const SKIN = ["#F2C9A0", "#D9A273", "#B07A4E", "#8A5A36", "#6B4226", "#F7DCC0"];
+const HAIR_COLOR = ["#2B211A", "#4A3526", "#6E4B2A", "#1C1C1C", "#8A6A45", "#3A2F2A"];
+// Each entry is drawn over the head, in the 0-48 box the head occupies.
+const HAIR = [
+  'M10 22a14 14 0 0 1 28 0v-3a14 14 0 0 0-28 0z',                      // short crop
+  'M10 24a14 14 0 0 1 28 0v-2c0-9-6-13-14-13S10 13 10 22z M9 24c0 8 1 12 2 14l2-10z M39 24c0 8-1 12-2 14l-2-10z', // long
+  'M11 20a13 13 0 0 1 26 0c0 2-2-4-13-4S11 22 11 20z',                  // wave
+  'M12 21c2-8 8-11 12-11s10 3 12 11c0 0-3-5-12-5s-12 5-12 5z M17 9c2-3 12-3 14 0', // bun-ish
+  'M10 23a14 14 0 0 1 28 0c0-10-5-14-14-14S10 13 10 23z M14 12c4 4 16 4 20 0', // side part
+  'M12 22a12 12 0 0 1 24 0c0-1-1-7-12-7s-12 6-12 7z M36 22c3 1 4 4 3 7',  // tight curls
+];
+const EYES = [
+  'M18 26h3 M27 26h3',                                                  // calm line
+  'M19.5 26a1.6 1.6 0 1 0 0-.1z M28.5 26a1.6 1.6 0 1 0 0-.1z',          // round
+  'M17.5 27c1-1.6 3-1.6 4 0 M26.5 27c1-1.6 3-1.6 4 0',                  // upturned
+];
+const MOUTH = ['M20 34c2 2 6 2 8 0', 'M21 34h6', 'M20 33c2 3 6 3 8 0 M20 33h8'];
+const BROW = ['M17 22c2-1 4-1 5 0 M26 22c1-1 3-1 5 0', 'M17 22h5 M26 22h5'];
+
+// Small stable string hash. Same buyer, same face, every render and every device.
+function hash(str) {
+  let h = 2166136261;
+  for (let i = 0; i < String(str).length; i++) { h ^= String(str).charCodeAt(i); h = Math.imul(h, 16777619); }
+  return Math.abs(h);
+}
+
+export function buyerFace(persona, segmentIndex = 0, size = 48) {
+  const h = hash(persona?.id || persona?.name || "buyer");
+  const skin = SKIN[h % SKIN.length];
+  const hair = HAIR[(h >> 3) % HAIR.length];
+  const hairC = HAIR_COLOR[(h >> 6) % HAIR_COLOR.length];
+  const eyes = EYES[(h >> 9) % EYES.length];
+  const mouth = MOUTH[(h >> 12) % MOUTH.length];
+  const brow = BROW[(h >> 15) % BROW.length];
+  const tint = segmentTint(segmentIndex);
+  const label = persona?.name ? `${persona.name}${persona.segment ? `, ${persona.segment}` : ""}` : "Buyer";
+  return `
+<svg class="buyerface" width="${size}" height="${size}" viewBox="0 0 48 48" role="img" aria-label="${String(label).replace(/"/g, "&quot;")}">
+  <circle cx="24" cy="24" r="23" fill="${tint}" opacity="0.14"/>
+  <circle cx="24" cy="24" r="23" fill="none" stroke="${tint}" stroke-width="2"/>
+  <path d="M13 44c1.5-7 5.5-10 11-10s9.5 3 11 10z" fill="${tint}" opacity="0.55"/>
+  <ellipse cx="24" cy="26" rx="11" ry="12.5" fill="${skin}"/>
+  <path d="${hair}" fill="${hairC}"/>
+  <g stroke="#2B211A" stroke-width="1.6" stroke-linecap="round" fill="none">
+    <path d="${brow}" opacity="0.75"/>
+    <path d="${eyes}"/>
+    <path d="${mouth}"/>
+  </g>
+</svg>`;
+}
