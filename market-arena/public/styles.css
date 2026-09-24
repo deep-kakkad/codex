@@ -967,3 +967,65 @@ button.whatis{cursor:pointer}
   text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 .hero-brief .ba{margin:0;font:400 18px/1.55 var(--body)}
 .hero-brief .bn{margin:10px 0 0;font:400 var(--t-small)/1.5 var(--body);color:var(--muted);font-style:italic}
+
+/* ---- Account control and sign-in ---- */
+.acctbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.acct-mail{font:400 var(--t-small) var(--body);color:var(--muted);max-width:22ch;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-credits{font:600 var(--t-anno) var(--mono);letter-spacing:.06em;
+  background:var(--ink);color:var(--paper);padding:5px 9px;white-space:nowrap}
+
+.authwrap{position:fixed;inset:0;z-index:70;display:grid;place-items:center;padding:20px}
+.authwrap.hidden{display:none}
+.authscrim{position:absolute;inset:0;background:rgba(21,21,21,.42)}
+.authbox{position:relative;width:min(420px,100%);background:var(--paper);
+  border:1.5px solid var(--ink);padding:28px;max-height:90vh;overflow-y:auto}
+.authx{position:absolute;top:10px;right:12px;width:34px;height:34px;border:none;background:none;
+  font:400 22px/1 var(--body);color:var(--muted);cursor:pointer}
+.authx:hover{color:var(--ink)}
+.authbox h2{margin:0 0 6px;font:600 26px var(--display);letter-spacing:-.015em}
+.authsub{margin:0 0 20px;font:400 var(--t-small)/1.5 var(--body);color:var(--muted)}
+.authgoogle{width:100%;min-height:46px;border:1.5px solid var(--line);background:var(--paper);
+  font:500 15px var(--body);color:var(--ink);cursor:pointer}
+.authgoogle:hover{border-color:var(--ink)}
+.author{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--faint);
+  font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.author::before,.author::after{content:"";flex:1;height:1px;background:var(--line)}
+.authbox label{display:block;margin:0 0 5px;font:500 11px var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--faint)}
+.authbox input{width:100%;padding:11px;margin-bottom:14px;border:1px solid var(--line);
+  background:var(--paper);font:400 var(--t-body) var(--body)}
+.authbox input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.authmsg{margin:0 0 12px;min-height:1.2em;font:400 var(--t-small)/1.45 var(--body);color:var(--muted)}
+.authmsg.bad{color:var(--bad)}
+.authgo{width:100%;min-height:46px;border:none;background:var(--ink);color:var(--paper);
+  font:600 15px var(--body);cursor:pointer}
+.authgo:hover{background:var(--accent)}
+.authgo[disabled]{opacity:.5;cursor:not-allowed}
+.authswap{margin:16px 0 0;text-align:center;font:400 var(--t-small) var(--body);color:var(--muted)}
+.linkish{background:none;border:none;padding:0;font:inherit;color:var(--accent);
+  text-decoration:underline;cursor:pointer}
+
+/* ---- Ask Market Arena ---- */
+.asksec{border:1.5px solid var(--ink);padding:22px;margin:34px 0}
+.ask-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.ask-head h3{margin:0;font:600 var(--t-h3) var(--display)}
+.ask-cost{margin-left:auto;font:500 var(--t-anno) var(--mono);color:var(--faint);letter-spacing:.05em}
+.ask-sub{margin:0 0 16px;font:400 var(--t-small)/1.5 var(--body);color:var(--muted);max-width:72ch}
+.ask-row{display:flex;gap:10px;flex-wrap:wrap}
+.ask-row input{flex:1;min-width:16ch;padding:12px;border:1px solid var(--line);
+  background:var(--paper);font:400 var(--t-body) var(--body)}
+.ask-row input:focus{outline:2px solid var(--accent);outline-offset:1px}
+.ask-go{min-height:46px;padding:0 20px;border:none;background:var(--ink);color:var(--paper);
+  font:600 15px var(--body);cursor:pointer}
+.ask-go:hover{background:var(--accent)}
+.ask-go[disabled]{opacity:.5;cursor:not-allowed}
+.ask-suggest{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ask-chip{padding:6px 11px;border:1px solid var(--line);background:var(--paper);
+  font:400 13px var(--body);color:var(--muted);cursor:pointer}
+.ask-chip:hover{border-color:var(--ink);color:var(--ink)}
+.ask-answer{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.ask-q{margin:0 0 8px;font:600 var(--t-body) var(--body)}
+.ask-a{margin:0;font:400 var(--t-body)/1.6 var(--body);white-space:pre-wrap}
+.ask-meta{margin:12px 0 0;font:400 11px var(--mono);color:var(--faint)}
+.ask-locked{font:400 var(--t-small)/1.55 var(--body);color:var(--muted)}

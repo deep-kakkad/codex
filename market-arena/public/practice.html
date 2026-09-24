@@ -16,6 +16,7 @@
     <div class="mast">
       <a class="brandmark" href="./"><span id="logoSlot"></span><h1>Market Arena</h1></a>
     </div>
+    <div class="acctbar" id="acctBar"></div>
     <div class="toolbar">
       <button class="ghost hidden" id="toggleDir" aria-expanded="false" aria-controls="directory">Meet the buyers</button>
       <button class="ghost hidden" id="changeScenario">Switch project</button>
@@ -159,6 +160,18 @@
   <div id="results" class="hidden">
     <!-- The outcome and the next action, before any section heading. -->
     <div class="wrap"><section class="hero-res hidden" id="hero" aria-live="polite"></section></div>
+
+    <div class="wrap">
+      <section class="asksec hidden" id="askSec">
+        <div class="ask-head">
+          <h3>Ask about this round</h3>
+          <span class="ask-cost" id="askCost"></span>
+        </div>
+        <p class="ask-sub">Answers come from this round's numbers only. If the data can't
+          settle your question, it will say so rather than guess.</p>
+        <div id="askBody"></div>
+      </section>
+    </div>
 
     <section class="rsec dark-sec" id="secMarket">
       <div class="wrap">
@@ -314,6 +327,7 @@ import { LOGO_MARK, personaIcon, caseMark, caseTint, buyerFace, segmentTint } fr
 import { createResultsView, exportCsv, esc } from "./app-shared.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
+import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn } from "./account.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
 const view = createResultsView();
@@ -802,6 +816,72 @@ $("#share").addEventListener("click", async () => {
 });
 
 init();
+
+/* ---------------------------------------------------------------- account + ask */
+mountAccountBar($("#acctBar"));
+initAccount();
+
+const ASK_IDEAS = [
+  "Why did the leading version win?",
+  "Which segment should I aim at?",
+  "Is the gap big enough to act on?",
+  "What should I change next?",
+];
+
+const currentRound = () => (state?.rounds?.length ? state.rounds[state.rounds.length - 1] : null);
+
+function renderAsk() {
+  const sec = $("#askSec");
+  if (!sec) return;
+  if (!currentRound()) { sec.classList.add("hidden"); return; }
+  sec.classList.remove("hidden");
+  const m = account();
+  $("#askCost").textContent = m.signedIn
+    ? `${m.costs?.ask ?? 10} credits · you have ${m.balance}`
+    : `${m.costs?.ask ?? 10} credits per question`;
+  $("#askBody").innerHTML = m.signedIn
+    ? `<div class="ask-row">
+         <input id="askQ" maxlength="500" aria-label="Your question"
+           placeholder="e.g. why did Price-sensitive buyers reject the leader?">
+         <button class="ask-go" id="askGo">Ask</button>
+       </div>
+       <div class="ask-suggest">${ASK_IDEAS.map((q) => `<button class="ask-chip" data-ask-idea="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+       <div id="askOut"></div>`
+    : `<p class="ask-locked">Sign in to ask questions about your results. New accounts start
+         with 100 credits, which is ten questions.
+         <button class="linkish" data-ask-signin>Sign in or create an account</button></p>`;
+}
+
+document.addEventListener("click", async (e) => {
+  if (e.target.closest("[data-ask-signin]")) return openSignIn("login");
+  const idea = e.target.closest("[data-ask-idea]");
+  if (idea) { const i = $("#askQ"); if (i) { i.value = idea.dataset.askIdea; i.focus(); } return; }
+  if (!e.target.closest("#askGo")) return;
+
+  const input = $("#askQ"), q = input?.value.trim(), out = $("#askOut"), btn = $("#askGo");
+  const round = currentRound();
+  if (!q) return input?.focus();
+  if (!round) return;
+
+  btn.disabled = true;
+  out.innerHTML = `<div class="ask-answer"><p class="ask-q">${esc(q)}</p><p class="ask-a">Reading the round…</p></div>`;
+  try {
+    const res = await fetch("/api/ask", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ question: q, round }) });
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.error || "That didn't work.");
+    out.innerHTML = `<div class="ask-answer"><p class="ask-q">${esc(q)}</p><p class="ask-a">${esc(d.answer)}</p>
+      <p class="ask-meta">${esc(d.model)} · ${d.ms}ms · ${d.charged} credits · ${d.balance} left</p></div>`;
+  } catch (err) {
+    out.innerHTML = `<div class="ask-answer"><p class="ask-q">${esc(q)}</p>
+      <p class="ask-a" style="color:var(--bad)">${esc(err.message)}</p></div>`;
+  } finally {
+    btn.disabled = false;
+    (await import("./account.js")).refresh();
+  }
+});
+
+onAccountChange(() => renderAsk());
 </script>
 </body>
 </html>
