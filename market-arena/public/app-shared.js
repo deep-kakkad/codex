@@ -19,6 +19,19 @@ export const OBJ_ORDER = ["price", "trust", "relevance", "unclear"];
 export const OBJ_NOUN = { price: "the price", trust: "doubt about the claims", relevance: "poor fit with their needs", unclear: "an unclear offer", none: "no real objection" };
 export const OBJ_CLAUSE = { price: "the price feels too high", trust: "buyers don't believe the claims", relevance: "it doesn't fit their needs or habits", unclear: "buyers don't understand the offer", none: "buyers had no real objection" };
 export const OBJ_FIX = { price: "the price or how it's framed", trust: "proof or credibility behind the claim", relevance: "who the message is speaking to", unclear: "how clearly the offer is explained" };
+// Rounds saved before the engine returned counts don't carry them, so derive the
+// count from the buyer records rather than showing nothing for an old round.
+const panelOf = (r) => r.panel ?? r.customers.length;
+const picksFor = (r, id) => {
+  const src = id === "none" ? r.noPurchase : r.brands.find((b) => b.id === id);
+  return src?.picks ?? r.customers.filter((c) => c.purchase === id).length;
+};
+// `purchase` is an argmax, so a buyer whose top two were nearly level is reported as
+// having decided. Measurement says these are exactly the buyers who flip between
+// identical runs, so name them instead of pretending the pick is firm.
+const TOSSUP = .1;
+const isTossup = (c) => (c.margin != null ? c.margin < TOSSUP : c.confidence < .5);
+
 // Which contender fields the round-over-round diff compares, in display order.
 const DIFF_FIELDS = [["brand", "Name"], ["headline", "Headline"], ["valueProp", "Value proposition"], ["price", "Price"]];
 
@@ -119,8 +132,12 @@ export function createResultsView() {
 
     $("#legend").innerHTML = r.brands.map((b, i) => `
       <div><span class="sw" style="background:${COLORS[r.slots[i]]}"></span><span>${esc(b.brand)}</span>
-      <span class="pct num">${pct(b.share)}</span>${deltaChip(b.share, prev ? bySlot(prev, r.slots[i])?.share : null)}</div>`).join("") +
-      `<div class="none-entry"><span class="sw" style="background:repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"></span><span>Bought nothing</span><span class="pct num">${pct(r.noPurchase.share)}</span></div>`;
+      <span class="pct num">${pct(b.share)}</span><span class="picks num">${picksFor(r, b.id)} of ${panelOf(r)}</span>${deltaChip(b.share, prev ? bySlot(prev, r.slots[i])?.share : null)}</div>`).join("") +
+      `<div class="none-entry"><span class="sw" style="background:repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"></span><span>Bought nothing</span><span class="pct num">${pct(r.noPurchase.share)}</span><span class="picks num">${picksFor(r, "none")} of ${panelOf(r)}</span></div>`;
+
+    // Both numbers above are real and they disagree on purpose. Saying so here is
+    // cheaper than letting a reader decide the report is broken.
+    $("#numNote").innerHTML = `The percentage is <b>average choice probability</b> — across all ${panelOf(r)} buyers, how likely each was to pick that contender. The count is <b>outright picks</b>: buyers whose top choice it was. They differ because a buyer leaning 40/35/25 contributes to all three percentages but is counted only once.`;
 
     renderExplain(r, prev);
     renderPitches(r);
@@ -128,10 +145,10 @@ export function createResultsView() {
     $("#segments").innerHTML = r.segments.map((s) => `
       <div class="seg"><h3>${esc(s)}</h3><div class="people">
         ${r.customers.filter((c) => c.segment === s).map((c, k) => {
-          const undecided = c.confidence < .5;
+          const undecided = isTossup(c);
           return `<button class="person" data-p="${c.id}" aria-expanded="${open === c.id}">
             <span class="token ${undecided ? "undecided" : ""}" style="--tc:${animate ? "#3A3934" : color(c.purchase)};--tt:${inkOn(c.purchase) ? "var(--ink)" : "#fff"};--d:${k * 120 + r.segments.indexOf(s) * 60}ms" data-final="${color(c.purchase)}">${personaIcon(c)}</span>
-            <span><span class="pname">${esc(c.name)}</span>${undecided ? `<span class="tag">Undecided</span>` : ""}
+            <span><span class="pname">${esc(c.name)}</span>${undecided ? `<span class="tag">Too close to call</span>` : ""}
             <span class="pchoice" style="display:block">Bought ${esc(nameOf(c.purchase))}</span>
             <span class="conf" aria-label="Confidence ${pct(c.confidence)}"><i style="width:${pct(c.confidence)}"></i></span></span>
           </button>`;
@@ -190,12 +207,23 @@ export function createResultsView() {
     const n = r.customers.length;
     const lines = [];
 
+    const winPicks = picksFor(r, win.id), secondPicks = picksFor(r, second.id);
     if (gapPts < 5)
-      lines.push(`<b>${esc(win.brand)}</b> and <b>${esc(second.brand)}</b> finished level — ${pct(win.share)} against ${pct(second.share)}. Across ${n} buyers a gap that small isn't a result you can act on; treat it as a tie.`);
+      lines.push(`<b>${esc(win.brand)}</b> and <b>${esc(second.brand)}</b> finished level — ${pct(win.share)} against ${pct(second.share)}, picked outright by ${winPicks} and ${secondPicks} of ${n} buyers. A gap that small isn't a result you can act on; treat it as a tie.`);
     else
-      lines.push(`<b>${esc(win.brand)}</b> won this round with ${pct(win.share)} of buyer choices, ${gapPts} points clear of ${esc(second.brand)} on ${pct(second.share)}.`);
+      lines.push(`<b>${esc(win.brand)}</b> won this round on ${pct(win.share)} average choice probability, ${gapPts} points clear of ${esc(second.brand)} on ${pct(second.share)}. ${winPicks} of ${n} buyers picked it outright.`);
 
-    if (r.noPurchase.share >= .05) lines.push(`${pct(r.noPurchase.share)} of the panel bought nothing at all.`);
+    // The two statistics can disagree sharply here — a panel can carry real probability
+    // of walking away while nobody actually walks — so say which one is being quoted.
+    const nonePicks = picksFor(r, "none");
+    if (nonePicks > 0)
+      lines.push(`${nonePicks} of ${n} buyers bought nothing at all.`);
+    else if (r.noPurchase.share >= .05)
+      lines.push(`No buyer walked away outright, but the panel still carried ${pct(r.noPurchase.share)} average probability of buying nothing — the doubt is there even where it didn't decide anyone.`);
+
+    const tossups = r.customers.filter(isTossup).length;
+    if (tossups)
+      lines.push(`${tossups} of ${n} buyer${tossups === 1 ? " was" : "s were"} close to a coin flip between their top two choices. Those are the picks most likely to land differently on an identical re-run.`);
 
     // The final stage is the share itself, so comparing it would just restate the
     // first line; the useful question is where upstream the two separated.

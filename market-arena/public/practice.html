@@ -156,6 +156,8 @@
         <div id="flags"></div>
         <div class="sharebar" id="sharebar" aria-hidden="true"></div>
         <div class="legend" id="legend"></div>
+        <!-- Two different statistics sit in this section; this says which is which. -->
+        <p class="numnote" id="numNote"></p>
         <div class="explain" id="explain"></div>
       </div>
     </section>
@@ -293,6 +295,7 @@
 <script type="module">
 import { LOGO_MARK, personaIcon } from "./icons.js";
 import { createResultsView, exportCsv, esc } from "./app-shared.js";
+import { findTeamProblem, findPersonaProblem } from "./validate.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
 const view = createResultsView();
@@ -554,18 +557,52 @@ $("#saveScenario").addEventListener("click", () => {
   setStatus(state.rounds.length ? `Project saved in this browser, with ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""}.` : "Project saved in this browser.", false);
 });
 
+// Put the message on the field that is wrong, switch to the step holding it, and
+// focus it. A global status line makes the user map "Contender 2" back to a card.
+function clearFieldProblems() {
+  document.querySelectorAll("#builder .invalid").forEach((el) => {
+    el.classList.remove("invalid"); el.removeAttribute("aria-invalid"); el.removeAttribute("aria-describedby");
+  });
+  document.querySelectorAll("#builder .fielderr").forEach((el) => el.remove());
+}
+function showFieldProblem(problem, kind) {
+  clearFieldProblems();
+  goToStep(kind === "team" ? 3 : 2);
+  setStatus(problem.message, true);
+  const el = problem.index == null ? null : kind === "team"
+    ? $(`#${problem.field}-${problem.index}`)
+    : document.querySelector(`#personas [data-i="${problem.index}"][data-f="${problem.field}"]`);
+  if (!el) return;
+  const id = `err-${kind}-${problem.index}-${problem.field}`;
+  const msg = document.createElement("p");
+  msg.className = "fielderr"; msg.id = id; msg.textContent = problem.message;
+  el.classList.add("invalid");
+  el.setAttribute("aria-invalid", "true");
+  el.setAttribute("aria-describedby", id);
+  el.after(msg);
+  el.focus({ preventScroll: true });
+  el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+}
+
 async function runRound() {
+  // Validate before anything announces work. The old order set the status line and
+  // the skeleton first, so an invalid round showed "Showing your ads to 12 buyers…"
+  // for a round that had not started and could not start.
+  const teams = state.teams.map(({ brand, headline, valueProp, price }) => ({ brand, headline, valueProp, price }));
+  const personas = state.personas.map(({ id, name, segment, profile }) => ({ id, name, segment, profile }));
+  const teamProblem = findTeamProblem(teams);
+  if (teamProblem) return showFieldProblem(teamProblem, "team");
+  const personaProblem = findPersonaProblem(personas);
+  if (personaProblem) return showFieldProblem(personaProblem, "persona");
+  clearFieldProblems();
+
   const buttons = [$("#run"), $("#runBar")];
   buttons.forEach((b) => (b.disabled = true));
   setStatus(`Showing your ads to ${state.personas.length} buyers…`, false);
   view.showSkeleton();
   try {
     const res = await fetch("/api/round", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        mode: "practice",
-        teams: state.teams.map(({ brand, headline, valueProp, price }) => ({ brand, headline, valueProp, price })),
-        personas: state.personas.map(({ id, name, segment, profile }) => ({ id, name, segment, profile })),
-      }) });
+      body: JSON.stringify({ mode: "practice", teams, personas }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "The round didn't run. Try again.");
     data.slots = state.teams.map((t) => t.slot);

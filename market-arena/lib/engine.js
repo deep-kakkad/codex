@@ -1,13 +1,18 @@
 // Runs one market round against TypeSafe's Jev model.
 // One request per customer: every brand's ad is judged in parallel inside it.
 import { PERSONAS, OBJECTIONS } from "./scenario.js";
+import { findTeamProblem, findPersonaProblem } from "../public/validate.js";
 
 const API = "https://api.typesafe.ai/v1/systemone";
 // Pinned, not `jev-latest`: a moving alias can change every number in a saved
 // round with no deploy on our side. Upgrade deliberately, re-running the fixtures.
 const MODEL = process.env.TYPESAFE_MODEL || "jev-1.13.0";
-export const LIMITS = { brand: 30, headline: 90, valueProp: 280, price: 50, minTeams: 2, maxTeams: 4 };
-export const PERSONA_LIMITS = { minPersonas: 4, maxPersonas: 16, name: 30, segment: 40, profile: 260 };
+// Validation rules live in public/validate.js so the browser can run exactly the same
+// checks before it shows a loading state. Re-exported here so handlers.js and the
+// functions keep importing them from one place.
+export { LIMITS, PERSONA_LIMITS } from "../public/validate.js";
+export const validateTeams = (teams) => findTeamProblem(teams)?.message ?? null;
+export const validatePersonas = (personas) => findPersonaProblem(personas)?.message ?? null;
 
 async function ask(state, questions, attempt = 0) {
   const res = await fetch(API, {
@@ -21,44 +26,6 @@ async function ask(state, questions, attempt = 0) {
   }
   if (!res.ok) throw new Error(`TypeSafe returned ${res.status}: ${(await res.text()).slice(0, 200)}`);
   return res.json();
-}
-
-const FIELD = { brand: "name", headline: "headline", valueProp: "value proposition", price: "price" };
-export function validateTeams(teams) {
-  if (!Array.isArray(teams) || teams.length < LIMITS.minTeams || teams.length > LIMITS.maxTeams)
-    return `Enter between ${LIMITS.minTeams} and ${LIMITS.maxTeams} contenders.`;
-  const seen = new Set();
-  for (const [i, t] of teams.entries()) {
-    for (const f of Object.keys(FIELD)) {
-      const v = typeof t?.[f] === "string" ? t[f].trim() : "";
-      if (!v) return `Contender ${i + 1} is missing its ${FIELD[f]}.`;
-      if (v.length > LIMITS[f]) return `Contender ${i + 1}'s ${FIELD[f]} is over ${LIMITS[f]} characters.`;
-    }
-    const key = t.brand.trim().toLowerCase();
-    if (seen.has(key)) return `Two contenders are called "${t.brand.trim()}". Give each one its own name.`;
-    seen.add(key);
-  }
-  return null;
-}
-
-const PFIELD = { name: "name", segment: "segment", profile: "profile" };
-export function validatePersonas(personas) {
-  if (personas == null) return null;
-  const L = PERSONA_LIMITS;
-  if (!Array.isArray(personas) || personas.length < L.minPersonas || personas.length > L.maxPersonas)
-    return `Enter between ${L.minPersonas} and ${L.maxPersonas} buyers.`;
-  const seen = new Set();
-  for (const [i, p] of personas.entries()) {
-    for (const f of Object.keys(PFIELD)) {
-      const v = typeof p?.[f] === "string" ? p[f].trim() : "";
-      if (!v) return `Buyer ${i + 1} is missing a ${PFIELD[f]}.`;
-      if (v.length > L[f]) return `Buyer ${i + 1}'s ${PFIELD[f]} is over ${L[f]} characters.`;
-    }
-    const key = String(p.id ?? i);
-    if (seen.has(key)) return `Two buyers share the same id.`;
-    seen.add(key);
-  }
-  return null;
 }
 
 function normalizePersonas(personas) {

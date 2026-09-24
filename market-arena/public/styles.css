@@ -121,6 +121,13 @@ h2{font:800 26px/1.2 var(--body);margin:0 0 4px;letter-spacing:-.015em}
 .legend div{display:flex;align-items:baseline;gap:8px}
 .sw{width:12px;height:12px;display:inline-block;flex:none;transform:translateY(1px)}
 .legend .pct{font:600 26px var(--mono)}
+/* The outright-picks count sits beside the probability, deliberately quieter:
+   same row, subordinate weight, so the two read as one fact with two measures. */
+.legend .picks{font:500 12px var(--mono);color:var(--muted);letter-spacing:.02em;white-space:nowrap}
+/* Tighten the legend only when the note follows it, so the two read as one block. */
+.legend:has(+ .numnote){margin-bottom:12px}
+.numnote{margin:0 0 30px;font:400 13px/1.55 var(--body);color:var(--muted);max-width:72ch}
+.numnote b{font-weight:600;color:var(--ink)}
 .roundnote{margin:0 0 14px;font:600 13px var(--mono);color:var(--accent)}
 .delta{font:500 13px var(--mono);padding:1px 6px;border-radius:3px}
 .up{background:var(--accent);color:var(--ink)}
@@ -753,3 +760,7 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
   a[href]{text-decoration:none;color:inherit}
   section, #results > div{break-inside:avoid-page}
 }
+
+/* An invalid field says so where the user is looking, not only in the status line. */
+#builder .invalid{border-color:var(--bad);outline:2px solid color-mix(in srgb,var(--bad) 30%,transparent);outline-offset:1px}
+.fielderr{margin:4px 0 0;font:500 12.5px/1.45 var(--body);color:var(--bad)}
