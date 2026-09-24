@@ -3,6 +3,14 @@
   --good:#3D7A4F; --bad:#C0392B;
   --b1:#2D5FBF; --b2:#B23A48; --b3:#1F8B6E; --b4:#C98A1F; --none:#CFC8B6;
   --display:"Instrument Sans",system-ui,-apple-system,sans-serif; --body:"Instrument Sans",system-ui,-apple-system,sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  /* Type scale. Four roles, one step each, so a size is a decision not a guess.
+     Nothing that carries meaning is smaller than --t-anno. */
+  --t-display:clamp(30px,4.4vw,46px);  /* the verdict, once per report */
+  --t-h2:clamp(22px,2.6vw,28px);       /* section headings */
+  --t-h3:19px;                         /* card and column headings */
+  --t-body:16px;                       /* running text, was 15 */
+  --t-small:14px;                      /* secondary text and chart labels, was 11-13 */
+  --t-anno:12px;                       /* mono eyebrows and units */
   box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
 }
 *,*::before,*::after{box-sizing:inherit}
@@ -806,3 +814,125 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 .ep-note{margin:10px 0 0;font-size:13px;line-height:1.5;color:var(--muted);max-width:70ch}
 .pitch-x{margin:6px 0 0;font-size:13px;line-height:1.45;color:var(--muted)}
 .pitch-x .xk{display:block;font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--faint)}
+
+/* ================= RESULT HERO =================
+   The outcome and the next action are the heroes. The section headings that used
+   to open the report are now navigation, not the message. */
+.hero-res{background:var(--paper);border:1.5px solid var(--ink);padding:0;margin:0 0 34px}
+.hero-top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  padding:16px 26px;border-bottom:1px solid var(--line);background:var(--cream)}
+.hero-round{font:600 var(--t-anno) var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  background:var(--ink);color:var(--paper);padding:5px 10px}
+.hero-meta{margin-left:auto;font:500 var(--t-small) var(--mono);color:var(--muted);letter-spacing:.02em}
+.hero-body{padding:30px 26px 26px}
+.hero-verdict{font:600 var(--t-display)/1.06 var(--display);letter-spacing:-.02em;margin:0 0 12px;text-wrap:balance}
+.hero-sub{font:400 18px/1.55 var(--body);color:var(--muted);margin:0 0 26px;max-width:62ch}
+
+.hero-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:28px}
+.hero-tile{border:1px solid var(--line);padding:16px 18px;background:var(--cream)}
+.hero-tile .k{display:block;font:500 var(--t-small) var(--body);color:var(--muted);margin-bottom:6px}
+.hero-tile .v{display:block;font:600 40px/1 var(--display);letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--tc,var(--ink))}
+.hero-tile .n{display:block;font:500 var(--t-small) var(--body);color:var(--muted);margin-top:6px}
+
+.hero-barlab{font:600 var(--t-anno) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+.hero-bars{display:grid;gap:12px;margin-bottom:26px}
+.hero-bar{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:baseline}
+.hero-bar .nm{font:500 var(--t-body) var(--body)}
+.hero-bar .pc{font:600 var(--t-body) var(--mono);font-variant-numeric:tabular-nums}
+.hero-bar .track{grid-column:1/-1;height:12px;background:var(--cream);border:1px solid var(--line)}
+.hero-bar .fill{display:block;height:100%;background:var(--c,var(--muted));transition:width .55s cubic-bezier(.2,.7,.3,1)}
+.hero-bar.none .fill{background:repeating-linear-gradient(135deg,var(--none) 0 4px,#B8B0A0 4px 8px)}
+
+.hero-next{border-left:3px solid var(--accent);padding:14px 0 14px 16px;margin-bottom:24px}
+.hero-next h3{font:600 var(--t-h3) var(--display);margin:0 0 6px}
+.hero-next p{margin:0;font:400 var(--t-body)/1.55 var(--body);color:var(--muted);max-width:66ch}
+
+.hero-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.hero-cta{min-height:48px;padding:0 24px;display:inline-flex;align-items:center;
+  background:var(--ink);color:var(--paper);border:none;font:600 16px var(--body);cursor:pointer}
+.hero-cta:hover{background:var(--accent)}
+.hero-cta:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.hero-explore{font:500 var(--t-body) var(--body);color:var(--muted);text-decoration:none;border-bottom:1px solid var(--line)}
+.hero-explore:hover{color:var(--ink);border-color:var(--ink)}
+
+/* The same action again at the foot of the report, so finishing the read leads
+   somewhere instead of stopping. */
+.endcta{margin:40px 0 0;padding:26px;border:1.5px solid var(--ink);background:var(--cream);
+  display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.endcta p{margin:0;flex:1;min-width:18ch;font:400 var(--t-body)/1.5 var(--body);color:var(--muted)}
+
+@media (max-width:640px){
+  .hero-body{padding:22px 18px}
+  .hero-top{padding:14px 18px}
+  .hero-tile .v{font-size:32px}
+}
+
+/* ================= INVESTIGATION DRAWER =================
+   Opens over the page rather than inside it, so clicking a number never reflows
+   what the reader was looking at. */
+.whatis{display:inline-grid;place-items:center;width:17px;height:17px;padding:0;margin-left:4px;
+  border:1px solid var(--line);border-radius:50%;background:var(--paper);
+  font:600 10px var(--mono);color:var(--muted);cursor:help;vertical-align:1px}
+.whatis:hover{border-color:var(--ink);color:var(--ink)}
+button.whatis{cursor:pointer}
+
+.obj-tile{text-align:left;cursor:pointer;font:inherit;position:relative}
+.obj-tile:hover{border-color:var(--bad)}
+.obj-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cell.probe{cursor:pointer}
+.cell.probe:hover{outline:2px solid var(--ink);outline-offset:-2px}
+
+/* A closed scrim still covers the viewport, so it must stop taking clicks or the
+   whole page becomes inert after the drawer is opened once. */
+.drawer-scrim{position:fixed;inset:0;background:rgba(21,21,21,.36);z-index:60;opacity:0;
+  pointer-events:none;transition:opacity .18s ease;backdrop-filter:blur(1px)}
+.drawer-scrim.open{opacity:1;pointer-events:auto}
+/* visibility, delayed until the slide-out finishes, keeps a closed drawer out of
+   the tab order and out of screen readers instead of merely off-screen. */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100vw);z-index:61;background:var(--paper);
+  border-left:1.5px solid var(--ink);display:flex;flex-direction:column;visibility:hidden;
+  transform:translateX(100%);transition:transform .22s cubic-bezier(.2,.7,.3,1),visibility 0s linear .22s;overflow:hidden}
+.drawer.open{transform:none;visibility:visible;transition:transform .22s cubic-bezier(.2,.7,.3,1),visibility 0s}
+.drawer-head{display:flex;align-items:flex-start;gap:14px;padding:22px 24px 16px;border-bottom:1px solid var(--line)}
+.drawer-head .dh{flex:1;min-width:0}
+.drawer-kick{font:600 var(--t-anno) var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:6px}
+.drawer-head h3{margin:0;font:600 var(--t-h2) var(--display);letter-spacing:-.015em;line-height:1.15}
+.drawer-x{width:38px;height:38px;flex:none;border:1px solid var(--line);background:var(--paper);
+  font:400 20px/1 var(--body);color:var(--muted);cursor:pointer}
+.drawer-x:hover{border-color:var(--ink);color:var(--ink)}
+.drawer-body{flex:1;overflow-y:auto;padding:22px 24px 26px}
+.drawer-body h4{margin:26px 0 10px;font:600 var(--t-anno) var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted)}
+.drawer-body h4:first-child{margin-top:0}
+.drawer-body p{margin:0 0 12px;font:400 var(--t-body)/1.55 var(--body)}
+.drawer-lede{color:var(--muted)}
+
+.dbuyer{border:1px solid var(--line);padding:14px 16px;margin-bottom:10px}
+.dbuyer-top{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.dbuyer-top b{font:600 var(--t-h3) var(--display)}
+.dbuyer-seg{font:500 var(--t-anno) var(--mono);color:var(--paper);background:var(--seg,var(--muted));padding:3px 7px;letter-spacing:.04em}
+.dbuyer-rate{margin-left:auto;font:600 var(--t-body) var(--mono);color:var(--bad);font-variant-numeric:tabular-nums}
+.dbuyer-prof{margin:0 0 10px;font:400 var(--t-small)/1.5 var(--body);color:var(--muted)}
+.dalt{display:grid;gap:5px;margin-top:8px}
+.dalt-lab{font:600 10px var(--mono);letter-spacing:.09em;text-transform:uppercase;color:var(--faint)}
+.dalt-row{display:grid;grid-template-columns:90px 1fr 46px;gap:8px;align-items:center;font:500 var(--t-small) var(--body)}
+.dalt-row .t{height:8px;background:var(--cream);border:1px solid var(--line)}
+.dalt-row .t i{display:block;height:100%;background:var(--c,var(--muted))}
+.dalt-row.pick{font-weight:700}
+.dalt-row .p{text-align:right;font:500 var(--t-small) var(--mono);font-variant-numeric:tabular-nums}
+
+.hypo{border:1.5px solid var(--ink);background:var(--cream);padding:18px;margin-top:24px}
+.hypo h4{margin:0 0 8px;color:var(--ink)}
+.hypo p{margin:0 0 14px;font-size:var(--t-body)}
+.hypo .fieldname{font:600 var(--t-anno) var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:6px}
+.hypo textarea{width:100%;min-height:76px;padding:10px;border:1px solid var(--line);
+  font:400 var(--t-body)/1.5 var(--body);background:var(--paper);resize:vertical}
+.hypo textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+.hypo-go{margin-top:12px;min-height:46px;padding:0 20px;background:var(--ink);color:var(--paper);
+  border:none;font:600 15px var(--body);cursor:pointer}
+.hypo-go:hover{background:var(--accent)}
+.hypo-was{font:400 var(--t-small)/1.45 var(--body);color:var(--muted);margin:0 0 10px}
+.hypo-was s{color:var(--faint)}
+
+.nodata{border:1px dashed var(--line);padding:20px;color:var(--muted);font-size:var(--t-body)}
+@media (max-width:560px){ .drawer{width:100vw;border-left:none} }

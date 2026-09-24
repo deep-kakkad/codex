@@ -148,6 +148,9 @@
   </div>
 
   <div id="results" class="hidden">
+    <!-- The outcome and the next action, before any section heading. -->
+    <div class="wrap"><section class="hero-res hidden" id="hero" aria-live="polite"></section></div>
+
     <section class="rsec dark-sec" id="secMarket">
       <div class="wrap">
         <header class="rsec-head">
@@ -703,6 +706,30 @@ async function runRound() {
   } catch (err) { setStatus(err.message, true); $("#results").classList.add("hidden"); }
   buttons.forEach((b) => (b.disabled = false));
 }
+// The hero button and the drawer's hypothesis both land the user in the editor,
+// scrolled to the field they just decided to change.
+document.addEventListener("click", (e) => {
+  const apply = e.target.closest("[data-apply-hypo]");
+  if (apply) {
+    const text = document.getElementById("hypoText")?.value ?? "";
+    const slot = +apply.dataset.slot, field = apply.dataset.field;
+    const i = state.teams.findIndex((t) => t.slot === slot);
+    if (i >= 0) { state.teams[i][field] = text; save(); renderBrands(); }
+    document.querySelector(".drawer-x")?.click();
+    collapseBuilder(false);
+    goToStep(3);
+    const el = document.getElementById(`${field}-${i}`);
+    el?.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    el?.focus({ preventScroll: true });
+    return;
+  }
+  if (e.target.closest("[data-prepare-round]")) {
+    collapseBuilder(false);
+    goToStep(3);
+    document.getElementById("builder")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+});
+
 $("#run").addEventListener("click", runRound);
 $("#runBar").addEventListener("click", runRound);
 

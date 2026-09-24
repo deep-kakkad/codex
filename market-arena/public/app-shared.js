@@ -3,7 +3,7 @@
 // #sharebar, #legend, #pitches, #segments, #detail, #funnels, #heat, #objections,
 // #suggestions, #changes, #deltas, #history, #meta) and keeps its own `rounds`
 // array; this module owns which round is on screen and only touches those ids.
-import { personaIcon, objectionIcon, stageIcon } from "./icons.js";
+import { personaIcon, objectionIcon, stageIcon, segmentTint } from "./icons.js";
 import { EXTRA_FIELDS } from "./validate.js";
 
 export const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
@@ -19,6 +19,9 @@ export const OBJ_ORDER = ["price", "trust", "relevance", "unclear"];
 // "cite" or "held back by", and a full clause after "was that".
 export const OBJ_NOUN = { price: "the price", trust: "doubt about the claims", relevance: "poor fit with their needs", unclear: "an unclear offer", none: "no real objection" };
 export const OBJ_CLAUSE = { price: "the price feels too high", trust: "buyers don't believe the claims", relevance: "it doesn't fit their needs or habits", unclear: "buyers don't understand the offer", none: "buyers had no real objection" };
+// OBJ_FIX reads after "Try testing …". The possessive slot in the hero needs a bare
+// noun instead, or it renders "C's the price or how it's framed".
+export const OBJ_LEVER = { price: "price", trust: "proof behind the claim", relevance: "sense of who it is speaking to", unclear: "explanation of the offer", none: "pitch" };
 export const OBJ_FIX = { price: "the price or how it's framed", trust: "proof or credibility behind the claim", relevance: "who the message is speaking to", unclear: "how clearly the offer is explained" };
 // Rounds saved before the engine returned counts don't carry them, so derive the
 // count from the buyer records rather than showing nothing for an old round.
@@ -31,7 +34,14 @@ const picksFor = (r, id) => {
 // having decided. Measurement says these are exactly the buyers who flip between
 // identical runs, so name them instead of pretending the pick is firm.
 const TOSSUP = .1;
-const isTossup = (c) => (c.margin != null ? c.margin < TOSSUP : c.confidence < .5);
+// Rounds saved before the engine returned `margin` still have the distribution it
+// was derived from, so recompute rather than reporting a gap of zero.
+const marginOf = (c) => {
+  if (c.margin != null) return c.margin;
+  const v = Object.values(c.purchaseProbs || {}).sort((a, b) => b - a);
+  return Math.round(((v[0] ?? 0) - (v[1] ?? 0)) * 1000) / 1000;
+};
+const isTossup = (c) => marginOf(c) < TOSSUP;
 
 // Which version fields the round-over-round diff compares, in display order. The
 // optional fields a project switched on are appended, so changing a call to action
@@ -53,6 +63,7 @@ const has = (s) => Boolean(document.querySelector(s));
 export function createResultsView() {
   let open = null;
   let viewIndex = null; // null means "whatever the latest round is"
+  let current = null;   // the round on screen, so the drawer investigates what is shown
   let getRounds = () => [];
 
   const indexFor = (rounds) => viewIndex == null ? rounds.length - 1 : Math.min(Math.max(viewIndex, 0), rounds.length - 1);
@@ -89,6 +100,7 @@ export function createResultsView() {
     if (has("#ghost")) $("#ghost").classList.add("hidden");
     $("#csv").disabled = true; $("#pdf").disabled = true; if (has("#share")) $("#share").disabled = true;
     $("#flags").innerHTML = "";
+    if (has("#hero")) $("#hero").classList.add("hidden");
     $("#marketTitle").textContent = "Reading the room…";
     $("#sharebar").innerHTML = `<div class="skel" style="width:100%;height:100%;border-radius:0"></div>`;
     $("#legend").innerHTML = Array.from({ length: 3 }).map(() => `<i class="skel" style="width:110px;height:26px"></i>`).join("");
@@ -103,11 +115,240 @@ export function createResultsView() {
     ["#pitchSec", "#suggestSec", "#changesSec", "#deltaSec"].forEach((s) => $(s).classList.add("hidden"));
   }
 
+
+  /* ---- The result hero -------------------------------------------------------
+     Everything below it is evidence for the two things stated here: what happened,
+     and what to do next. Built from the same numbers the sections use, so the hero
+     can never disagree with the report underneath it. */
+  function renderHero(r, prev, idx, total) {
+    if (!has("#hero")) return;
+    const n = panelOf(r);
+    const ranked = [...r.brands].sort((a, b) => b.share - a.share);
+    const win = ranked[0], second = ranked[1];
+    const gap = Math.round((win.share - second.share) * 100);
+    const tied = gap < 5;
+    const slotOf = (b) => r.slots[r.brands.findIndex((x) => x.id === b.id)];
+
+    // The objection that costs the leader most, which is also the tile the user clicks.
+    const [objKey, objVal] = Object.entries(win.objections || {})
+      .filter(([k]) => k !== "none").sort((a, b) => b[1] - a[1])[0] || ["none", 0];
+
+    const verdict = tied
+      ? `${esc(win.brand)} and ${esc(second.brand)} are tied`
+      : `${esc(win.brand)} leads this round`;
+    const sub = tied
+      ? `${pct(win.share)} against ${pct(second.share)} — inside the noise of a re-run, so this round does not separate them. ${cap(OBJ_NOUN[objKey])} is the objection to attack first.`
+      : `${pct(win.share)} average choice probability, ${gap} points clear. ${cap(OBJ_NOUN[objKey])} is the objection holding it back.`;
+
+    const bars = [...ranked.map((b) => ({ nm: b.brand, v: b.share, c: COLORS[slotOf(b)], none: false })),
+                  { nm: "Bought nothing", v: r.noPurchase.share, none: true }];
+
+    $("#hero").classList.remove("hidden");
+    $("#hero").innerHTML = `
+      <div class="hero-top">
+        <span class="hero-round">Round ${idx + 1}${total > 1 ? ` of ${total}` : ""}</span>
+        <span class="hero-meta">${n} simulated buyers · ${r.brands.length} versions</span>
+      </div>
+      <div class="hero-body">
+        <h2 class="hero-verdict">${verdict}</h2>
+        <p class="hero-sub">${sub}</p>
+
+        <div class="hero-tiles">
+          <div class="hero-tile" style="--tc:${COLORS[slotOf(win)]}">
+            <span class="k">Leading version <button class="whatis" data-def="share" aria-label="What does average choice probability mean?">?</button></span>
+            <span class="v">${pct(win.share)}</span>
+            <span class="n">${esc(win.brand)} · picked outright by ${picksFor(r, win.id)} of ${n}</span>
+          </div>
+          <button class="hero-tile obj-tile" data-investigate="obj:${objKey}" style="--tc:var(--bad)">
+            <span class="k">Top objection <span class="whatis" aria-hidden="true">?</span></span>
+            <span class="v">${pct(objVal)}</span>
+            <span class="n">${cap(OBJ_NOUN[objKey])} · against ${esc(win.brand)} — open the evidence</span>
+          </button>
+        </div>
+
+        <p class="hero-barlab">Average choice probability <button class="whatis" data-def="share" aria-label="What does average choice probability mean?">?</button></p>
+        <div class="hero-bars">
+          ${bars.map((b) => `
+            <div class="hero-bar ${b.none ? "none" : ""}" ${b.c ? `style="--c:${b.c}"` : ""}>
+              <span class="nm">${esc(b.nm)}</span><span class="pc">${pct(b.v)}</span>
+              <span class="track"><span class="fill" style="width:${pct(b.v)}"></span></span>
+            </div>`).join("")}
+        </div>
+
+        <div class="hero-next">
+          <h3>Suggested next experiment</h3>
+          <p>Change <b>${esc(win.brand)}</b>'s ${esc(OBJ_LEVER[objKey] || "pitch")} and hold everything else, so the next round measures that one change and nothing else.</p>
+        </div>
+
+        <div class="hero-actions">
+          <button class="hero-cta" data-prepare-round>Prepare round ${total + 1} →</button>
+          <a class="hero-explore" href="#secMarket">Explore the full analysis ↓</a>
+        </div>
+      </div>`;
+  }
+
+
+  /* ---- Investigation drawer ---------------------------------------------------
+     A number in this report is a claim; clicking it should show the evidence behind
+     the claim and offer the experiment that would settle it. The drawer is fixed, so
+     opening it never reflows the page under the reader's cursor.
+
+     What it can show is bounded by what the model returns. Jev answers typed
+     questions, so per buyer we have: which objection they picked from a fixed set,
+     how they scored each stage, and their full probability across every version.
+     We do NOT have free-text reasoning, and this panel never invents any. */
+
+  const DEFS = {
+    share: ["Average choice probability", "Across all buyers, the mean likelihood each one would pick this version. A buyer leaning 40/35/25 contributes to all three, which is why these add up to 100% and why they differ from outright picks."],
+    picks: ["Outright picks", "How many buyers had this version as their single top choice. Reconciles with the buyer cards, but throws away everything except the winner, so one undecided buyer moves it by a whole buyer."],
+    attention: ["Noticed", "Would this buyer stop scrolling to read the ad at all."],
+    interest: ["Interested", "How appealing the offer is to this buyer, given their needs, habits and budget."],
+    belief: ["Believed", "Would this buyer find the claims credible."],
+    purchase: ["Would buy", "This buyer's probability of choosing this version over the others and over buying nothing."],
+  };
+
+  let drawerEl = null, scrimEl = null, lastFocus = null;
+
+  function ensureDrawer() {
+    if (drawerEl) return;
+    scrimEl = Object.assign(document.createElement("div"), { className: "drawer-scrim" });
+    drawerEl = Object.assign(document.createElement("aside"), { className: "drawer" });
+    drawerEl.setAttribute("role", "dialog");
+    drawerEl.setAttribute("aria-modal", "true");
+    drawerEl.setAttribute("aria-label", "Investigation");
+    document.body.append(scrimEl, drawerEl);
+    scrimEl.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && drawerEl.classList.contains("open")) closeDrawer(); });
+  }
+  function openDrawer(html) {
+    ensureDrawer();
+    lastFocus = document.activeElement;
+    drawerEl.innerHTML = html;
+    requestAnimationFrame(() => { scrimEl.classList.add("open"); drawerEl.classList.add("open"); });
+    drawerEl.querySelector(".drawer-x")?.focus();
+  }
+  function closeDrawer() {
+    if (!drawerEl) return;
+    scrimEl.classList.remove("open"); drawerEl.classList.remove("open");
+    lastFocus?.focus?.();
+  }
+
+  const shell = (kick, title, body) => `
+    <div class="drawer-head">
+      <div class="dh"><span class="drawer-kick">${esc(kick)}</span><h3>${title}</h3></div>
+      <button class="drawer-x" aria-label="Close">×</button>
+    </div>
+    <div class="drawer-body">${body}</div>`;
+
+  // Every version this buyer weighed, not just the one they picked.
+  function alternatives(r, c) {
+    const rows = r.brands.map((b) => ({
+      nm: b.brand, v: c.purchaseProbs[b.id] ?? 0,
+      c: COLORS[r.slots[r.brands.findIndex((x) => x.id === b.id)]], pick: c.purchase === b.id,
+    }));
+    rows.push({ nm: "Bought nothing", v: c.purchaseProbs.none ?? 0, c: "var(--none)", pick: c.purchase === "none" });
+    rows.sort((a, b) => b.v - a.v);
+    return `<div class="dalt"><span class="dalt-lab">What else they weighed</span>${rows.map((x) => `
+      <div class="dalt-row ${x.pick ? "pick" : ""}" style="--c:${x.c}">
+        <span>${esc(x.nm)}</span><span class="t"><i style="width:${pct(x.v)}"></i></span><span class="p">${pct(x.v)}</span>
+      </div>`).join("")}</div>`;
+  }
+
+  // Which field a given objection actually implicates, so the experiment is specific.
+  const FIELD_FOR = { price: ["price", "Price"], trust: ["valueProp", "Value proposition"], relevance: ["headline", "Headline"], unclear: ["headline", "Headline"] };
+
+  function investigateObjection(r, key, brandId) {
+    const b = r.brands.find((x) => x.id === brandId) || [...r.brands].sort((x, y) => y.share - x.share)[0];
+    const segs = [...new Set(r.customers.map((c) => c.segment))];
+    const cited = r.customers
+      .map((c) => ({ c, rate: c.byBrand[b.id]?.objection === key ? 1 : 0 }))
+      .filter((x) => x.rate).map((x) => x.c);
+    const [field, fieldLabel] = FIELD_FOR[key] || ["headline", "Headline"];
+
+    const body = `
+      <p class="drawer-lede">${pct(b.objections[key])} of the panel's objection weight against <b>${esc(b.brand)}</b> sits on ${OBJ_NOUN[key]}. ${cited.length
+        ? `${cited.length} of ${panelOf(r)} buyers named it as their single biggest reason not to buy.`
+        : `No single buyer named it as their biggest reason, so it is spread thinly rather than concentrated.`}</p>
+
+      <h4>The buyers behind the number</h4>
+      ${cited.length ? cited.map((c) => `
+        <div class="dbuyer" style="--seg:${segmentTint(segs.indexOf(c.segment))}">
+          <div class="dbuyer-top"><b>${esc(c.name)}</b><span class="dbuyer-seg">${esc(c.segment)}</span>
+            <span class="dbuyer-rate">${pct(c.purchaseProbs[b.id] ?? 0)}</span></div>
+          <p class="dbuyer-prof">${esc(c.profile)}</p>
+          ${alternatives(r, c)}
+        </div>`).join("")
+        : `<div class="nodata">No buyer ranked this as their top objection to ${esc(b.brand)}. The ${pct(b.objections[key])} is the average weight across the panel, so it is a broad unease rather than a blocker for anyone in particular. Attack a concentrated objection first.</div>`}
+
+      <div class="hypo">
+        <h4>Test this hypothesis</h4>
+        <p>If ${OBJ_NOUN[key]} is what is costing <b>${esc(b.brand)}</b> the round, changing its ${fieldLabel.toLowerCase()} and holding everything else should move its share. If it does not, the objection is not the binding constraint.</p>
+        <p class="hypo-was">Currently: <s>${esc(b[field] || "—")}</s></p>
+        <span class="fieldname">New ${fieldLabel.toLowerCase()} for ${esc(b.brand)}</span>
+        <textarea id="hypoText" spellcheck="true">${esc(b[field] || "")}</textarea>
+        <button class="hypo-go" data-apply-hypo data-slot="${r.slots[r.brands.findIndex((x) => x.id === b.id)]}" data-field="${field}">Use this and prepare the next round →</button>
+      </div>`;
+    openDrawer(shell(`${b.brand} · ${OBJ_LABEL[key]}`, `Why ${esc(b.brand)} loses people`, body));
+  }
+
+  function investigateBuyer(r, id) {
+    const c = r.customers.find((x) => x.id === id);
+    if (!c) return;
+    const segs = [...new Set(r.customers.map((c2) => c2.segment))];
+    const nameOfId = (pid) => pid === "none" ? "nothing" : r.brands.find((b) => b.id === pid)?.brand || pid;
+    const body = `
+      <p class="drawer-lede">${esc(c.profile)}</p>
+      <h4>Their decision</h4>
+      <p>Chose <b>${esc(nameOfId(c.purchase))}</b>${isTossup(c)
+        ? ` — but only just. Their top two were ${Math.round(marginOf(c) * 100)} points apart, close enough that an identical re-run could land differently.`
+        : `, ahead of their second choice by ${Math.round(marginOf(c) * 100)} points.`}</p>
+      ${alternatives(r, c)}
+      <h4>How they scored each version</h4>
+      <div class="tablewrap"><table><thead><tr><th>Version</th>
+        ${STAGES.map(([k, lab]) => `<th class="n">${lab} <span class="whatis" title="${esc(DEFS[k][1])}">?</span></th>`).join("")}
+        <th>Objection</th></tr></thead><tbody>
+        ${r.brands.map((b) => { const x = c.byBrand[b.id]; return `<tr><td>${esc(b.brand)}</td>
+          <td class="num">${pct(x.attention)}</td><td class="num">${pct(x.appeal)}</td><td class="num">${pct(x.belief)}</td>
+          <td class="num">${pct(c.purchaseProbs[b.id] || 0)}</td><td>${cap(OBJ_NOUN[x.objection])}</td></tr>`; }).join("")}
+      </tbody></table></div>
+      <p class="drawer-lede" style="margin-top:16px;font-size:var(--t-small)">These are the model's answers to five typed questions about this buyer. It returns choices and scores, not written reasoning, so nothing here is a quote or an explanation the buyer gave.</p>`;
+    openDrawer(shell(`${c.segment}`, esc(c.name), body));
+  }
+
+  function showDefinition(key) {
+    const [title, text] = DEFS[key] || ["", ""];
+    openDrawer(shell("Definition", esc(title), `<p>${esc(text)}</p>`));
+  }
+
+  // Every investigable number goes through one listener, so new call sites only
+  // need a data-investigate attribute rather than their own wiring.
+  document.addEventListener("click", (e) => {
+    if (e.target.closest(".drawer-x")) return closeDrawer();
+    const def = e.target.closest("[data-def]");
+    if (def) return showDefinition(def.dataset.def);
+    const probe = e.target.closest("[data-investigate]");
+    if (probe && current) {
+      const [kind, a, b] = probe.dataset.investigate.split(":");
+      if (kind === "obj") return investigateObjection(current, a, b);
+    }
+    const person = e.target.closest(".person[data-p]");
+    if (person && current) return investigateBuyer(current, person.dataset.p);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const probe = e.target.closest?.(".cell.probe[data-investigate]");
+    if (!probe || !current) return;
+    e.preventDefault();
+    const [kind, a, b] = probe.dataset.investigate.split(":");
+    if (kind === "obj") investigateObjection(current, a, b);
+  });
+
   // index: omit to show the latest round, or pass one to view an earlier round.
   function renderResults(rounds, animate, index) {
     viewIndex = index == null ? null : index;
     const idx = indexFor(rounds);
     const r = rounds[idx];
+    current = r;
     const prev = idx > 0 ? rounds[idx - 1] : null;
     const latest = idx === rounds.length - 1;
 
@@ -148,6 +389,7 @@ export function createResultsView() {
     // cheaper than letting a reader decide the report is broken.
     $("#numNote").innerHTML = `The percentage is <b>average choice probability</b> — across all ${panelOf(r)} buyers, how likely each was to pick that version. The count is <b>outright picks</b>: buyers whose top choice it was. They differ because a buyer leaning 40/35/25 contributes to all three percentages but is counted only once.`;
 
+    renderHero(r, prev, idx, rounds.length);
     renderExplain(r, prev);
     renderPitches(r);
 
