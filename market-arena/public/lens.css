@@ -2,9 +2,9 @@
    Nothing here is shared with styles.css: this page is meant to be judged
    against the report page, not blended into it.
 
-   Colour discipline: the four brand hues mean a contender and nothing else.
+   Colour discipline: the four brand hues mean a version and nothing else.
    Nothing is red because it is bad — a driver that hurt the winner is drawn in
-   graphite with a minus, never in crimson, because crimson is a contender. */
+   graphite with a minus, never in crimson, because crimson is a version. */
 :root{
   --bg:#F7F7F2; --ink:#171717; --dim:#73736D; --faint:#9A9A93;
   --hair:#E4E2D9; --card:#FFFFFF; --sink:#EFEDE4;
@@ -112,7 +112,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .dval{font:600 14px var(--mono);text-align:right;font-variant-numeric:tabular-nums}
 .dval.neg{color:var(--dim)}
 
-/* The decision path — one chart, every contender */
+/* The decision path — one chart, every version */
 .pathwrap{background:var(--card);border:1px solid var(--hair);border-radius:12px;padding:20px 20px 12px;margin-bottom:18px}
 .pathsvg{width:100%;height:auto;display:block;overflow:visible}
 .pathsvg text{font:500 11px var(--ui);fill:var(--dim)}

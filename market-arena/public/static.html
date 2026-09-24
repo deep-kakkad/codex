@@ -47,7 +47,7 @@
         <span>12 BUYERS</span><span class="sp-sep">·</span><span class="sp-status">ROUND COMPLETE</span>
       </div>
       <div class="s-panel-body">
-        <div class="s-contenders">
+        <div class="s-versions">
           <div class="s-ccard">
             <div class="sc-tag"><span class="sc-id">CONTENDER A</span></div>
             <h4>Wake up to better coffee.</h4>
@@ -74,7 +74,7 @@
           <div class="s-share-row"><span class="sl">A</span><div class="s-share-track"><div class="s-share-fill" style="width:23%;background:var(--ink)"></div></div><span class="sp">23%</span></div>
           <div class="s-share-row none"><span class="sl">–</span><div class="s-share-track"><div class="s-share-fill" style="width:9%"></div></div><span class="sp">9%</span></div>
         </div>
-        <div class="s-dotstrip" id="heroDots" aria-label="One dot per buyer, colored by which contender they chose"></div>
+        <div class="s-dotstrip" id="heroDots" aria-label="One dot per buyer, colored by which version they chose"></div>
 
         <div class="s-why">
           <div>
@@ -120,9 +120,9 @@
     <div class="s-flow3">
       <div class="s-fpanel">
         <span class="sf-k">01 / ADD YOUR PITCHES</span>
-        <div class="s-input-field"><b>Contender A</b>Headline · Offer · Price</div>
-        <div class="s-input-field"><b>Contender B</b>Headline · Offer · Price</div>
-        <div class="s-add-contender">+ Add contender</div>
+        <div class="s-input-field"><b>Version A</b>Headline · Offer · Price</div>
+        <div class="s-input-field"><b>Version B</b>Headline · Offer · Price</div>
+        <div class="s-add-version">+ Add version</div>
       </div>
       <div class="s-farrow">→</div>
       <div class="s-fpanel">
@@ -164,7 +164,7 @@
         <p>They believed C's claim. They just didn't think it was worth the price — belief and purchase aren't the same decision. Now you know what to fix.</p>
         <div class="s-objbox">
           <span class="so-label">Common objection</span>
-          <p><span class="s-objicon" id="objIconPrice2"></span>Price — cited by 60% of buyers who didn't choose Contender C.</p>
+          <p><span class="s-objicon" id="objIconPrice2"></span>Price — cited by 60% of buyers who didn't choose Version C.</p>
         </div>
       </div>
     </div>
@@ -182,13 +182,13 @@
         <span class="bc-avatar" data-b="b10" style="background:var(--b3)"></span>
         <span class="bc-name">KABIR</span><span class="bc-seg">Premium buyer</span>
         <div class="s-bexpand-row">
-          <div><span>Chose</span><b>Contender C</b></div>
+          <div><span>Chose</span><b>Version C</b></div>
           <div><span>Rejected</span><b>A and B</b></div>
           <div><span>Confidence</span><b>45%</b></div>
         </div>
         <div class="s-bexpand-why">
           <span>Why</span>
-          <p>C was the only contender Kabir had zero objection to — the "roasted this week" claim landed outright, while A and B both hit his trust concerns.</p>
+          <p>C was the only version Kabir had zero objection to — the "roasted this week" claim landed outright, while A and B both hit his trust concerns.</p>
         </div>
       </div>
       <div class="s-bcard"><span class="bc-avatar" data-b="b7" style="background:var(--b2)"></span><span class="bc-name">Meera</span><span class="bc-seg">Price-sensitive</span><span class="bc-choice" style="background:var(--b2)">B</span></div>
@@ -214,7 +214,7 @@
     <div class="s-iter-grid">
       <div class="s-iter-card">
         <span class="si-round">ROUND 1</span>
-        <p class="si-what">Contender A at ₹699/mo</p>
+        <p class="si-what">Version A at ₹699/mo</p>
         <span class="si-pct">23%</span>
         <p class="si-cap">picked it</p>
       </div>
@@ -225,7 +225,7 @@
       </div>
       <div class="s-iter-card">
         <span class="si-round">ROUND 2</span>
-        <p class="si-what">Contender A at ₹549/mo</p>
+        <p class="si-what">Version A at ₹549/mo</p>
         <span class="si-pct">39%</span>
         <p class="si-cap">picked it</p>
         <div class="s-iter-delta"><b>+16 points</b></div>
@@ -363,7 +363,7 @@ const buyerById = Object.fromEntries(ARENA.buyers.map((b) => [b.id, b]));
 // Hero dot strip — one dot per buyer, colored by real round-1 choice.
 document.getElementById("heroDots").innerHTML = ARENA.buyers.map((b) => {
   const choice = ARENA.round1.decisions[b.id].choice;
-  return `<span class="s-dot" style="background:${BCOLOR[choice]}" title="${b.name} chose ${choice === "none" ? "nothing" : "Contender " + choice}">${personaIcon(b, 9)}</span>`;
+  return `<span class="s-dot" style="background:${BCOLOR[choice]}" title="${b.name} chose ${choice === "none" ? "nothing" : "Version " + choice}">${personaIcon(b, 9)}</span>`;
 }).join("");
 
 // "Same buyers" mini grid in How it works — neutral (no decision made yet).

@@ -5,8 +5,8 @@
    the setup form, the debrief and the export, so there is one thing to learn.
 
    Colour discipline: orange means "an action you can take" and nothing else. Blue,
-   plum, teal and ochre mean "contender 1..4" and nothing else — assigned by slot, so a
-   contender keeps its colour across every experiment in the log. Nothing decorative
+   plum, teal and ochre mean "version 1..4" and nothing else — assigned by slot, so a
+   version keeps its colour across every experiment in the log. Nothing decorative
    uses either set. */
 
 :root {
@@ -25,7 +25,7 @@
   --action-ink:  #FFFFFF;
   --action-soft: #F7E7DC;
 
-  /* contender identities, fixed by slot */
+  /* version identities, fixed by slot */
   --id-1: #2D5B8E;  /* blue  */
   --id-2: #6E3F73;  /* plum  */
   --id-3: #1F6B63;  /* teal  */
@@ -222,7 +222,7 @@ textarea.nb::placeholder, input.nb::placeholder { color: var(--faint); }
 .change .now { color: var(--ink); font-weight: 500; }
 .change .arrow { font: 400 13px var(--mono); color: var(--action); }
 
-/* editable contenders in setup */
+/* editable versions in setup */
 .slots { display: grid; gap: var(--s3); }
 .slot {
   display: grid; gap: var(--s2); padding: var(--s4);
@@ -238,7 +238,7 @@ textarea.nb::placeholder, input.nb::placeholder { color: var(--faint); }
 
 /* result */
 .res-rows { display: grid; gap: var(--s3); }
-/* Wide enough for "Bought nothing", and names wrap rather than clip: a contender can
+/* Wide enough for "Bought nothing", and names wrap rather than clip: a version can
    carry 30 characters and a truncated label is worse than a second line. */
 .res-row { display: grid; grid-template-columns: minmax(112px, 172px) 1fr auto; gap: var(--s3); align-items: center; }
 .res-name { font: 500 15px/1.3 var(--sans); display: flex; align-items: baseline; gap: var(--s2); min-width: 0; }

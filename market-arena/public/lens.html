@@ -143,7 +143,7 @@ function drivers(a) {
   return rows.sort((x, y) => Math.abs(y.value) - Math.abs(x.value));
 }
 
-/* Labels the shape of the market for one contender. Thresholds are a reading
+/* Labels the shape of the market for one version. Thresholds are a reading
    aid; the counts they come from are always shown next to the label and in the
    drawer, so the call is checkable rather than asserted. */
 function consensus(b, n) {
@@ -257,7 +257,7 @@ function viewWinner(a) {
         </button>
       </div>
       <h2 style="margin-top:38px">How divided were they?</h2>
-      <p class="lead">Share is an average. Two contenders on the same number can hide very different markets.</p>
+      <p class="lead">Share is an average. Two versions on the same number can hide very different markets.</p>
       <div class="rows">
         ${a.ranked.map((b) => `
           <button class="row" data-sel='{"kind":"consensus","slot":${b.slot}}' style="--c:${colorOf(b)}">
@@ -275,7 +275,7 @@ function viewWhy(a) {
   return `
     <section class="view">
       <h2>Why ${esc(a.winner.brand)} won</h2>
-      <p class="lead">Each row is the gap between ${esc(a.winner.brand)} and the average of the other contenders, in points, for these ${a.customers.length} buyers. Click one to see the numbers behind it.</p>
+      <p class="lead">Each row is the gap between ${esc(a.winner.brand)} and the average of the other versions, in points, for these ${a.customers.length} buyers. Click one to see the numbers behind it.</p>
       <div class="drivers">
         ${d.map((x) => `
           <button class="driver ${state.sel?.kind === "driver" && state.sel.key === x.key ? "on" : ""}" data-sel='${esc(JSON.stringify({ kind: "driver", key: x.key, dkind: x.kind }))}' style="--c:${colorOf(a.winner)}">
@@ -293,7 +293,7 @@ function viewPath(a) {
   const x = (i) => L + i * ((W - L - R) / 3);
   const y = (v) => T + (1 - v) * (H - T - B);
   const stage = state.sel?.kind === "stage" ? state.sel.key : null;
-  let svg = `<svg class="pathsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Every contender across the four decision stages">`;
+  let svg = `<svg class="pathsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Every version across the four decision stages">`;
   [0, .25, .5, .75, 1].forEach((v) => {
     svg += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#E4E2D9"/><text x="${L - 10}" y="${y(v) + 4}" text-anchor="end">${pct(v)}</text>`;
   });
@@ -316,8 +316,8 @@ function viewPath(a) {
 
   return `
     <section class="view">
-      <h2>One path, every contender</h2>
-      <p class="lead">All ${a.brands.length} contenders across the same four questions, for these ${a.customers.length} buyers. Click a stage to see who scored what.</p>
+      <h2>One path, every version</h2>
+      <p class="lead">All ${a.brands.length} versions across the same four questions, for these ${a.customers.length} buyers. Click a stage to see who scored what.</p>
       <div class="pathwrap">${svg}</div>
       <p class="pathnote">These four are measured independently, not as a funnel — a buyer can believe a claim more than they found it appealing, so a later point can sit higher than an earlier one.</p>
       ${stage ? `
@@ -339,7 +339,7 @@ function viewObjections(a) {
   return `
     <section class="view">
       <h2>What stopped them</h2>
-      <p class="lead">For every contender, each buyer named the single biggest reason they might not buy. These are counts of buyers, not scores.</p>
+      <p class="lead">For every version, each buyer named the single biggest reason they might not buy. These are counts of buyers, not scores.</p>
       ${a.ranked.map((b) => {
         const top = OBJ_ORDER.map((k) => [k, b.objCounts[k]]).sort((x, y) => y[1] - x[1]);
         return `
@@ -391,8 +391,8 @@ function viewWalkaways(a) {
   return `
     <section class="view">
       <h2>${pct(a.none)} of this market bought nothing</h2>
-      <p class="lead">Walking away is a result, not a leftover. If the same objection blocks every contender, the problem is the category or the price, not the copy.</p>
-      ${n === 0 ? `<p class="caveat">No buyer in this lens rejected all contenders outright, though ${pct(a.none)} of the averaged choice still went nowhere.</p>` : `
+      <p class="lead">Walking away is a result, not a leftover. If the same objection blocks every version, the problem is the category or the price, not the copy.</p>
+      ${n === 0 ? `<p class="caveat">No buyer in this lens rejected all versions outright, though ${pct(a.none)} of the averaged choice still went nowhere.</p>` : `
         <div class="rows">
           ${a.walkers.map((c) => {
             const objs = a.brands.map((b) => c.byBrand[b.id].objection);
@@ -403,16 +403,16 @@ function viewWalkaways(a) {
             </button>`;
           }).join("")}
         </div>`}
-      <h2 style="margin-top:34px">What blocked them, across every contender</h2>
+      <h2 style="margin-top:34px">What blocked them, across every version</h2>
       <div class="rows">
         ${ranked.filter(([, v]) => v > 0).map(([k, v]) => `
           <div class="row" style="cursor:default">
-            <span class="rowmain"><b>${OBJ_SHORT[k]}</b><p>cited ${v} times across ${n} buyers × ${a.brands.length} contenders</p></span>
+            <span class="rowmain"><b>${OBJ_SHORT[k]}</b><p>cited ${v} times across ${n} buyers × ${a.brands.length} versions</p></span>
             <span class="minibar"><i style="width:${Math.round((v / Math.max(1, n * a.brands.length)) * 100)}%"></i></span>
             <span class="rowend">${pct(v / Math.max(1, n * a.brands.length))}</span>
           </div>`).join("")}
       </div>
-      ${universal ? `<p class="caveat" style="margin-top:20px"><b>Same wall everywhere.</b> ${OBJ_SHORT[ranked[0][0]]} blocked these buyers against every contender. Rewriting one ad won't move them — the offer has to change.</p>` : ""}
+      ${universal ? `<p class="caveat" style="margin-top:20px"><b>Same wall everywhere.</b> ${OBJ_SHORT[ranked[0][0]]} blocked these buyers against every version. Rewriting one ad won't move them — the offer has to change.</p>` : ""}
     </section>`;
 }
 
@@ -488,7 +488,7 @@ function viewNext(a) {
       <p class="lead">One change, everything else held. That is the only way a second round tells you anything.</p>
       <div class="composer">
         <div class="cfield">
-          <label>Contender</label>
+          <label>Version</label>
           <select id="cTarget" style="font:500 14px var(--ui);padding:8px 11px;border:1px solid var(--hair);border-radius:7px;background:var(--bg)">
             ${a.ranked.map((b) => `<option value="${b.slot}" ${b.slot === target.slot ? "selected" : ""}>${esc(b.brand)} · ${pct(b.share)}</option>`).join("")}
           </select>
@@ -573,7 +573,7 @@ function renderDrawer(a) {
     return wrap("Objection", `${esc(OBJ_SHORT[s.key])} · ${esc(b.brand)}`,
       `${who.length} of ${a.customers.length} buyers named this as the single biggest reason they might not buy ${esc(b.brand)}.`,
       `<ul class="dr-list">${who.map((c) => `<li><b>${esc(c.name)}</b><span>${esc(c.segment)} · ${pct(c.purchaseProbs[b.id] ?? 0)} would buy</span></li>`).join("") || `<li>Nobody</li>`}</ul>`,
-      "Each buyer names one objection per contender, so these are buyer counts rather than percentages of mentions.");
+      "Each buyer names one objection per version, so these are buyer counts rather than percentages of mentions.");
   }
 
   if (s.kind === "consensus") {
@@ -597,7 +597,7 @@ function renderDrawer(a) {
 
   if (s.kind === "none") {
     return wrap("Walk-aways", "Bought nothing",
-      `${pct(a.none)} of the averaged choice went nowhere; ${a.walkers.length} buyer${a.walkers.length === 1 ? "" : "s"} rejected every contender outright.`,
+      `${pct(a.none)} of the averaged choice went nowhere; ${a.walkers.length} buyer${a.walkers.length === 1 ? "" : "s"} rejected every version outright.`,
       `<ul class="dr-list">${a.walkers.map((c) => `<li><b>${esc(c.name)}</b><span>${esc(c.segment)}</span></li>`).join("") || `<li>Nobody outright</li>`}</ul>`,
       "A buyer can spread probability across options without ever committing, which is why the percentage and the headcount differ.");
   }
@@ -701,7 +701,7 @@ function planText() {
 }
 function copyPlan() {
   const { target, field, was, now, topObj, a } = planText();
-  const text = `Market Arena — next round\nContender: ${target.brand}\nChange ${field}: ${was} → ${now}\nHold: everything else, same ${a.customers.length} buyers\nWhy: ${target.objCounts[topObj]} buyers said ${OBJ_SAID[topObj]}`;
+  const text = `Market Arena — next round\nVersion: ${target.brand}\nChange ${field}: ${was} → ${now}\nHold: everything else, same ${a.customers.length} buyers\nWhy: ${target.objCounts[topObj]} buyers said ${OBJ_SAID[topObj]}`;
   navigator.clipboard.writeText(text).then(() => { $("#cStatus").textContent = "Copied."; }, () => { $("#cStatus").textContent = text; });
 }
 function sendToEditor() {
@@ -709,7 +709,7 @@ function sendToEditor() {
   try {
     const session = JSON.parse(localStorage.getItem(SESSION_KEY));
     const team = session.teams.find((t) => t.slot === target.slot);
-    if (!team) throw new Error("that contender isn't in the saved project any more");
+    if (!team) throw new Error("that version isn't in the saved project any more");
     team[field] = now;
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     location.href = "practice.html";

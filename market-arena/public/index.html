@@ -79,11 +79,11 @@
       <p class="section-label">How it works</p>
       <h2 class="lp-h2">One connected system, not three separate steps.</h2>
       <div class="flow">
-        <div class="flow-step"><span class="k">Input</span><h4>Contenders</h4><p>Market or context, plus 2–4 contenders. Each with a brand, headline, value proposition and price.</p></div>
+        <div class="flow-step"><span class="k">Input</span><h4>Versions</h4><p>Market or context, plus 2–4 versions. Each with a brand, headline, value proposition and price.</p></div>
         <div class="flow-arrow">→</div>
-        <div class="flow-step"><span class="k">Same market</span><h4>One panel</h4><p>All contenders are evaluated against the same twelve simulated buyers. The buyers stay still — the propositions move into their arena.</p></div>
+        <div class="flow-step"><span class="k">Same market</span><h4>One panel</h4><p>All versions are evaluated against the same twelve simulated buyers. The buyers stay still — the propositions move into their arena.</p></div>
         <div class="flow-arrow">→</div>
-        <div class="flow-step"><span class="k">Forced choice</span><h4>One decision each</h4><p>Every buyer independently chooses among the contenders in front of them.</p></div>
+        <div class="flow-step"><span class="k">Forced choice</span><h4>One decision each</h4><p>Every buyer independently chooses among the versions in front of them.</p></div>
         <div class="flow-arrow">→</div>
         <div class="flow-step"><span class="k">Results</span><h4>Full breakdown</h4><p>Choice share, decision funnel, buyer-level decisions, and objections.</p></div>
       </div>
@@ -100,7 +100,7 @@
         <div class="funnel-callout">
           <p class="biggest">Biggest drop</p>
           <p class="delta">Believed → Chose</p>
-          <p>Contender C won the round — but 60.7% of buyers believed its claims while only 40.8% chose it. Nineteen points believed it and still hesitated, mostly over price. Believing isn't buying.</p>
+          <p>Version C won the round — but 60.7% of buyers believed its claims while only 40.8% chose it. Nineteen points believed it and still hesitated, mostly over price. Believing isn't buying.</p>
         </div>
       </div>
     </div>
@@ -129,7 +129,7 @@
           <div class="result-bars" id="iterR2"></div>
         </div>
         <div class="iter-edit">
-          Contender A price: <span class="old">₹699</span> → <span class="new">₹549</span>
+          Version A price: <span class="old">₹699</span> → <span class="new">₹549</span>
           <button class="cta-btn secondary" id="runAgain" style="margin-left:8px">Run again →</button>
         </div>
       </div>
@@ -246,8 +246,8 @@ const resultBars = $("#resultBars");
 const arenaStatus = $("#arenaStatus");
 const runBtn = $("#runSample");
 
-function renderContenders(priceKey) {
-  contenderRow.innerHTML = `<div class="scan-line" id="scanLine"></div>` + ARENA.contenders.map((c) => `
+function renderVersions(priceKey) {
+  contenderRow.innerHTML = `<div class="scan-line" id="scanLine"></div>` + ARENA.versions.map((c) => `
     <div class="contender-card" data-c="${c.id}">
       <span class="tag">CONTENDER ${c.id}</span>
       <h4>${c.headline}</h4>
@@ -255,7 +255,7 @@ function renderContenders(priceKey) {
       <span class="price">${c[priceKey]}</span>
     </div>`).join("");
 }
-renderContenders("priceR1");
+renderVersions("priceR1");
 
 function buildResultRows(container, share) {
   container.classList.remove("hidden");
@@ -305,9 +305,9 @@ async function runHeroSample() {
   const insight = document.createElement("div");
   insight.className = "result-insight";
   insight.innerHTML = `
-    <p class="winner-line">Winner — Contender C</p>
+    <p class="winner-line">Winner — Version C</p>
     <p>Price wasn't C's advantage — it faced the most price pushback of the three. A specific, dated claim ("roasted this week") carried it anyway.</p>
-    <p class="objection">Meera chose B over A. ${objectionIcon("price", 13)} Same objection category toward every contender (price) — but B's "₹23 a cup" framing scored 89% appeal for her vs 31% for A. Framing made the value legible; the category label alone wouldn't have told you that.</p>
+    <p class="objection">Meera chose B over A. ${objectionIcon("price", 13)} Same objection category toward every version (price) — but B's "₹23 a cup" framing scored 89% appeal for her vs 31% for A. Framing made the value legible; the category label alone wouldn't have told you that.</p>
     <div class="ctarow" style="margin-top:16px"><a class="cta-btn secondary" href="practice.html">Try it with your own pitches →</a></div>`;
   resultBars.after(insight);
   arenaStatus.textContent = "RESULT";
@@ -350,11 +350,11 @@ buyerGrid.addEventListener("click", (e) => {
       <h4>${buyer.name.toUpperCase()}</h4>
       <p class="bseg2">${buyer.age}, ${buyer.segment.toLowerCase()}</p>
       <div class="row">
-        <div><span>Chose</span><b>Contender ${d.choice}</b></div>
+        <div><span>Chose</span><b>Version ${d.choice}</b></div>
         <div><span>Rejected</span><b>${rejected.join(", ")}</b></div>
         <div><span>Confidence</span><b>${pct(d.confidence)}</b></div>
       </div>
-      ${rejected.map((c) => `<p class="obj">Objection to Contender ${c}: <b>${OBJ_LABEL[d.byBrand[c].objection]}</b> (${pct(d.byBrand[c].appeal)} appeal)</p>`).join("")}
+      ${rejected.map((c) => `<p class="obj">Objection to Version ${c}: <b>${OBJ_LABEL[d.byBrand[c].objection]}</b> (${pct(d.byBrand[c].appeal)} appeal)</p>`).join("")}
     </div>`;
   $("#closeBuyer").addEventListener("click", () => { openBuyer = null; buyerPanel.innerHTML = ""; document.querySelectorAll(".buyer-cell").forEach((c) => c.setAttribute("aria-expanded", "false")); });
 });

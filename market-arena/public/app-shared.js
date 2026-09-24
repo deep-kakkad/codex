@@ -6,7 +6,7 @@
 import { personaIcon, objectionIcon, stageIcon } from "./icons.js";
 
 export const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
-export const INK_ON = [false, false, false, true]; // text colour on each contender swatch
+export const INK_ON = [false, false, false, true]; // text colour on each version swatch
 export const HEX = ["#2F4BD1", "#9A3F7A", "#1E7F72", "#D9A21B"];
 export const STAGES = [["attention", "Noticed"], ["interest", "Interested"], ["belief", "Believed"], ["purchase", "Bought"]];
 // The same four stages said out loud, for the written summary.
@@ -32,7 +32,7 @@ const picksFor = (r, id) => {
 const TOSSUP = .1;
 const isTossup = (c) => (c.margin != null ? c.margin < TOSSUP : c.confidence < .5);
 
-// Which contender fields the round-over-round diff compares, in display order.
+// Which version fields the round-over-round diff compares, in display order.
 const DIFF_FIELDS = [["brand", "Name"], ["headline", "Headline"], ["valueProp", "Value proposition"], ["price", "Price"]];
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -55,13 +55,13 @@ export function createResultsView() {
     if (d === 0) return `<span class="delta flat">±0</span>`;
     return `<span class="delta ${d > 0 ? "up" : "down"}">${d > 0 ? "+" : "−"}${Math.abs(d)} pts</span>`;
   }
-  // Contenders are matched across rounds by slot, not by id: ids are positional
+  // Versions are matched across rounds by slot, not by id: ids are positional
   // per round, so adding or removing one mid-session would otherwise silently
-  // compare two different contenders.
+  // compare two different versions.
   const bySlot = (round, slot) => { const i = round.slots.indexOf(slot); return i < 0 ? null : round.brands[i]; };
 
   function detailHtml(c, r) {
-    return `<button class="x" id="closeDetail">Close</button><h3>${esc(c.name)}, ${esc(c.segment.toLowerCase())}</h3><p>${esc(c.profile)}</p><div class="tablewrap"><table><thead><tr><th>Contender</th><th class="n">Noticed</th><th class="n">Interested</th><th class="n">Believed</th><th class="n">Would buy</th><th>Main objection</th></tr></thead><tbody>` +
+    return `<button class="x" id="closeDetail">Close</button><h3>${esc(c.name)}, ${esc(c.segment.toLowerCase())}</h3><p>${esc(c.profile)}</p><div class="tablewrap"><table><thead><tr><th>Version</th><th class="n">Noticed</th><th class="n">Interested</th><th class="n">Believed</th><th class="n">Would buy</th><th>Main objection</th></tr></thead><tbody>` +
       r.brands.map((b) => { const x = c.byBrand[b.id];
         return `<tr><td>${esc(b.brand)}</td><td class="num">${pct(x.attention)}</td><td class="num">${pct(x.appeal)}</td><td class="num">${pct(x.belief)}</td><td class="num">${pct(c.purchaseProbs[b.id] || 0)}</td><td>${OBJ_LABEL[x.objection]}</td></tr>`; }).join("") +
       `</tbody></table></div>`;
@@ -137,7 +137,7 @@ export function createResultsView() {
 
     // Both numbers above are real and they disagree on purpose. Saying so here is
     // cheaper than letting a reader decide the report is broken.
-    $("#numNote").innerHTML = `The percentage is <b>average choice probability</b> — across all ${panelOf(r)} buyers, how likely each was to pick that contender. The count is <b>outright picks</b>: buyers whose top choice it was. They differ because a buyer leaning 40/35/25 contributes to all three percentages but is counted only once.`;
+    $("#numNote").innerHTML = `The percentage is <b>average choice probability</b> — across all ${panelOf(r)} buyers, how likely each was to pick that version. The count is <b>outright picks</b>: buyers whose top choice it was. They differ because a buyer leaning 40/35/25 contributes to all three percentages but is counted only once.`;
 
     renderExplain(r, prev);
     renderPitches(r);
@@ -232,7 +232,7 @@ export function createResultsView() {
       lines.push(`<b>${esc(win.brand)}</b>'s clearest advantage was in ${STAGE_PLAIN[edge[0]]}: ${pct(win.funnel[edge[0]])} against ${esc(second.brand)}'s ${pct(second.funnel[edge[0]])}.`);
 
     const worstObj = OBJ_ORDER.map((k) => [k, r.brands.reduce((s, b) => s + b.objections[k], 0) / r.brands.length]).sort((a, b) => b[1] - a[1])[0];
-    lines.push(`The most common objection across every contender was that ${OBJ_CLAUSE[worstObj[0]]} (${pct(worstObj[1])} on average).`);
+    lines.push(`The most common objection across every version was that ${OBJ_CLAUSE[worstObj[0]]} (${pct(worstObj[1])} on average).`);
 
     const dissent = r.segments.map((s) => {
       const best = [...r.brands].sort((a, b) => b.bySegment[s] - a.bySegment[s])[0];
@@ -431,7 +431,7 @@ export function createResultsView() {
 }
 
 export function exportCsv(rounds, filename) {
-  const rows = [["round", "contender", "headline", "value_proposition", "price", "choice_share", "noticed", "interested", "believed", ...rounds[0].segments.map((s) => "share_" + s)]];
+  const rows = [["round", "version", "headline", "value_proposition", "price", "choice_share", "noticed", "interested", "believed", ...rounds[0].segments.map((s) => "share_" + s)]];
   rounds.forEach((r, i) => r.brands.forEach((b) => rows.push([i + 1, b.brand, b.headline, b.valueProp, b.price, b.share, b.funnel.attention, b.funnel.interest, b.funnel.belief, ...r.segments.map((s) => b.bySegment[s])])));
   const csv = rows.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
   const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: filename });

@@ -33,7 +33,7 @@ function normalizePersonas(personas) {
 }
 
 // `order` is this buyer's presentation order, which is rotated per buyer; the ids
-// themselves stay bound to their contender so answers still map back by id.
+// themselves stay bound to their version so answers still map back by id.
 function customerQuestions(order, brandOf) {
   const q = {};
   order.forEach((id) => {

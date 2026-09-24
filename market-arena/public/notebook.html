@@ -39,7 +39,7 @@
   <section id="logHost"></section>
 
   <footer class="nb-foot">
-    <p>Buyers are modelled by TypeSafe's Jev model, not surveyed. Every contender is shown to each buyer in a different order so position can't decide the winner. Use a result to choose what deserves a real test, not as a measurement of a real market.</p>
+    <p>Buyers are modelled by TypeSafe's Jev model, not surveyed. Every version is shown to each buyer in a different order so position can't decide the winner. Use a result to choose what deserves a real test, not as a measurement of a real market.</p>
     <p style="margin-top:8px"><a href="practice.html">Full report view</a> · <a href="lens.html">Decision lens</a> · <a href="./">Home</a></p>
   </footer>
 </div>
@@ -127,7 +127,7 @@ function nextHumanTest(round) {
   return `<b>${esc(win.brand)}</b> led, but ${pct(val)} of buyers still cite ${OBJ_NOUN[key]}. ${HUMAN_TEST[key]}`;
 }
 
-/* Diff the current contenders against the ones the last experiment ran, so the card
+/* Diff the current versions against the ones the last experiment ran, so the card
    can name the one variable that changed rather than asking the user to remember. */
 function diffAgainst(baseline, teams) {
   if (!baseline) return null;
@@ -153,7 +153,7 @@ function renderCover() {
   const hits = scored.filter((e) => e.predicted === winnerSlot(e)).length;
   $("#coverMeta").innerHTML = [
     `<span><b>${state.personas.length}</b> buyers</span>`,
-    `<span><b>${state.teams.length}</b> contenders</span>`,
+    `<span><b>${state.teams.length}</b> versions</span>`,
     `<span><b>${done}</b> experiment${done === 1 ? "" : "s"} run</span>`,
     scored.length ? `<span>predictions right: <b>${hits} of ${scored.length}</b></span>` : "",
   ].join("");
@@ -200,8 +200,8 @@ function renderDraft() {
         <p class="region-label"><span class="n">2</span>Held fixed</p>
         <ul class="fixed-list">
           <li><span class="k">Buyers</span><span>${state.personas.length} buyers across ${new Set(state.personas.map((p) => p.segment)).size} segments, unchanged from the first experiment</span></li>
-          <li><span class="k">Order</span><span>Rotated per buyer, so no contender gains from being listed first</span></li>
-          <li><span class="k">Contenders</span><span>${state.teams.length} in the arena${changed ? `, all but ${esc(changed.brand)}'s ${changed.label.toLowerCase()} untouched` : ""}</span></li>
+          <li><span class="k">Order</span><span>Rotated per buyer, so no version gains from being listed first</span></li>
+          <li><span class="k">Versions</span><span>${state.teams.length} in the arena${changed ? `, all but ${esc(changed.brand)}'s ${changed.label.toLowerCase()} untouched` : ""}</span></li>
         </ul>
       </div>
 
@@ -239,7 +239,7 @@ function slotEditor(t, i, baseline) {
     </div>`;
   return `
     <div class="slot" style="--c:${colorFor(t.slot)}">
-      <div class="slot-head"><span class="dot"></span><span class="nm">${esc(t.brand || "Unnamed contender")}</span></div>
+      <div class="slot-head"><span class="dot"></span><span class="nm">${esc(t.brand || "Unnamed version")}</span></div>
       <div class="slot-grid">
         ${field("brand", "Name", "input")}
         ${field("price", "Price", "input")}
@@ -280,7 +280,7 @@ function verdictFor(entry) {
   // not evidence about anyone's prediction. Scoring it either way would be a lie.
   const tooClose = !predictedNone && gap < 5;
   const predName = predictedNone ? "nobody would buy"
-    : `${esc(entry.teams.find((t) => t.slot === entry.predicted)?.brand || "that contender")} would win`;
+    : `${esc(entry.teams.find((t) => t.slot === entry.predicted)?.brand || "that version")} would win`;
   const winName = esc(winnerOf(entry.result).brand);
 
   const label = tooClose ? "Too close to score" : hit ? "Prediction held" : "Prediction missed";

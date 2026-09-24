@@ -1,6 +1,6 @@
 // A real pair of rounds, captured from the live API, used as the sample market
 // when Market Lens is opened without a project of your own. Round 2 is the same
-// 12 buyers judging the same three ads after one controlled change: contender
+// 12 buyers judging the same three ads after one controlled change: version
 // A's price dropped from Rs 699 to Rs 549. Nothing here is illustrative — these
 // are the percentages, funnel values, objections and per-buyer decisions the
 // model actually returned.

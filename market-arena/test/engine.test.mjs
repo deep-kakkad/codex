@@ -7,7 +7,7 @@ const { runRound } = await import("../lib/engine.js");
 
 /* The stub deliberately models a position-biased judge: the ad listed FIRST in the
    serialised `ads` object always wins. If the engine did not rotate the presentation
-   order per buyer, every buyer would pick the same contender and that contender would
+   order per buyer, every buyer would pick the same version and that version would
    take 100% of the panel. Balanced output is therefore proof the rotation is live. */
 let seenOrders = [];
 globalThis.fetch = async (_url, opts) => {
@@ -52,15 +52,15 @@ assert.equal(seenOrders.length, 12, "one model call per buyer");
 assert.equal(new Set(seenOrders).size, 3, `expected 3 distinct orderings, got ${[...new Set(seenOrders)].join(" | ")}`);
 const firstPositions = {};
 seenOrders.forEach((o) => { const f = o.split(",")[0]; firstPositions[f] = (firstPositions[f] || 0) + 1; });
-assert.deepEqual(Object.values(firstPositions).sort(), [4, 4, 4], "each contender should lead for 4 of 12 buyers");
-console.log("ok  order is counterbalanced — each contender leads exactly 4 of 12 times");
+assert.deepEqual(Object.values(firstPositions).sort(), [4, 4, 4], "each version should lead for 4 of 12 buyers");
+console.log("ok  order is counterbalanced — each version leads exactly 4 of 12 times");
 
 /* --- 2. the position bias is neutralised in the aggregate ----------------- */
 // Against a judge that always picks whatever is first, a fixed order would give one
-// contender 12/12. Rotation should split them evenly instead.
+// version 12/12. Rotation should split them evenly instead.
 const picks = r.brands.map((b) => b.picks);
 assert.deepEqual(picks, [4, 4, 4], `expected an even 4/4/4 split, got ${picks.join("/")}`);
-console.log("ok  a first-position-biased judge no longer hands one contender the panel");
+console.log("ok  a first-position-biased judge no longer hands one version the panel");
 
 /* --- 3. picks and share are separate statistics, both reported ------------ */
 r.brands.forEach((b) => {

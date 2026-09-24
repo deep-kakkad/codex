@@ -177,7 +177,7 @@ h2{font:800 26px/1.2 var(--body);margin:0 0 4px;letter-spacing:-.015em}
 .skel-head{height:15px;width:60%;margin-bottom:14px}
 @media (prefers-reduced-motion:reduce){.skel{animation:none;background:var(--line)}.dark-sec .skel{background:#3A3934}}
 
-/* Analysis. Funnels sit side by side so contenders can be compared at a glance;
+/* Analysis. Funnels sit side by side so versions can be compared at a glance;
    grid children default to min-width:auto, which would stop the fixed-column
    funnel rows from ever shrinking on a phone. */
 #funnels{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:26px 38px}
@@ -194,7 +194,7 @@ h2{font:800 26px/1.2 var(--body);margin:0 0 4px;letter-spacing:-.015em}
 table.heat{border-collapse:separate;border-spacing:0;width:100%;min-width:420px;font-size:14px}
 .heat th{font-weight:500;text-align:left;padding:11px 10px;border-bottom:1.5px solid var(--ink);background:var(--cream)}
 .heat thead th{position:sticky;top:0;z-index:2}
-/* The row label stays put while the contender columns scroll sideways on a phone. */
+/* The row label stays put while the version columns scroll sideways on a phone. */
 .heat tbody th{position:sticky;left:0;z-index:1;background:var(--cream);font-family:var(--body);font-size:14px;font-weight:500;border-bottom:1px solid var(--line);white-space:nowrap;padding-right:16px}
 .heat tbody th svg{vertical-align:-2px;margin-right:6px}
 .heat thead th:first-child{position:sticky;left:0;z-index:3}
@@ -452,7 +452,7 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 .s-panel-bar .sp-fill{flex:1}
 .s-panel-bar .sp-status{color:var(--good)}
 .s-panel-body{padding:22px}
-.s-contenders{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.s-versions{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .s-ccard{border:1px solid var(--line);border-radius:10px;padding:16px 15px}
 .s-ccard.winner{border-color:var(--accent)}
 .s-ccard .sc-tag{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
@@ -519,7 +519,7 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 .s-farrow{align-self:center;color:var(--line);font:700 20px var(--mono)}
 .s-input-field{border:1px solid var(--line);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--muted);margin-bottom:6px;background:var(--cream)}
 .s-input-field b{color:var(--ink);display:block;font-size:12.5px;margin-bottom:1px}
-.s-add-contender{font:700 11.5px var(--mono);color:var(--faint);border:1px dashed var(--line);border-radius:6px;padding:7px 10px;text-align:center;margin-top:4px}
+.s-add-version{font:700 11.5px var(--mono);color:var(--faint);border:1px dashed var(--line);border-radius:6px;padding:7px 10px;text-align:center;margin-top:4px}
 .s-buyer-mini-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
 .s-buyer-mini{width:100%;aspect-ratio:1;border-radius:50%;background:var(--cream);border:1px solid var(--line);display:grid;place-items:center;font:700 10px var(--mono);color:var(--muted)}
 .s-fpanel .sf-caption{font:700 12px var(--mono);color:var(--ink);letter-spacing:.02em;margin:0 0 4px}
@@ -601,7 +601,7 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 
 @media (max-width:980px){
   .s-hero-grid{grid-template-columns:1fr}
-  .s-contenders{grid-template-columns:1fr}
+  .s-versions{grid-template-columns:1fr}
   .s-why{grid-template-columns:1fr}
   .s-flow3{grid-template-columns:1fr}
   .s-farrow{transform:rotate(90deg);justify-self:center}

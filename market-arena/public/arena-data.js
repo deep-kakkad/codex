@@ -1,11 +1,11 @@
 // The sample arena on the landing page: one real round, captured once via the
-// practice-mode API (12 buyers, 3 real contenders) and replayed client-side.
+// practice-mode API (12 buyers, 3 real versions) and replayed client-side.
 // Nothing here is scripted — these are the actual percentages, funnel values,
 // objections and per-buyer decisions the model returned. Round 2 is the same
-// panel with Contender A's price cut from ₹699 to ₹549, also a real call.
+// panel with Version A's price cut from ₹699 to ₹549, also a real call.
 export const ARENA = {
   scenario: "COFFEE SUBSCRIPTION",
-  contenders: [
+  versions: [
     { id: "A", headline: "Wake up to better coffee.", valueProp: "Specialty coffee delivered every month.", priceR1: "₹699/mo", priceR2: "₹549/mo" },
     { id: "B", headline: "Café-quality coffee. ₹23 a cup.", valueProp: "Freshly roasted beans delivered monthly.", priceR1: "₹699/mo", priceR2: "₹699/mo" },
     { id: "C", headline: "Never drink stale coffee again.", valueProp: "Roasted this week. Delivered to your door.", priceR1: "₹749/mo", priceR2: "₹749/mo" },
@@ -33,8 +33,8 @@ export const ARENA = {
       C: { saw: 0.502, interested: 0.622, believed: 0.607, chose: 0.408 },
     },
     objections: { A: 0.269, B: null, C: 0.596 },
-    // Per buyer: which contender they chose, confidence, and their appeal +
-    // objection toward every contender (including the ones they rejected).
+    // Per buyer: which version they chose, confidence, and their appeal +
+    // objection toward every version (including the ones they rejected).
     // All real, all from the same captured round.
     decisions: {
       b1: { choice: "C", confidence: 0.46, byBrand: { A: { appeal: 0.79, objection: "relevance" }, B: { appeal: 0.70, objection: "relevance" }, C: { appeal: 0.827, objection: "price" } } },

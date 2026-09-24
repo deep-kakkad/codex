@@ -14,24 +14,24 @@ const PERSONA_FIELD = { name: "name", segment: "segment", profile: "profile" };
 
 const txt = (v) => (typeof v === "string" ? v.trim() : "");
 // Name the thing the way the user named it. "BrewRush is missing its headline" beats
-// "Contender 2 is missing its headline", which makes them count cards to find it.
+// "Version 2 is missing its headline", which makes them count cards to find it.
 const who = (obj, i, fallback) => txt(obj?.brand) || txt(obj?.name) || `${fallback} ${i + 1}`;
 
 export function findTeamProblem(teams) {
   if (!Array.isArray(teams) || teams.length < LIMITS.minTeams || teams.length > LIMITS.maxTeams)
-    return { index: null, field: null, message: `Enter between ${LIMITS.minTeams} and ${LIMITS.maxTeams} contenders.` };
+    return { index: null, field: null, message: `Enter between ${LIMITS.minTeams} and ${LIMITS.maxTeams} versions.` };
 
   const seen = new Map();
   for (const [i, t] of teams.entries()) {
     for (const f of Object.keys(TEAM_FIELD)) {
       const v = txt(t?.[f]);
-      if (!v) return { index: i, field: f, message: `${who(t, i, "Contender")} is missing its ${TEAM_FIELD[f]}.` };
+      if (!v) return { index: i, field: f, message: `${who(t, i, "Version")} is missing its ${TEAM_FIELD[f]}.` };
       if (v.length > LIMITS[f])
-        return { index: i, field: f, message: `${who(t, i, "Contender")}'s ${TEAM_FIELD[f]} is ${v.length} characters — the limit is ${LIMITS[f]}.` };
+        return { index: i, field: f, message: `${who(t, i, "Version")}'s ${TEAM_FIELD[f]} is ${v.length} characters — the limit is ${LIMITS[f]}.` };
     }
     const key = txt(t.brand).toLowerCase();
     if (seen.has(key))
-      return { index: i, field: "brand", message: `Two contenders are called "${txt(t.brand)}". Give each one its own name so the report can tell them apart.` };
+      return { index: i, field: "brand", message: `Two versions are called "${txt(t.brand)}". Give each one its own name so the report can tell them apart.` };
     seen.set(key, i);
   }
   return null;

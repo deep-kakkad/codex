@@ -7,11 +7,11 @@ const team = (o = {}) => ({ brand: "Alpha", headline: "h", valueProp: "v", price
 const ok = [team(), team({ brand: "Beta" })];
 
 assert.equal(findTeamProblem(ok), null);
-console.log("ok  a complete pair of contenders passes");
+console.log("ok  a complete pair of versions passes");
 
-assert.equal(findTeamProblem([team()])?.message, "Enter between 2 and 4 contenders.");
-assert.equal(findTeamProblem(null)?.message, "Enter between 2 and 4 contenders.");
-console.log("ok  too few contenders is caught, and so is a non-array");
+assert.equal(findTeamProblem([team()])?.message, "Enter between 2 and 4 versions.");
+assert.equal(findTeamProblem(null)?.message, "Enter between 2 and 4 versions.");
+console.log("ok  too few versions is caught, and so is a non-array");
 
 /* The problem must point at a field, or the client cannot put the message on it. */
 const missing = findTeamProblem([team({ headline: "  " }), team({ brand: "Beta" })]);
@@ -21,8 +21,8 @@ console.log("ok  a blank field reports its index and field, named by the user's 
 
 /* Falls back to a position only when there is no name to use. */
 assert.equal(findTeamProblem([team({ brand: "", headline: "" }), team({ brand: "Beta" })]).message,
-  "Contender 1 is missing its name.");
-console.log("ok  an unnamed contender falls back to its position");
+  "Version 1 is missing its name.");
+console.log("ok  an unnamed version falls back to its position");
 
 const long = findTeamProblem([team({ headline: "x".repeat(LIMITS.headline + 1) }), team({ brand: "Beta" })]);
 assert.equal(long.field, "headline");
