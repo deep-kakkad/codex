@@ -3,6 +3,7 @@ import { runRound, validateTeams, validatePersonas, LIMITS, PERSONA_LIMITS } fro
 import { SCENARIO, PERSONAS, DEFAULT_TEAMS } from "./scenario.js";
 import { TEMPLATES } from "./templates.js";
 import { saveShare, getShareById } from "./store.js";
+import { ask as askModel, ASK_COST_CREDITS } from "./ask.js";
 
 const codeOk = (code) => !process.env.ARENA_CODE || (code || "").trim() === process.env.ARENA_CODE;
 
@@ -80,4 +81,33 @@ export async function getShare(id) {
     if (!data) return [404, { error: "This share link doesn't exist, or has expired." }];
     return [200, data];
   } catch (e) { console.error(e); return [502, { error: "Couldn't load that share link. Try again in a moment." }]; }
+}
+
+// Ask Market Arena.
+//
+// This is the only endpoint that spends real money per call, so it stays off until
+// it can be metered. An unmetered generative endpoint on a public URL is how people
+// wake up to a bill; ASK_ENABLED is the switch, and it should only be turned on once
+// credits are deducted against a signed-in account.
+export async function askRound(rawBody) {
+  if (process.env.ASK_ENABLED !== "1")
+    return [503, { error: "Ask isn't switched on yet. It needs an account and a credit balance to charge against." }];
+  if (!process.env.OPENAI_API_KEY)
+    return [500, { error: "The server has no model key for Ask." }];
+
+  let body;
+  try { body = JSON.parse(rawBody || "{}"); } catch { return [400, { error: "The request wasn't valid JSON." }]; }
+  const { round, question } = body;
+  const q = typeof question === "string" ? question.trim() : "";
+  if (!q) return [400, { error: "Ask a question first." }];
+  if (q.length > 500) return [400, { error: "That question is too long — keep it under 500 characters." }];
+  if (!round?.brands?.length || !round?.customers?.length) return [400, { error: "That doesn't look like a round result." }];
+
+  try {
+    const out = await askModel(round, q);
+    return [200, { ...out, credits: ASK_COST_CREDITS }];
+  } catch (e) {
+    console.error(e);
+    return [502, { error: "Couldn't reach the model. Try the question again in a moment." }];
+  }
 }
