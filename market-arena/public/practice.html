@@ -170,6 +170,7 @@
         <p class="ask-sub">Answers come from this round's numbers only. If the data can't
           settle your question, it will say so rather than guess.</p>
         <div id="askBody"></div>
+        <div id="askOut"></div>
       </section>
     </div>
 
@@ -839,14 +840,20 @@ function renderAsk() {
   $("#askCost").textContent = m.signedIn
     ? `${m.costs?.ask ?? 10} credits · you have ${m.balance}`
     : `${m.costs?.ask ?? 10} credits per question`;
+
+  // Only rebuild when the state actually changed. A rebuild on every balance
+  // refresh would throw away whatever the user had typed.
+  const shape = m.signedIn ? "in" : "out";
+  if ($("#askBody").dataset.shape === shape) return;
+  $("#askBody").dataset.shape = shape;
+
   $("#askBody").innerHTML = m.signedIn
     ? `<div class="ask-row">
          <input id="askQ" maxlength="500" aria-label="Your question"
            placeholder="e.g. why did Price-sensitive buyers reject the leader?">
          <button class="ask-go" id="askGo">Ask</button>
        </div>
-       <div class="ask-suggest">${ASK_IDEAS.map((q) => `<button class="ask-chip" data-ask-idea="${esc(q)}">${esc(q)}</button>`).join("")}</div>
-       <div id="askOut"></div>`
+       <div class="ask-suggest">${ASK_IDEAS.map((q) => `<button class="ask-chip" data-ask-idea="${esc(q)}">${esc(q)}</button>`).join("")}</div>`
     : `<p class="ask-locked">Sign in to ask questions about your results. New accounts start
          with 100 credits, which is ten questions.
          <button class="linkish" data-ask-signin>Sign in or create an account</button></p>`;
