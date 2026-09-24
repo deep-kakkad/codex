@@ -3,7 +3,9 @@
 import { PERSONAS, OBJECTIONS } from "./scenario.js";
 
 const API = "https://api.typesafe.ai/v1/systemone";
-const MODEL = process.env.TYPESAFE_MODEL || "jev-latest";
+// Pinned, not `jev-latest`: a moving alias can change every number in a saved
+// round with no deploy on our side. Upgrade deliberately, re-running the fixtures.
+const MODEL = process.env.TYPESAFE_MODEL || "jev-1.13.0";
 export const LIMITS = { brand: 30, headline: 90, valueProp: 280, price: 50, minTeams: 2, maxTeams: 4 };
 export const PERSONA_LIMITS = { minPersonas: 4, maxPersonas: 16, name: 30, segment: 40, profile: 260 };
 
@@ -63,9 +65,11 @@ function normalizePersonas(personas) {
   return personas.map((p, i) => ({ id: p.id || `c${i + 1}`, name: p.name.trim(), segment: p.segment.trim(), profile: p.profile.trim() }));
 }
 
-function customerQuestions(ids, teams) {
+// `order` is this buyer's presentation order, which is rotated per buyer; the ids
+// themselves stay bound to their contender so answers still map back by id.
+function customerQuestions(order, brandOf) {
   const q = {};
-  ids.forEach((id) => {
+  order.forEach((id) => {
     const ad = `\`ads.${id}\``;
     q[`${id}__attention`] = { type: "noul", instructions: `Would \`customer\` stop scrolling to read the ad in ${ad}?` };
     q[`${id}__appeal`] = {
@@ -80,7 +84,7 @@ function customerQuestions(ids, teams) {
     };
     q[`${id}__objection`] = { type: "choice", instructions: `What is the biggest reason \`customer\` might not buy the product in ${ad}?`, criteria: OBJECTIONS };
   });
-  const options = Object.fromEntries(ids.map((id, i) => [id, `The ${teams[i].brand.trim()} product described in \`ads.${id}\``]));
+  const options = Object.fromEntries(order.map((id) => [id, `The ${brandOf[id]} product described in \`ads.${id}\``]));
   options.none = "Would not buy any of these products";
   q.purchase = { type: "choice", instructions: "If `customer` saw all of the ads in `ads`, which product would they buy?", criteria: options };
   return q;
@@ -100,14 +104,31 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
 export async function runRound(teams, customPersonas) {
   const personas = customPersonas ? normalizePersonas(customPersonas) : PERSONAS;
   const ids = teams.map((_, i) => `t${i + 1}`);
-  const ads = Object.fromEntries(ids.map((id, i) => [id, {
+  const adOf = Object.fromEntries(ids.map((id, i) => [id, {
     brand: teams[i].brand.trim(), headline: teams[i].headline.trim(), value_proposition: teams[i].valueProp.trim(), price: teams[i].price.trim(),
   }]));
+  const brandOf = Object.fromEntries(ids.map((id) => [id, adOf[id].brand]));
+  const ads = Object.fromEntries(ids.map((id) => [id, adOf[id]]));
   const started = Date.now();
-  const cq = customerQuestions(ids, teams);
+
+  // Jev reads the ads in the order the JSON serialises them, and that order moves the
+  // answer a lot: running the same three ads in three orders moved one ad's share from
+  // 22.0% (listed first) to 9.5% (listed last) — a 12.5pt swing from position alone,
+  // roughly ten times the run-to-run noise. So each buyer sees a different rotation and
+  // the panel averages the effect out, instead of rewarding whoever was typed first.
+  // Rotation is by buyer index, not random, so an unchanged round stays reproducible.
+  const rotate = (arr, by) => arr.map((_, i) => arr[(i + by) % arr.length]);
+  const orderFor = (k) => rotate(ids, k % ids.length);
+
   const [integrity, ...replies] = await Promise.all([
     ask({ ads }, integrityQuestions(ids)),
-    ...personas.map((p) => ask({ customer: p.profile, ads }, cq)),
+    ...personas.map((p, k) => {
+      const order = orderFor(k);
+      return ask(
+        { customer: p.profile, ads: Object.fromEntries(order.map((id) => [id, adOf[id]])) },
+        customerQuestions(order, brandOf),
+      );
+    }),
   ]);
 
   const customers = personas.map((p, k) => {
@@ -117,6 +138,10 @@ export async function runRound(teams, customPersonas) {
       purchase: a.purchase.choice,
       purchaseProbs: Object.fromEntries(Object.entries(a.purchase.probabilities).map(([k2, v]) => [k2, r3(v)])),
       confidence: r3(a.purchase.confidence),
+      // Gap between this buyer's first and second choice. `purchase` is an argmax, so a
+      // buyer sitting at 34/33/33 is reported as a hard pick; the margin is what lets the
+      // report say "too close to call" instead of inventing a decision they didn't make.
+      margin: (() => { const v = Object.values(a.purchase.probabilities).sort((x, y) => y - x); return r3((v[0] ?? 0) - (v[1] ?? 0)); })(),
       byBrand: Object.fromEntries(ids.map((id) => [id, {
         attention: r3(a[`${id}__attention`].noul),
         appeal: r3(a[`${id}__appeal`].score / 3),
@@ -128,17 +153,28 @@ export async function runRound(teams, customPersonas) {
   });
 
   const segments = [...new Set(personas.map((p) => p.segment))];
+  const segmentOf = (s) => customers.filter((c) => c.segment === s);
+  // Two different statistics, deliberately kept apart. `share` is the mean of every
+  // buyer's probability across the options — it uses the whole distribution, so it is
+  // the steadier of the two (measured run-to-run spread ~1.3pt). `picks` counts only
+  // top choices, which is what the buyer cards show and what reconciles with them, but
+  // it discards the distribution, so one undecided buyer moves it a whole 1/n. Report
+  // both, never one labelled as the other.
   const shareOf = (list, id) => r3(avg(list.map((c) => c.purchaseProbs[id] ?? 0)));
+  const picksOf = (list, id) => list.filter((c) => c.purchase === id).length;
   const brands = ids.map((id, i) => ({
     id, brand: ads[id].brand, headline: ads[id].headline, valueProp: ads[id].value_proposition, price: ads[id].price,
     share: shareOf(customers, id),
+    picks: picksOf(customers, id),
+    pickRate: r3(picksOf(customers, id) / customers.length),
     funnel: {
       attention: r3(avg(customers.map((c) => c.byBrand[id].attention))),
       interest: r3(avg(customers.map((c) => c.byBrand[id].appeal))),
       belief: r3(avg(customers.map((c) => c.byBrand[id].belief))),
       purchase: shareOf(customers, id),
     },
-    bySegment: Object.fromEntries(segments.map((s) => [s, shareOf(customers.filter((c) => c.segment === s), id)])),
+    bySegment: Object.fromEntries(segments.map((s) => [s, shareOf(segmentOf(s), id)])),
+    bySegmentPicks: Object.fromEntries(segments.map((s) => [s, picksOf(segmentOf(s), id)])),
     objections: Object.fromEntries(Object.keys(OBJECTIONS).map((o) => [o, r3(avg(customers.map((c) => c.byBrand[id].objectionProbs[o] ?? 0)))])),
     flagged: integrity.answers[id].noul >= 0.6,
   }));
@@ -147,7 +183,16 @@ export async function runRound(teams, customPersonas) {
   const tokens = [integrity, ...replies].reduce((s, r) => s + (r.usage?.input_tokens || 0), 0);
   return {
     model: replies[0].model, ms: Date.now() - started, tokens,
-    noPurchase: { share: shareOf(customers, "none"), bySegment: Object.fromEntries(segments.map((s) => [s, shareOf(customers.filter((c) => c.segment === s), "none")])) },
+    noPurchase: {
+      share: shareOf(customers, "none"),
+      picks: picksOf(customers, "none"),
+      pickRate: r3(picksOf(customers, "none") / customers.length),
+      bySegment: Object.fromEntries(segments.map((s) => [s, shareOf(segmentOf(s), "none")])),
+      bySegmentPicks: Object.fromEntries(segments.map((s) => [s, picksOf(segmentOf(s), "none")])),
+    },
+    // The denominator, carried with the numbers so no caller has to assume it.
+    panel: customers.length,
+    segmentSizes: Object.fromEntries(segments.map((s) => [s, segmentOf(s).length])),
     segments, brands, customers,
   };
 }
