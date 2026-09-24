@@ -430,7 +430,7 @@ export function createResultsView() {
 
     const objHeat = (v) => `background:color-mix(in srgb, var(--bad) ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
     $("#objections").innerHTML = `<div class="tablewrap"><table class="heat"><thead><tr><th scope="col">Objection</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}</tr></thead><tbody>` +
-      OBJ_ORDER.map((k) => `<tr><th scope="row">${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</th>${r.brands.map((b) => `<td class="cell num" style="${objHeat(b.objections[k])}">${pct(b.objections[k])}</td>`).join("")}</tr>`).join("") +
+      OBJ_ORDER.map((k) => `<tr><th scope="row">${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</th>${r.brands.map((b) => `<td class="cell num probe" style="${objHeat(b.objections[k])}" data-investigate="obj:${k}:${b.id}" role="button" tabindex="0" title="See the buyers behind this number">${pct(b.objections[k])}</td>`).join("")}</tr>`).join("") +
       `</tbody></table></div>` + heatKey("obj", "share of buyers citing it") +
       r.brands.map((b) => {
         const [topK, topV] = topObjection(b);
