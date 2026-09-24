@@ -936,3 +936,34 @@ button.whatis{cursor:pointer}
 
 .nodata{border:1px dashed var(--line);padding:20px;color:var(--muted);font-size:var(--t-body)}
 @media (max-width:560px){ .drawer{width:100vw;border-left:none} }
+
+/* ---- The experiment brief. It opens step 1 because it is the decision the rest
+   of the setup serves, and it is given the weight of a question, not a field. ---- */
+.brief-block{margin-bottom:40px;padding-bottom:34px;border-bottom:1px solid var(--line)}
+.brief-eyebrow{margin:0 0 8px;font:600 var(--t-anno) var(--mono);letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent)}
+.brief-q{margin:0 0 8px !important}
+.goalgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:22px 0 20px}
+.goalcard{display:grid;gap:6px;text-align:left;padding:16px 18px;cursor:pointer;
+  background:var(--paper);border:1.5px solid var(--line);border-radius:2px;
+  transition:border-color .12s ease,box-shadow .12s ease}
+.goalcard:hover{border-color:var(--ink)}
+.goalcard.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.goalcard.on .gq{color:var(--accent)}
+.goalcard:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.goalcard .gq{font:600 17px var(--display);letter-spacing:-.008em}
+.goalcard .gh{font:400 var(--t-small)/1.45 var(--body);color:var(--muted)}
+.goalcard .gm{font:500 11px var(--mono);letter-spacing:.04em;color:var(--faint);
+  padding-top:6px;border-top:1px solid var(--line)}
+.goalnote-lab{display:block;margin-bottom:6px}
+.goalnote-lab .opt{font:500 11px var(--mono);color:var(--faint);letter-spacing:.05em;text-transform:uppercase}
+#goalNote{width:100%;max-width:640px;min-height:58px;padding:10px;border:1px solid var(--line);
+  font:400 var(--t-body)/1.5 var(--body);background:var(--paper);resize:vertical}
+#goalNote:focus{outline:2px solid var(--accent);outline-offset:1px}
+
+/* The hero answers the brief before it reports anything else. */
+.hero-brief{margin:0 0 24px;padding:16px 18px;background:var(--cream);border-left:3px solid var(--ink)}
+.hero-brief .bq{display:block;font:600 var(--t-anno) var(--mono);letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.hero-brief .ba{margin:0;font:400 18px/1.55 var(--body)}
+.hero-brief .bn{margin:10px 0 0;font:400 var(--t-small)/1.5 var(--body);color:var(--muted);font-style:italic}

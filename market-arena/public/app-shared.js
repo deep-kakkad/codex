@@ -5,6 +5,7 @@
 // array; this module owns which round is on screen and only touches those ids.
 import { personaIcon, objectionIcon, stageIcon, segmentTint } from "./icons.js";
 import { EXTRA_FIELDS } from "./validate.js";
+import { GOAL_BY_KEY } from "./goals.js";
 
 export const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
 export const INK_ON = [false, false, false, true]; // text colour on each version swatch
@@ -150,6 +151,17 @@ export function createResultsView() {
         <span class="hero-meta">${n} simulated buyers · ${r.brands.length} versions</span>
       </div>
       <div class="hero-body">
+        ${(() => {
+          const g = GOAL_BY_KEY[r.goal];
+          if (!g) return "";
+          // The brief is answered in its own terms, from this round's numbers, before
+          // the general verdict — otherwise the question the user asked gets buried.
+          return `<div class="hero-brief">
+            <span class="bq">You asked: ${esc(g.q)}</span>
+            <p class="ba">${g.answer(r)}</p>
+            ${r.goalNote ? `<p class="bn">Your note before the run: “${esc(r.goalNote)}”</p>` : ""}
+          </div>`;
+        })()}
         <h2 class="hero-verdict">${verdict}</h2>
         <p class="hero-sub">${sub}</p>
 

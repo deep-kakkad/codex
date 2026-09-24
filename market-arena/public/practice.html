@@ -58,6 +58,15 @@
 
     <section class="step" data-step="1">
       <div class="wrap">
+        <div class="brief-block">
+          <p class="brief-eyebrow">The experiment brief</p>
+          <h2 class="brief-q">What do you want to learn?</h2>
+          <p class="sub">Pick one. It decides which number the report leads with, and the report answers it directly. Without this a round is just a figure you can rationalise afterwards.</p>
+          <div class="goalgrid" id="goalGrid"></div>
+          <label for="goalNote" class="goalnote-lab">Anything else worth writing down before you run? <span class="opt">Optional</span></label>
+          <textarea id="goalNote" maxlength="240" placeholder="What you expect to happen, or why this round matters."></textarea>
+        </div>
+
         <h2>Set the scene</h2>
         <p class="sub">Name this scenario and say what is going on in the market. This is for you and your team — buyers never see it, they only see the ads.</p>
         <div class="brand" style="--c:var(--accent);max-width:640px">
@@ -304,6 +313,7 @@
 import { LOGO_MARK, personaIcon, caseMark, caseTint, buyerFace, segmentTint } from "./icons.js";
 import { createResultsView, exportCsv, esc } from "./app-shared.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
+import { GOALS } from "./goals.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
 const view = createResultsView();
@@ -539,6 +549,22 @@ const FIELDS = [["headline", "Headline", "input"], ["valueProp", "Value proposit
 const extrasOn = () => state.extras || [];
 const extrasLocked = () => (state.rounds?.length || 0) > 0;
 
+function renderGoals() {
+  const on = state.goal;
+  $("#goalGrid").innerHTML = GOALS.map((g) => `
+    <button class="goalcard ${on === g.key ? "on" : ""}" data-goal="${g.key}" aria-pressed="${on === g.key}">
+      <span class="gq">${esc(g.q)}</span>
+      <span class="gh">${esc(g.hint)}</span>
+      <span class="gm">Leads with: ${esc(g.metric)}</span>
+    </button>`).join("");
+}
+$("#goalGrid").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-goal]"); if (!btn) return;
+  state.goal = state.goal === btn.dataset.goal ? null : btn.dataset.goal;
+  save(); renderGoals();
+});
+$("#goalNote").addEventListener("input", (e) => { state.goalNote = e.target.value; save(); });
+
 function renderExtraPick() {
   const on = extrasOn(), locked = extrasLocked();
   $("#extraPick").innerHTML = `
@@ -591,6 +617,8 @@ function renderBrands() {
     </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a version</button>` : "");
   document.querySelectorAll("#brands [data-f]").forEach(updateBrandCount);
   renderExtraPick();
+  renderGoals();
+  $("#goalNote").value = state.goalNote || "";
   $("#run").textContent = `Run round ${state.rounds.length + 1}`;
   $("#editorTitle").textContent = state.rounds.length ? `Rework your versions for round ${state.rounds.length + 1}` : "Write the versions you want to test";
   renderPreview();
@@ -698,6 +726,8 @@ async function runRound() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "The round didn't run. Try again.");
     data.slots = state.teams.map((t) => t.slot);
+    data.goal = state.goal || null;
+    data.goalNote = state.goalNote || "";
     state.rounds.push(data); save();
     setStatus("", false); view.resetOpen();
     renderBrands(); view.renderResults(state.rounds, true);
