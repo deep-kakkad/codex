@@ -1,4 +1,17 @@
-{ "name": "market-arena", "version": "1.0.0", "private": true, "type": "module",
+{
+  "name": "market-arena",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
   "description": "A marketing simulation where brands compete for a synthetic market judged by TypeSafe's Jev model.",
-  "scripts": { "start": "node server.js" }, "engines": { "node": ">=18" },
-  "dependencies": { "@netlify/blobs": "^11.1.0" } }
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^11.1.0",
+    "@netlify/identity": "^2.0.0"
+  }
+}

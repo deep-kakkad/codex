@@ -6,4 +6,4 @@
   node_bundler = "esbuild"
   # public/validate.js is imported by lib/engine.js as the single source of
   # validation rules, shared with the browser.
-  included_files = ["lib/**", "public/validate.js"]
+  included_files = ["lib/**", "public/validate.js", "db/**"]
