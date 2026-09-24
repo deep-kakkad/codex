@@ -1,7 +1,7 @@
 // Runs one market round against TypeSafe's Jev model.
 // One request per customer: every brand's ad is judged in parallel inside it.
 import { PERSONAS, OBJECTIONS } from "./scenario.js";
-import { findTeamProblem, findPersonaProblem } from "../public/validate.js";
+import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS } from "../public/validate.js";
 
 const API = "https://api.typesafe.ai/v1/systemone";
 // Pinned, not `jev-latest`: a moving alias can change every number in a saved
@@ -71,8 +71,14 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
 export async function runRound(teams, customPersonas) {
   const personas = customPersonas ? normalizePersonas(customPersonas) : PERSONAS;
   const ids = teams.map((_, i) => `t${i + 1}`);
+  // Optional fields go in under their own key, so the model weighs a call to action
+  // as a call to action rather than as more value-proposition text.
+  const extrasOf = (t) => Object.fromEntries(
+    EXTRA_FIELDS.filter((f) => typeof t?.extras?.[f.key] === "string" && t.extras[f.key].trim())
+      .map((f) => [f.ad, t.extras[f.key].trim()]));
   const adOf = Object.fromEntries(ids.map((id, i) => [id, {
     brand: teams[i].brand.trim(), headline: teams[i].headline.trim(), value_proposition: teams[i].valueProp.trim(), price: teams[i].price.trim(),
+    ...extrasOf(teams[i]),
   }]));
   const brandOf = Object.fromEntries(ids.map((id) => [id, adOf[id].brand]));
   const ads = Object.fromEntries(ids.map((id) => [id, adOf[id]]));
@@ -131,6 +137,7 @@ export async function runRound(teams, customPersonas) {
   const picksOf = (list, id) => list.filter((c) => c.purchase === id).length;
   const brands = ids.map((id, i) => ({
     id, brand: ads[id].brand, headline: ads[id].headline, valueProp: ads[id].value_proposition, price: ads[id].price,
+    extras: Object.fromEntries(EXTRA_FIELDS.filter((f) => ads[id][f.ad] != null).map((f) => [f.key, ads[id][f.ad]])),
     share: shareOf(customers, id),
     picks: picksOf(customers, id),
     pickRate: r3(picksOf(customers, id) / customers.length),

@@ -46,3 +46,29 @@ console.log("ok  buyer problems report their index and field too");
 
 assert.equal(PERSONA_LIMITS.maxPersonas, 16);
 console.log("\nall validation tests passed");
+
+/* ---- Optional fields -------------------------------------------------------- */
+import { EXTRA_BY_KEY, extraKeysOf } from "../public/validate.js";
+
+const withX = (o, x) => ({ ...team(o), extras: x });
+assert.equal(findTeamProblem([withX({}, { cta: "Buy now" }), withX({ brand: "Beta" }, { cta: "Start free" })]), null);
+console.log("\nok  matching optional fields on every version pass");
+
+// A field on one version but not the other means the ads are different shapes.
+const lopsided = findTeamProblem([withX({}, { cta: "Buy now" }), team({ brand: "Beta" })]);
+assert.deepEqual({ index: lopsided.index, field: lopsided.field }, { index: 1, field: "extra:cta" });
+assert.match(lopsided.message, /not like for like/);
+console.log("ok  a field present on one version and missing on another is caught");
+
+const blankX = findTeamProblem([withX({}, { cta: "Buy now" }), withX({ brand: "Beta" }, { cta: "   " })]);
+assert.equal(blankX.index, 1);
+assert.match(blankX.message, /missing its call to action/);
+console.log("ok  a blank optional field is treated as missing, not as absent");
+
+const longX = findTeamProblem([withX({}, { cta: "x".repeat(EXTRA_BY_KEY.cta.max + 1) }), withX({ brand: "Beta" }, { cta: "ok" })]);
+assert.equal(longX.field, "extra:cta");
+assert.match(longX.message, /the limit is 40/);
+console.log("ok  optional fields carry their own length cap");
+
+assert.deepEqual(extraKeysOf([withX({}, { cta: "a", visual: "b" })]), ["cta", "visual"]);
+console.log("ok  enabled keys are reported in the declared order, not insertion order");

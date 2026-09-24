@@ -790,3 +790,19 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline}
 .pcard{border-left:3px solid var(--seg)}
 .pcard-head .buyerface{flex:none}
 .padd{margin-top:4px}
+
+/* ---- Optional test fields. The strip sits above the version cards because it
+   decides their shape, and it goes quiet once round 1 locks the choice. ---- */
+.extrapick{margin:0 0 22px;padding:16px 18px;border:1px solid var(--line);background:var(--cream);border-radius:2px}
+.ep-label{margin:0 0 10px;font:600 12px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.ep-row{display:flex;flex-wrap:wrap;gap:8px}
+.ep-chip{min-height:36px;padding:0 14px;border:1.5px solid var(--line);background:var(--paper);
+  font:500 14px var(--body);color:var(--ink);cursor:pointer;border-radius:2px}
+.ep-chip:hover:not([disabled]){border-color:var(--ink)}
+.ep-chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.ep-chip[disabled]{opacity:.55;cursor:not-allowed}
+.ep-chip[disabled][aria-pressed="true"]{opacity:.8}
+.ep-chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ep-note{margin:10px 0 0;font-size:13px;line-height:1.5;color:var(--muted);max-width:70ch}
+.pitch-x{margin:6px 0 0;font-size:13px;line-height:1.45;color:var(--muted)}
+.pitch-x .xk{display:block;font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.09em;color:var(--faint)}

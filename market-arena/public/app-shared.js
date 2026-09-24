@@ -4,6 +4,7 @@
 // #suggestions, #changes, #deltas, #history, #meta) and keeps its own `rounds`
 // array; this module owns which round is on screen and only touches those ids.
 import { personaIcon, objectionIcon, stageIcon } from "./icons.js";
+import { EXTRA_FIELDS } from "./validate.js";
 
 export const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
 export const INK_ON = [false, false, false, true]; // text colour on each version swatch
@@ -32,8 +33,16 @@ const picksFor = (r, id) => {
 const TOSSUP = .1;
 const isTossup = (c) => (c.margin != null ? c.margin < TOSSUP : c.confidence < .5);
 
-// Which version fields the round-over-round diff compares, in display order.
-const DIFF_FIELDS = [["brand", "Name"], ["headline", "Headline"], ["valueProp", "Value proposition"], ["price", "Price"]];
+// Which version fields the round-over-round diff compares, in display order. The
+// optional fields a project switched on are appended, so changing a call to action
+// is reported as precisely as changing a headline. The set is fixed before round 1,
+// so both rounds of any comparison always carry the same fields.
+const CORE_DIFF = [["brand", "Name"], ["headline", "Headline"], ["valueProp", "Value proposition"], ["price", "Price"]];
+const diffFields = (r) => [
+  ...CORE_DIFF,
+  ...EXTRA_FIELDS.filter((f) => r?.brands?.some((b) => b.extras && b.extras[f.key] != null)).map((f) => [`extras.${f.key}`, f.label]),
+];
+const fieldValue = (b, key) => (key.startsWith("extras.") ? b?.extras?.[key.slice(7)] : b?.[key]);
 
 export const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 export const pct = (x) => Math.round(x * 100) + "%";
@@ -247,7 +256,7 @@ export function createResultsView() {
         if (!before) return null;
         const d = Math.round((b.share - before.share) * 100);
         if (Math.abs(d) < 5) return null;
-        return { b, d, changed: DIFF_FIELDS.filter(([f]) => (before[f] || "") !== (b[f] || "")).map(([, label]) => label.toLowerCase()) };
+        return { b, d, changed: diffFields(r).filter(([f]) => (fieldValue(before, f) || "") !== (fieldValue(b, f) || "")).map(([, label]) => label.toLowerCase()) };
       }).filter(Boolean).sort((a, b) => Math.abs(b.d) - Math.abs(a.d))[0];
       if (move)
         lines.push(`<b>${esc(move.b.brand)}</b> ${move.d > 0 ? "gained" : "lost"} ${Math.abs(move.d)} points since the last round, ${move.changed.length ? `after you changed its ${listWords(move.changed)}` : "with no change to its own copy"}.`);
@@ -304,11 +313,11 @@ export function createResultsView() {
     const blocks = r.brands.map((b, i) => {
       const before = bySlot(prev, r.slots[i]);
       if (!before) return `<div class="change new" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3><p class="change-none">New this round.</p></div>`;
-      const rows = DIFF_FIELDS.filter(([f]) => (before[f] || "") !== (b[f] || "")).map(([f, label]) => `
+      const rows = diffFields(r).filter(([f]) => (fieldValue(before, f) || "") !== (fieldValue(b, f) || "")).map(([f, label]) => `
         <div class="change-row"><span class="cf">${label}</span>
-          <span class="cwas">${esc(before[f] || "—")}</span>
+          <span class="cwas">${esc(fieldValue(before, f) || "—")}</span>
           <span class="carrow">→</span>
-          <span class="cnow">${esc(b[f] || "—")}</span></div>`).join("");
+          <span class="cnow">${esc(fieldValue(b, f) || "—")}</span></div>`).join("");
       if (!rows) return "";
       return `<div class="change" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3>${rows}</div>`;
     }).filter(Boolean);
@@ -431,8 +440,15 @@ export function createResultsView() {
 }
 
 export function exportCsv(rounds, filename) {
-  const rows = [["round", "version", "headline", "value_proposition", "price", "choice_share", "noticed", "interested", "believed", ...rounds[0].segments.map((s) => "share_" + s)]];
-  rounds.forEach((r, i) => r.brands.forEach((b) => rows.push([i + 1, b.brand, b.headline, b.valueProp, b.price, b.share, b.funnel.attention, b.funnel.interest, b.funnel.belief, ...r.segments.map((s) => b.bySegment[s])])));
+  // Optional fields get their own columns, and outright picks sit next to the
+  // probability so a reader of the file is not left to guess which one they have.
+  const xs = EXTRA_FIELDS.filter((f) => rounds.some((r) => r.brands.some((b) => b.extras && b.extras[f.key] != null)));
+  const rows = [["round", "version", "headline", "value_proposition", "price", ...xs.map((f) => f.ad),
+    "choice_share", "outright_picks", "panel_size", "noticed", "interested", "believed", ...rounds[0].segments.map((s) => "share_" + s)]];
+  rounds.forEach((r, i) => r.brands.forEach((b) => rows.push([
+    i + 1, b.brand, b.headline, b.valueProp, b.price, ...xs.map((f) => b.extras?.[f.key] ?? ""),
+    b.share, b.picks ?? r.customers.filter((c) => c.purchase === b.id).length, r.panel ?? r.customers.length,
+    b.funnel.attention, b.funnel.interest, b.funnel.belief, ...r.segments.map((s) => b.bySegment[s])])));
   const csv = rows.map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
   const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(new Blob([csv], { type: "text/csv" })), download: filename });
   a.click(); URL.revokeObjectURL(a.href);

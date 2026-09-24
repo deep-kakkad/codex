@@ -91,6 +91,7 @@
       <div class="wrap">
         <h2 id="editorTitle">Write the versions you want to test</h2>
         <p class="sub">Give each version a name, a headline, a value proposition and a price. Every buyer sees all of them side by side, then picks one — or walks away.</p>
+        <div class="extrapick" id="extraPick"></div>
         <div class="brands" id="brands"></div>
         <div class="adpreview" id="adPreview">
           <p class="ap-label">What the buyers will see</p>
@@ -299,7 +300,7 @@
 <script type="module">
 import { LOGO_MARK, personaIcon, caseMark, caseTint, buyerFace, segmentTint } from "./icons.js";
 import { createResultsView, exportCsv, esc } from "./app-shared.js";
-import { findTeamProblem, findPersonaProblem } from "./validate.js";
+import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
 const view = createResultsView();
@@ -531,6 +532,39 @@ $("#personas").addEventListener("click", (e) => {
 $("#personas").addEventListener("change", () => renderDirectory());
 
 const FIELDS = [["headline", "Headline", "input"], ["valueProp", "Value proposition", "textarea"], ["price", "Price", "input"]];
+
+const extrasOn = () => state.extras || [];
+const extrasLocked = () => (state.rounds?.length || 0) > 0;
+
+function renderExtraPick() {
+  const on = extrasOn(), locked = extrasLocked();
+  $("#extraPick").innerHTML = `
+    <p class="ep-label">Test more than copy${locked ? "" : " — pick what every version should carry"}</p>
+    <div class="ep-row">
+      ${EXTRA_FIELDS.map((f) => `
+        <button class="ep-chip" data-extra="${f.key}" aria-pressed="${on.includes(f.key)}"
+          ${locked ? "disabled" : ""} title="${esc(f.hint)}">${esc(f.label)}</button>`).join("")}
+    </div>
+    <p class="ep-note">${locked
+      ? `Locked after round 1, so every round in this project describes its ads the same way and the comparison between them stays like for like. Start a new project to test a different set.`
+      : `Whatever you switch on, every version has to fill in — otherwise the winner could just be the ad with more to read. This choice locks once you run round 1.`}</p>`;
+}
+
+$("#extraPick").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-extra]");
+  if (!btn || extrasLocked()) return;
+  const k = btn.dataset.extra;
+  const on = new Set(extrasOn());
+  if (on.has(k)) {
+    on.delete(k);
+    state.teams.forEach((t) => { if (t.extras) delete t.extras[k]; });
+  } else {
+    on.add(k);
+    state.teams.forEach((t) => { t.extras = t.extras || {}; if (t.extras[k] == null) t.extras[k] = ""; });
+  }
+  state.extras = EXTRA_FIELDS.map((f) => f.key).filter((x) => on.has(x));
+  save(); renderExtraPick(); renderBrands();
+});
 function renderBrands() {
   const L = LIMITS;
   $("#brands").innerHTML = state.teams.map((t, i) => `
@@ -542,9 +576,18 @@ function renderBrands() {
         ${tag === "input"
           ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
           : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
+      ${extrasOn().map((k) => {
+        const f = EXTRA_BY_KEY[k];
+        return `
+        <label for="x-${k}-${i}">${esc(f.label)} <span class="count" data-for="x-${k}-${i}"></span></label>
+        ${f.tag === "textarea"
+          ? `<textarea id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}">${esc(t.extras?.[k] || "")}</textarea>`
+          : `<input id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}" value="${esc(t.extras?.[k] || "")}">`}`;
+      }).join("")}
       ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this version")}</button>` : ""}
     </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a version</button>` : "");
   document.querySelectorAll("#brands [data-f]").forEach(updateBrandCount);
+  renderExtraPick();
   $("#run").textContent = `Run round ${state.rounds.length + 1}`;
   $("#editorTitle").textContent = state.rounds.length ? `Rework your versions for round ${state.rounds.length + 1}` : "Write the versions you want to test";
   renderPreview();
@@ -558,17 +601,27 @@ function renderPreview() {
       <div class="pitch-top"><span class="sw" style="background:var(--c)"></span><b>${esc(t.brand) || "<span class='ap-empty'>Unnamed</span>"}</b></div>
       <h4>${t.headline ? esc(t.headline) : `<span class="ap-empty">No headline yet</span>`}</h4>
       <p>${t.valueProp ? esc(t.valueProp) : `<span class="ap-empty">No value proposition yet</span>`}</p>
+      ${extrasOn().map((k) => `<p class="pitch-x"><span class="xk">${esc(EXTRA_BY_KEY[k].label)}</span>${t.extras?.[k] ? esc(t.extras[k]) : `<span class="ap-empty">not written yet</span>`}</p>`).join("")}
       <div class="pitch-bottom"><span class="pitch-price num">${t.price ? esc(t.price) : `<span class="ap-empty">No price</span>`}</span></div>
     </div>`).join("");
 }
 
 function updateBrandCount(el) {
-  const max = LIMITS[el.dataset.f], n = el.value.trim().length;
+  const max = el.dataset.x ? EXTRA_BY_KEY[el.dataset.x]?.max : LIMITS[el.dataset.f];
+  const n = el.value.trim().length;
   const c = document.querySelector(`.count[data-for="${el.id}"]`);
   if (c) { c.textContent = `${n}/${max}`; c.classList.toggle("over", n > max); }
 }
 $("#brands").addEventListener("input", (e) => {
-  const el = e.target; if (!el.dataset.f) return;
+  const el = e.target;
+  if (el.dataset.x) {
+    const t = state.teams[+el.dataset.i];
+    t.extras = t.extras || {};
+    t.extras[el.dataset.x] = el.value;
+    updateBrandCount(el); save(); renderPreview();
+    return;
+  }
+  if (!el.dataset.f) return;
   state.teams[+el.dataset.i][el.dataset.f] = el.value; updateBrandCount(el); save(); renderPreview();
 });
 $("#brands").addEventListener("click", (e) => {
@@ -603,7 +656,7 @@ function showFieldProblem(problem, kind) {
   goToStep(kind === "team" ? 3 : 2);
   setStatus(problem.message, true);
   const el = problem.index == null ? null : kind === "team"
-    ? $(`#${problem.field}-${problem.index}`)
+    ? $(problem.field.startsWith("extra:") ? `#x-${problem.field.slice(6)}-${problem.index}` : `#${problem.field}-${problem.index}`)
     : document.querySelector(`#personas [data-i="${problem.index}"][data-f="${problem.field}"]`);
   if (!el) return;
   const id = `err-${kind}-${problem.index}-${problem.field}`;
@@ -621,7 +674,10 @@ async function runRound() {
   // Validate before anything announces work. The old order set the status line and
   // the skeleton first, so an invalid round showed "Showing your ads to 12 buyers…"
   // for a round that had not started and could not start.
-  const teams = state.teams.map(({ brand, headline, valueProp, price }) => ({ brand, headline, valueProp, price }));
+  const teams = state.teams.map(({ brand, headline, valueProp, price, extras }) => ({
+    brand, headline, valueProp, price,
+    ...(extrasOn().length ? { extras: Object.fromEntries(extrasOn().map((k) => [k, extras?.[k] ?? ""])) } : {}),
+  }));
   const personas = state.personas.map(({ id, name, segment, profile }) => ({ id, name, segment, profile }));
   const teamProblem = findTeamProblem(teams);
   if (teamProblem) return showFieldProblem(teamProblem, "team");
