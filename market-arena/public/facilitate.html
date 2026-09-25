@@ -7,7 +7,7 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%23121212' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23FF5A36'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -240,11 +240,11 @@
 </footer>
 
 <script type="module">
-import { LOGO_MARK, personaIcon } from "./icons.js";
+import { LOGO_MARK, buyerFace } from "./icons.js";
 import { createResultsView, exportCsv, esc } from "./app-shared.js";
 import { findTeamProblem } from "./validate.js";
 
-document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
+document.getElementById("logoSlot").innerHTML = LOGO_MARK(28);
 const view = createResultsView();
 
 const STORE = "market-arena-facilitate-v1", CODE = "market-arena-code";
@@ -277,8 +277,8 @@ async function init() {
 function renderDirectory() {
   const bySeg = {};
   config.personas.forEach((p) => (bySeg[p.segment] ??= []).push(p));
-  $("#dirGrid").innerHTML = Object.entries(bySeg).map(([s, ps]) =>
-    `<div class="dir-seg"><h3>${esc(s)}</h3>${ps.map((p) => `<p>${personaIcon(p, 16)}<span><b>${esc(p.name)}</b>, ${esc(p.profile)}</span></p>`).join("")}</div>`).join("");
+  $("#dirGrid").innerHTML = Object.entries(bySeg).map(([s, ps], si) =>
+    `<div class="dir-seg"><h3>${esc(s)}</h3>${ps.map((p) => `<p>${buyerFace(p, si, 28)}<span><b>${esc(p.name)}</b>, ${esc(p.profile)}</span></p>`).join("")}</div>`).join("");
 }
 
 // After a round the editor folds into a one-line bar, so the reveal owns the
@@ -289,7 +289,7 @@ function collapseEditor(collapsed) {
   $("#ghost").classList.toggle("hidden", collapsed || state.rounds.length > 0);
   if (collapsed) {
     const n = state.rounds.length;
-    $("#bbSummary").textContent = `${state.teams.length} versions · ${config.personas.length} buyers · ${n} round${n > 1 ? "s" : ""} run`;
+    $("#bbSummary").textContent = `${state.teams.length} versions, ${config.personas.length} buyers, ${n} round${n > 1 ? "s" : ""} run`;
     $("#runBar").textContent = `Run round ${n + 1}`;
   }
 }

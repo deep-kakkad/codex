@@ -8,29 +8,28 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%23121212' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23FF5A36'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <div class="mast">
-      <a class="brandmark" href="./"><span id="logoSlot"></span><h1>Market Arena</h1></a>
-      <p class="brief"><strong id="scTitle">Loading this round…</strong><span id="scBrief"></span></p>
-    </div>
-    <div class="toolbar">
-      <span class="modebadge">Shared round</span>
-      <button class="ghost hidden" id="csv" disabled>Download results (CSV)</button>
-      <button class="ghost hidden" id="pdf" disabled>Download PDF</button>
-      <a class="ghost" href="practice.html">Run your own arena →</a>
+<header class="topbar">
+  <div class="wrap tb-inner">
+    <a class="tb-brand" href="./" aria-label="Market Arena home"><span id="logoSlot"></span><span class="tb-name">Market Arena</span></a>
+    <span class="tb-sep brand-sep" aria-hidden="true">/</span>
+    <h1 class="tb-title" id="scTitle">Loading this round…</h1>
+    <span class="tb-badge" id="scBadge">Shared round</span>
+    <div class="tb-spacer"></div>
+    <div class="tb-actions">
+      <button class="btn btn-icon hidden" id="moreBtn" type="button" aria-label="Download"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+      <a class="btn-primary" href="practice.html">Test your own versions</a>
     </div>
   </div>
 </header>
 
 <main>
+  <div class="wrap"><p class="shared-brief" id="scBrief"></p></div>
   <div id="reportBar" class="reportbar hidden">
     <div class="wrap reportbar-inner">
-      <div class="roundtabs hidden" id="roundTabs"></div>
       <nav class="reportnav" id="reportNav" aria-label="Report sections">
         <a href="#secMarket">Result</a>
         <a href="#secBuyers">Buyers</a>
@@ -206,7 +205,7 @@
 
 <footer>
   <div class="wrap row">
-    <span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a teaching mirror, not market research.</span>
+    <span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a way to decide what deserves a real test, not as market research.</span>
     <span id="meta" class="num"></span>
   </div>
   <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
@@ -215,15 +214,18 @@
 <script type="module">
 import { LOGO_MARK } from "./icons.js";
 import { createResultsView, exportCsv } from "./app-shared.js";
+import { menuButton } from "./ui.js";
 
-document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
-const view = createResultsView();
+document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
+// Read-only: whoever opens a shared link has no editor to be sent to.
+const view = createResultsView({ readOnly: true });
 const $ = (s) => document.querySelector(s);
 let rounds = [];
 view.attachHandlers(() => rounds);
 
 function showError(msg) {
   $("#scTitle").textContent = "Couldn't load this round";
+  $("#scBadge").classList.add("hidden");
   $("#scBrief").textContent = "";
   $("#errorMsg").textContent = msg;
   $("#errorBox").classList.remove("hidden");
@@ -237,18 +239,22 @@ async function init() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Couldn't load this round.");
     $("#scTitle").textContent = data.meta?.title || "A shared round";
+    document.title = `${data.meta?.title || "Shared round"} | Market Arena`;
     $("#scBrief").textContent = data.meta?.brief || "";
+    if (data.meta?.round) $("#scBadge").textContent = `Shared round ${data.meta.round}`;
     rounds = [data.round];
     view.renderResults(rounds, false);
     // The snapshot is a single round, so the view numbers it 1; say which round
     // it actually was in the session it came from.
     if (data.meta?.round) $("#marketTitle").textContent = `Round ${data.meta.round}: the market decided`;
-    ["csv", "pdf"].forEach((id2) => { $("#" + id2).classList.remove("hidden"); $("#" + id2).disabled = false; });
+    $("#moreBtn").classList.remove("hidden");
   } catch (err) { showError(err.message); }
 }
 
-$("#csv").addEventListener("click", () => exportCsv(rounds, "market-arena-shared-result.csv"));
-$("#pdf").addEventListener("click", () => window.print());
+menuButton($("#moreBtn"), () => [
+  { label: "Download CSV", onSelect: () => exportCsv(rounds, "market-arena-shared-result.csv") },
+  { label: "Download PDF", onSelect: () => window.print() },
+], { align: "end", label: "Download" });
 
 init();
 </script>

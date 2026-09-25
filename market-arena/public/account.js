@@ -9,6 +9,7 @@
 // self-contained. If that ever becomes unacceptable, the alternative is bundling —
 // not reimplementing the auth flow.
 const ID = "https://cdn.jsdelivr.net/npm/@netlify/identity@2.0.0/+esm";
+import { menuButton } from "./ui.js";
 
 let lib = null, me = { signedIn: false }, listeners = [];
 const load = async () => (lib ||= await import(/* @vite-ignore */ ID));
@@ -49,7 +50,7 @@ function panel() {
         <label for="authPass">Password</label>
         <input id="authPass" type="password" autocomplete="current-password" minlength="8" required>
         <p class="authmsg" id="authMsg" role="status"></p>
-        <button class="authgo" id="authGo" type="submit">Sign in</button>
+        <button class="btn-primary authgo" id="authGo" type="submit">Sign in</button>
       </form>
       <p class="authswap">
         <span id="authSwapText">New here?</span>
@@ -68,7 +69,7 @@ function panel() {
     $("#authGo").textContent = m === "login" ? "Sign in" : "Create account";
     $("#authSub").textContent = m === "login"
       ? "Your projects, rounds and credits are kept to your account."
-      : "You get 100 credits to start. A round costs 1, a question costs 10.";
+      : "You get 100 credits to start. Asking a question or running research costs 10.";
     $("#authPass").autocomplete = m === "login" ? "current-password" : "new-password";
     $("#authSwapText").textContent = m === "login" ? "New here?" : "Already have an account?";
     $("#authSwap").textContent = m === "login" ? "Create an account" : "Sign in";
@@ -131,19 +132,27 @@ export async function signOut() {
   await refresh();
 }
 
-// The account control in the header. One element, two states.
+// The account control in the top bar: credits and an avatar in one button, with
+// the address and sign-out in its menu. Signed out, it is a quiet "Sign in".
 export function mountAccountBar(host) {
   if (!host) return;
   onAccountChange((m) => {
     host.innerHTML = m.signedIn
-      ? `<span class="acct-mail" title="${esc(m.email)}">${esc(m.email)}</span>
-         <span class="acct-credits" title="A round costs ${m.costs?.round ?? 1}, a question costs ${m.costs?.ask ?? 10}">${m.balance} credits</span>
-         <button class="ghost" data-signout>Sign out</button>`
-      : `<button class="ghost" data-signin>Sign in</button>`;
+      ? `<button class="acct-btn" type="button" aria-label="Account: ${esc(m.email)}, ${m.balance} credits">
+           <span class="acct-credits">${m.balance} credits</span>
+           <span class="avatar" aria-hidden="true">${esc((m.email || "?").trim().charAt(0))}</span>
+         </button>`
+      : `<button class="btn-quiet" type="button" data-signin>Sign in</button>`;
+    const btn = host.querySelector(".acct-btn");
+    if (btn) menuButton(btn, () => [
+      { heading: m.email },
+      { note: `${m.balance} credits left. Asking a question or running research costs ${m.costs?.ask ?? 10}.` },
+      { separator: true },
+      { label: "Sign out", onSelect: signOut },
+    ], { align: "end", label: "Account" });
   });
   host.addEventListener("click", (e) => {
     if (e.target.closest("[data-signin]")) open("login");
-    if (e.target.closest("[data-signout]")) signOut();
   });
 }
 

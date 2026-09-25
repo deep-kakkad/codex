@@ -3,7 +3,8 @@
 // #sharebar, #legend, #pitches, #segments, #detail, #funnels, #heat, #objections,
 // #suggestions, #changes, #deltas, #history, #meta) and keeps its own `rounds`
 // array; this module owns which round is on screen and only touches those ids.
-import { personaIcon, objectionIcon, stageIcon, segmentTint } from "./icons.js";
+import { objectionIcon, stageIcon, segmentTint, buyerFace } from "./icons.js";
+import { menuButton, ICON } from "./ui.js";
 import { EXTRA_FIELDS } from "./validate.js";
 import { GOAL_BY_KEY } from "./goals.js";
 
@@ -61,7 +62,11 @@ const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const $ = (s) => document.querySelector(s);
 const has = (s) => Boolean(document.querySelector(s));
 
-export function createResultsView() {
+// Colour for "bought nothing": a neutral grey, so it never reads as a fifth version.
+const NONE_COLOR = "#8E8E95";
+
+// `readOnly` is for the shared view, which has no editor to send anyone to.
+export function createResultsView({ readOnly = false } = {}) {
   let open = null;
   let viewIndex = null; // null means "whatever the latest round is"
   let current = null;   // the round on screen, so the drawer investigates what is shown
@@ -99,7 +104,7 @@ export function createResultsView() {
   function showSkeleton() {
     $("#results").classList.remove("hidden");
     if (has("#ghost")) $("#ghost").classList.add("hidden");
-    $("#csv").disabled = true; $("#pdf").disabled = true; if (has("#share")) $("#share").disabled = true;
+    ["#csv", "#pdf", "#share"].forEach((id) => { if (has(id)) $(id).disabled = true; });
     $("#flags").innerHTML = "";
     if (has("#hero")) $("#hero").classList.add("hidden");
     $("#marketTitle").textContent = "Reading the room…";
@@ -113,7 +118,7 @@ export function createResultsView() {
     $("#explain").innerHTML = ""; $("#heatKey").innerHTML = "";
     $("#pitches").innerHTML = ""; $("#funnels").innerHTML = ""; $("#heat").innerHTML = "";
     $("#objections").innerHTML = ""; $("#segInsights").innerHTML = "";
-    ["#pitchSec", "#suggestSec", "#changesSec", "#deltaSec"].forEach((s) => $(s).classList.add("hidden"));
+    ["#pitchSec", "#suggestSec", "#changesSec", "#deltaSec"].forEach((s) => { if (has(s)) $(s).classList.add("hidden"); });
     if (has("#contextSec")) $("#contextSec").classList.add("hidden");
   }
 
@@ -147,10 +152,6 @@ export function createResultsView() {
 
     $("#hero").classList.remove("hidden");
     $("#hero").innerHTML = `
-      <div class="hero-top">
-        <span class="hero-round">Round ${idx + 1}${total > 1 ? ` of ${total}` : ""}</span>
-        <span class="hero-meta">${n} simulated buyers · ${r.brands.length} versions</span>
-      </div>
       <div class="hero-body">
         ${(() => {
           const g = GOAL_BY_KEY[r.goal];
@@ -170,12 +171,13 @@ export function createResultsView() {
           <div class="hero-tile" style="--tc:${COLORS[slotOf(win)]}">
             <span class="k">Leading version <button class="whatis" data-def="share" aria-label="What does average choice probability mean?">?</button></span>
             <span class="v">${pct(win.share)}</span>
-            <span class="n">${esc(win.brand)} · picked outright by ${picksFor(r, win.id)} of ${n}</span>
+            <span class="n">${esc(win.brand)}, picked outright by ${picksFor(r, win.id)} of ${n} buyers</span>
           </div>
-          <button class="hero-tile obj-tile" data-investigate="obj:${objKey}" style="--tc:var(--bad)">
-            <span class="k">Top objection <span class="whatis" aria-hidden="true">?</span></span>
+          <button class="hero-tile obj-tile" data-investigate="obj:${objKey}">
+            <span class="k">Top objection</span>
             <span class="v">${pct(objVal)}</span>
-            <span class="n">${cap(OBJ_NOUN[objKey])} · against ${esc(win.brand)} — open the evidence</span>
+            <span class="n">${cap(OBJ_NOUN[objKey])}, against ${esc(win.brand)}</span>
+            <span class="tile-link">See the buyers behind it</span>
           </button>
         </div>
 
@@ -194,8 +196,8 @@ export function createResultsView() {
         </div>
 
         <div class="hero-actions">
-          <button class="hero-cta" data-prepare-round>Prepare round ${total + 1} →</button>
-          <a class="hero-explore" href="#secMarket">Explore the full analysis ↓</a>
+          ${readOnly ? "" : `<button class="btn" data-prepare-round>Edit versions for round ${total + 1}</button>`}
+          <a class="hero-explore" href="#secMarket">See the full analysis</a>
         </div>
       </div>`;
   }
@@ -286,7 +288,7 @@ export function createResultsView() {
       <h4>The buyers behind the number</h4>
       ${cited.length ? cited.map((c) => `
         <div class="dbuyer" style="--seg:${segmentTint(segs.indexOf(c.segment))}">
-          <div class="dbuyer-top"><b>${esc(c.name)}</b><span class="dbuyer-seg">${esc(c.segment)}</span>
+          <div class="dbuyer-top">${buyerFace(c, segs.indexOf(c.segment), 32)}<b>${esc(c.name)}</b><span class="dbuyer-seg">${esc(c.segment)}</span>
             <span class="dbuyer-rate">${pct(c.purchaseProbs[b.id] ?? 0)}</span></div>
           <p class="dbuyer-prof">${esc(c.profile)}</p>
           ${alternatives(r, c)}
@@ -299,9 +301,9 @@ export function createResultsView() {
         <p class="hypo-was">Currently: <s>${esc(b[field] || "—")}</s></p>
         <span class="fieldname">New ${fieldLabel.toLowerCase()} for ${esc(b.brand)}</span>
         <textarea id="hypoText" spellcheck="true">${esc(b[field] || "")}</textarea>
-        <button class="hypo-go" data-apply-hypo data-slot="${r.slots[r.brands.findIndex((x) => x.id === b.id)]}" data-field="${field}">Use this and prepare the next round →</button>
+        ${readOnly ? "" : `<button class="btn-primary hypo-go" data-apply-hypo data-slot="${r.slots[r.brands.findIndex((x) => x.id === b.id)]}" data-field="${field}">Use this in the next round</button>`}
       </div>`;
-    openDrawer(shell(`${b.brand} · ${OBJ_LABEL[key]}`, `Why ${esc(b.brand)} loses people`, body));
+    openDrawer(shell(`${b.brand}: ${OBJ_LABEL[key]}`, `Why ${esc(b.brand)} loses people`, body));
   }
 
   function investigateBuyer(r, id) {
@@ -368,13 +370,12 @@ export function createResultsView() {
     $("#results").classList.remove("hidden");
     if (has("#ghost")) $("#ghost").classList.add("hidden");
     if (has("#reportBar")) $("#reportBar").classList.remove("hidden");
-    $("#csv").disabled = false; $("#pdf").disabled = false; if (has("#share")) $("#share").disabled = false;
+    ["#csv", "#pdf", "#share"].forEach((id) => { if (has(id)) $(id).disabled = false; });
     $("#marketTitle").textContent = `Round ${idx + 1}: the market decided`;
     $("#roundNote").textContent = latest ? "" : `Viewing an earlier round. Round ${rounds.length} is the latest.`;
 
     const col = (id) => r.slots[r.brands.findIndex((b) => b.id === id)];
-    const color = (id) => id === "none" ? "#3A3934" : COLORS[col(id)];
-    const inkOn = (id) => id !== "none" && INK_ON[col(id)];
+    const color = (id) => id === "none" ? NONE_COLOR : COLORS[col(id)];
     const nameOf = (id) => id === "none" ? "nothing" : r.brands.find((b) => b.id === id).brand;
 
     renderRoundTabs(rounds, idx);
@@ -396,7 +397,7 @@ export function createResultsView() {
     $("#legend").innerHTML = r.brands.map((b, i) => `
       <div><span class="sw" style="background:${COLORS[r.slots[i]]}"></span><span>${esc(b.brand)}</span>
       <span class="pct num">${pct(b.share)}</span><span class="picks num">${picksFor(r, b.id)} of ${panelOf(r)}</span>${deltaChip(b.share, prev ? bySlot(prev, r.slots[i])?.share : null)}</div>`).join("") +
-      `<div class="none-entry"><span class="sw" style="background:repeating-linear-gradient(135deg,#3A3934 0 3px,#8E8A7B 3px 6px)"></span><span>Bought nothing</span><span class="pct num">${pct(r.noPurchase.share)}</span><span class="picks num">${picksFor(r, "none")} of ${panelOf(r)}</span></div>`;
+      `<div class="none-entry"><span class="sw" style="background:repeating-linear-gradient(135deg,#B9B9B4 0 3px,#DADAD6 3px 6px)"></span><span>Bought nothing</span><span class="pct num">${pct(r.noPurchase.share)}</span><span class="picks num">${picksFor(r, "none")} of ${panelOf(r)}</span></div>`;
 
     // Both numbers above are real and they disagree on purpose. Saying so here is
     // cheaper than letting a reader decide the report is broken.
@@ -411,7 +412,7 @@ export function createResultsView() {
         ${r.customers.filter((c) => c.segment === s).map((c, k) => {
           const undecided = isTossup(c);
           return `<button class="person" data-p="${c.id}" aria-expanded="${open === c.id}">
-            <span class="token ${undecided ? "undecided" : ""}" style="--tc:${animate ? "#3A3934" : color(c.purchase)};--tt:${inkOn(c.purchase) ? "var(--ink)" : "#fff"};--d:${k * 120 + r.segments.indexOf(s) * 60}ms" data-final="${color(c.purchase)}">${personaIcon(c)}</span>
+            <span class="token" style="--tc:${animate ? "#C9C9C4" : color(c.purchase)};--d:${k * 120 + r.segments.indexOf(s) * 60}ms" data-final="${color(c.purchase)}">${buyerFace(c, r.segments.indexOf(s), 44, { tint: "currentColor", dashed: undecided })}</span>
             <span><span class="pname">${esc(c.name)}</span>${undecided ? `<span class="tag">Too close to call</span>` : ""}
             <span class="pchoice" style="display:block">Bought ${esc(nameOf(c.purchase))}</span>
             <span class="conf" aria-label="Confidence ${pct(c.confidence)}"><i style="width:${pct(c.confidence)}"></i></span></span>
@@ -424,10 +425,12 @@ export function createResultsView() {
       const { worst, gap } = biggestDrop(b);
       return `<div class="funnel" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3>
         ${STAGES.map(([k, lab]) => `<div class="frow"><span class="flab">${stageIcon(k)}${lab}</span><span class="track"><i style="width:${pct(b.funnel[k])}"></i></span><span class="num">${pct(b.funnel[k])}</span></div>`).join("")}
-        <p class="drop">Biggest drop: ${STAGES[worst - 1][1].toLowerCase()} → ${STAGES[worst][1].toLowerCase()} (${Math.round(gap * 100)} pts).</p></div>`;
+        <p class="drop">Biggest drop is from ${STAGES[worst - 1][1].toLowerCase()} to ${STAGES[worst][1].toLowerCase()}, ${Math.round(gap * 100)} points.</p></div>`;
     }).join("");
 
-    const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
+    // Fill is capped at 60% so ink text stays readable on every version colour; white
+    // text on a half-strength fill was the old failure (2-3:1 on teal).
+    const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * 60)}%, transparent)`;
     $("#heatKey").innerHTML = heatKey("share", "share of that segment");
     $("#heat").innerHTML = `<thead><tr><th scope="col">Segment</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}<th scope="col">Bought nothing</th></tr></thead><tbody>` +
       r.segments.map((s) => `<tr><th scope="row">${esc(s)}</th>${r.brands.map((b, i) => `<td class="cell num" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell num" style="${heat(r.noPurchase.bySegment[s], "#8E8A7B")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
@@ -438,10 +441,10 @@ export function createResultsView() {
       const counts = {};
       segCustomers.forEach((c) => brandIds.forEach((id) => { const o = c.byBrand[id].objection; if (o !== "none") counts[o] = (counts[o] || 0) + 1; }));
       const top = Object.entries(counts).sort((a, b2) => b2[1] - a[1])[0];
-      return top ? `<li><b>${esc(s)}</b> — mostly held back by ${objectionIcon(top[0])} ${OBJ_NOUN[top[0]]}</li>` : "";
+      return top ? `<li><b>${esc(s)}</b> buyers are mostly held back by ${objectionIcon(top[0])} ${OBJ_NOUN[top[0]]}.</li>` : "";
     }).join("") + `</ul>`;
 
-    const objHeat = (v) => `background:color-mix(in srgb, var(--bad) ${Math.round(v * 85)}%, transparent);color:${v > .55 ? "#fff" : "var(--ink)"}`;
+    const objHeat = (v) => `background:color-mix(in srgb, var(--ink) ${Math.round(v * 55)}%, transparent)`;
     $("#objections").innerHTML = `<div class="tablewrap"><table class="heat"><thead><tr><th scope="col">Objection</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}</tr></thead><tbody>` +
       OBJ_ORDER.map((k) => `<tr><th scope="row">${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</th>${r.brands.map((b) => `<td class="cell num probe" style="${objHeat(b.objections[k])}" data-investigate="obj:${k}:${b.id}" role="button" tabindex="0" title="See the buyers behind this number">${pct(b.objections[k])}</td>`).join("")}</tr>`).join("") +
       `</tbody></table></div>` + heatKey("obj", "share of buyers citing it") +
@@ -558,7 +561,7 @@ export function createResultsView() {
 
   // One shared key for both heatmaps, built with the same colour-mix the cells use.
   function heatKey(kind, note) {
-    const swatch = (v) => `background:color-mix(in srgb, ${kind === "obj" ? "var(--bad)" : "var(--ink)"} ${Math.round(v * 85)}%, transparent)`;
+    const swatch = (v) => `background:color-mix(in srgb, var(--ink) ${Math.round(v * (kind === "obj" ? 55 : 60))}%, transparent)`;
     return `<div class="heatkey"><span class="num">0%</span>${[0, .25, .5, .75, 1].map((v) => `<i style="${swatch(v)}"></i>`).join("")}<span class="num">100%</span><span class="hk-note">${note}</span></div>`;
   }
 
@@ -576,7 +579,7 @@ export function createResultsView() {
     const maxShare = Math.max(...r.brands.map((b) => b.share));
     $("#pitches").innerHTML = r.brands.map((b, i) => `
       <div class="pitch ${b.share === maxShare ? "lead" : ""}" style="--c:${COLORS[r.slots[i]]}">
-        <div class="pitch-top"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>${b.share === maxShare ? `<span class="pitch-lead">LEADING</span>` : ""}</div>
+        <div class="pitch-top"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>${b.share === maxShare ? `<span class="pitch-lead">Leading</span>` : ""}</div>
         <h4>${esc(b.headline)}</h4>
         <p>${esc(b.valueProp)}</p>
         <div class="pitch-bottom"><span class="pitch-price num">${esc(b.price)}</span><span class="pitch-share num">${pct(b.share)}</span></div>
@@ -592,7 +595,7 @@ export function createResultsView() {
       const [topK, topV] = topObjection(b);
       const body = b.share === maxShare
         ? `Leading the round at ${pct(b.share)}, but ${pct(topV)} of buyers still cite ${OBJ_NOUN[topK]}. Worth testing a fix before it costs share.`
-        : `Biggest drop is ${dropFrom} → ${dropTo} (${Math.round(gap * 100)} pts), and the top objection is ${OBJ_NOUN[topK]} (${pct(topV)}). Try testing ${OBJ_FIX[topK]} next round.`;
+        : `It loses the most people between ${dropFrom} and ${dropTo} (${Math.round(gap * 100)} points), and the top objection is ${OBJ_NOUN[topK]} (${pct(topV)}). Try testing ${OBJ_FIX[topK]} next round.`;
       return `<div class="suggest" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3><p>${body}</p></div>`;
     }).join("");
   }
@@ -630,7 +633,7 @@ export function createResultsView() {
     $("#deltaSec").classList.toggle("hidden", !switched.length);
     if (!switched.length) return;
     $("#deltas").innerHTML = switched.map(({ c, from, to, appeal }) => `
-      <div class="deltarow">${personaIcon(c, 20)}<span class="dname">${esc(c.name)}</span>
+      <div class="deltarow">${buyerFace(c, curr.segments.indexOf(c.segment), 32)}<span class="dname">${esc(c.name)}</span>
         <span class="dmove"><span class="dfrom">${esc(from)}</span><span class="darrow">→</span><span class="dto">${esc(to)}</span></span>
         ${appeal != null ? `<span class="dappeal num">${pct(appeal)} appeal</span>` : ""}
       </div>`).join("");
@@ -639,9 +642,19 @@ export function createResultsView() {
   function renderRoundTabs(rounds, idx) {
     const tabs = $("#roundTabs");
     if (!tabs) return;
-    tabs.classList.toggle("hidden", rounds.length < 2);
-    tabs.innerHTML = rounds.length < 2 ? "" : `<span class="rt-label">Round</span>` + rounds.map((_, i) =>
-      `<button class="rtab ${i === idx ? "active" : ""}" data-round="${i}" aria-current="${i === idx}">${i + 1}</button>`).join("");
+    tabs.classList.remove("hidden");
+    if (rounds.length < 2) { tabs.innerHTML = `<span class="round-static">Round 1</span>`; return; }
+    tabs.innerHTML = `<button class="round-btn" type="button" aria-label="Round ${idx + 1} of ${rounds.length}. Choose a round">
+      <span>Round <b>${idx + 1}</b><span class="rb-of"> of ${rounds.length}</span></span>${ICON.chevron}</button>`;
+    menuButton(tabs.querySelector(".round-btn"), () => [
+      { heading: "Rounds" },
+      ...rounds.map((r, i) => ({
+        label: `Round ${i + 1}`,
+        meta: i === rounds.length - 1 ? "Latest" : "",
+        checked: i === idx,
+        onSelect: () => { open = null; renderResults(getRounds(), false, i === rounds.length - 1 ? null : i); },
+      })),
+    ], { label: "Rounds" });
   }
 
   function renderHistory(rounds, idx) {
@@ -654,9 +667,9 @@ export function createResultsView() {
     const y = (v) => H - P.b - (v / max) * (H - P.t - P.b);
     const slots = [...new Set(R.flatMap((r) => r.slots))];
     let svg = `<svg class="history" viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px;max-width:860px;display:block" role="img" aria-label="Market share by round">`;
-    [0, .25, .5, .75, 1].filter((v) => v <= max).forEach((v) => svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="#D9D3C2"/><text x="${P.l - 8}" y="${y(v) + 4}" text-anchor="end">${pct(v)}</text>`);
-    if (idx != null) svg += `<line x1="${x(idx)}" x2="${x(idx)}" y1="${P.t}" y2="${H - P.b}" stroke="#151515" stroke-width="1.5" stroke-dasharray="4 4"/>`;
-    R.forEach((_, i) => svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" style="${i === idx ? "font-weight:700;fill:#151515" : ""}">R${i + 1}</text>`);
+    [0, .25, .5, .75, 1].filter((v) => v <= max).forEach((v) => svg += `<line x1="${P.l}" x2="${W - P.r}" y1="${y(v)}" y2="${y(v)}" stroke="#E5E5E1"/><text x="${P.l - 8}" y="${y(v) + 4}" text-anchor="end">${pct(v)}</text>`);
+    if (idx != null) svg += `<line x1="${x(idx)}" x2="${x(idx)}" y1="${P.t}" y2="${H - P.b}" stroke="#1C1C1F" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+    R.forEach((_, i) => svg += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" style="${i === idx ? "font-weight:600;fill:#1C1C1F" : ""}">R${i + 1}</text>`);
     slots.forEach((s) => {
       const pts = R.map((r, i) => { const k = r.slots.indexOf(s); return k < 0 ? null : [x(i), y(r.brands[k].share), r.brands[k].brand]; });
       const segs = pts.filter(Boolean);
@@ -669,15 +682,9 @@ export function createResultsView() {
   }
 
   // Sections come and go with the round (no diff on round one, no switchers if
-  // nobody moved), so their numbers and their light/dark banding are worked out
-  // from the ones actually on screen rather than baked into the markup.
+  // nobody moved), so the navigation is worked out from the ones actually on screen.
+  // They are not numbered: the report is a set of questions, not a sequence.
   function numberSections() {
-    const shown = [...document.querySelectorAll("#results .rsec")].filter((s) => !s.classList.contains("hidden"));
-    shown.forEach((s, i) => {
-      const num = s.querySelector(".rsec-num");
-      if (num) num.textContent = String(i + 1);
-      s.classList.toggle("alt", i % 2 === 1);
-    });
     // Nav entries for sections this round doesn't have would scroll to nothing.
     document.querySelectorAll("#reportNav a").forEach((a) => {
       const target = document.querySelector(a.getAttribute("href"));
@@ -718,16 +725,13 @@ export function createResultsView() {
       open = open === btn.dataset.p ? null : btn.dataset.p;
       showDetail();
     });
-    if (has("#roundTabs")) $("#roundTabs").addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-round]"); if (!btn) return;
-      open = null;
-      renderResults(getRounds(), false, +btn.dataset.round);
-    });
     watchSections();
   }
   function resetOpen() { open = null; viewIndex = null; }
 
-  return { renderResults, renderHistory, attachHandlers, resetOpen, showSkeleton };
+  // Which round is on screen, for pages that offer their own way to switch.
+  const viewedIndex = () => indexFor(getRounds());
+  return { renderResults, renderHistory, attachHandlers, resetOpen, showSkeleton, viewedIndex };
 }
 
 export function exportCsv(rounds, filename) {

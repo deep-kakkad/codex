@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="landing.css">
 </head>
 <body>
 
@@ -219,7 +219,7 @@
     <h2>You've got two ideas.<br>Make them compete.</h2>
     <div class="specs">
       <span>12 SIMULATED BUYERS</span>
-      <span>2–4 CONTENDERS</span>
+      <span>2–4 VERSIONS</span>
       <span>~1 ROUND</span>
     </div>
     <div class="ctarow"><a class="cta-btn accent" href="practice.html">Run your first arena →</a></div>
@@ -249,7 +249,7 @@ const runBtn = $("#runSample");
 function renderVersions(priceKey) {
   contenderRow.innerHTML = `<div class="scan-line" id="scanLine"></div>` + ARENA.versions.map((c) => `
     <div class="contender-card" data-c="${c.id}">
-      <span class="tag">CONTENDER ${c.id}</span>
+      <span class="tag">VERSION ${c.id}</span>
       <h4>${c.headline}</h4>
       <p>${c.valueProp}</p>
       <span class="price">${c[priceKey]}</span>

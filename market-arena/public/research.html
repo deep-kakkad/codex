@@ -3,22 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Market research — Market Arena</title>
+<title>Research | Market Arena</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%23121212' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23FF5A36'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 <style>
-  .rs-main{padding:36px 0 64px}
-  .rs-form{max-width:680px;display:grid;gap:6px}
-  .rs-form label{font-size:13px;font-weight:600;margin-top:10px}
-  .rs-form input,.rs-form textarea{width:100%;border:1px solid var(--line);background:#fff;padding:10px 12px;border-radius:4px;font:inherit;font-size:15px}
+  .rs-main{padding:28px 0 64px}
+  .rs-form{max-width:680px;display:grid;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-panel);padding:18px 20px}
+  .rs-form label{font:500 var(--t-small) var(--body);margin-top:8px}
+  .rs-form label:first-child{margin-top:0}
   .rs-form textarea{min-height:70px;resize:vertical}
-  .rs-form .opt{font:500 11px var(--mono);color:var(--faint);letter-spacing:.05em;text-transform:uppercase;font-weight:500}
-  .rs-go{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:16px}
-  .rs-go .run{padding:12px 22px;font-size:15px}
-  .rs-go .run[disabled]{opacity:.55;cursor:default}
+  .rs-go{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:14px}
+  .rs-go .run{height:40px;padding:0 20px;font-size:15px}
   .rs-note{font-size:13px;color:var(--muted);max-width:68ch}
   .rs-progress{margin-top:26px;max-width:680px}
   .rs-steps{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px;font-size:14px;color:var(--muted)}
@@ -26,51 +24,56 @@
   .rs-steps li.done{color:var(--good)}
   .rs-out{margin-top:34px}
   .rs-summary{font-size:18px;line-height:1.5;max-width:70ch;margin:0 0 8px}
-  .rs-meta{font:500 12px var(--mono);color:var(--muted);margin:0 0 28px}
+  .rs-meta{font:400 var(--t-small)/1.5 var(--body);color:var(--muted);margin:0 0 28px}
   .rs-themes{display:grid;gap:12px;max-width:860px}
-  .rs-theme{background:var(--paper);border:1px solid var(--line);border-left:5px solid var(--tc,var(--line));padding:14px 16px;border-radius:4px}
+  .rs-theme{background:var(--paper);border:1px solid var(--line);padding:14px 16px;border-radius:var(--r-panel)}
   .rs-theme h3{margin:0 0 6px;font-size:16px;line-height:1.4}
   .rs-theme p{margin:0 0 8px;font-size:14px;color:var(--muted)}
-  .rs-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:12.5px}
-  .rs-chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:2px 10px;background:#fff}
+  .rs-chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:var(--t-small)}
+  .rs-chip{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:4px;padding:2px 8px;background:var(--canvas);color:var(--muted)}
+  .rs-chip svg{color:var(--muted)}
+  .rs-chip a{color:var(--ink)}
   .rs-chip a{color:inherit}
   .rs-srcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:10px}
-  .rs-srcs h3{font-size:14px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .rs-srcs h3{font:600 var(--t-ui) var(--body);margin:0 0 8px;color:var(--ink)}
   .rs-srcs ol{margin:0;padding-left:20px;display:grid;gap:8px;font-size:14px}
   .rs-srcs .pub{display:block;font-size:12.5px;color:var(--muted)}
-  .rs-use{margin:34px 0 0;max-width:760px;border:1.5px solid var(--ink);padding:18px 20px;background:var(--paper)}
-  .rs-use h2{font-size:20px;margin:0 0 6px}
+  .rs-use{margin:34px 0 0;max-width:760px;border:1px solid var(--line);border-radius:var(--r-panel);padding:18px 20px;background:var(--paper)}
+  .rs-use h2{font-size:var(--t-h3);margin:0 0 6px}
   .rs-use p{margin:0 0 12px;color:var(--muted);font-size:14px}
-  .rs-err{color:var(--bad);font-size:14px}
+  .rs-err{color:var(--bad);font-size:14px;margin:8px 0 0}
+  .rs-err:empty{display:none}
+  .rs-form input.field{height:40px}
   .rs-sec{margin-top:36px}
-  .rs-sec>h2{font-size:22px;margin:0 0 4px}
+  .rs-sec>h2{font-size:20px;margin:0 0 4px}
+  .rs-srcs .pub{display:block;font-size:var(--t-small);color:var(--muted)}
 </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <div class="mast">
-      <a class="brandmark" href="./"><span id="logoSlot"></span><h1>Market Arena</h1></a>
-    </div>
-    <div class="acctbar" id="acctBar"></div>
-    <div class="toolbar">
-      <a class="ghost" href="practice.html" id="backLink">← Back to your project</a>
-    </div>
+<header class="topbar">
+  <div class="wrap tb-inner">
+    <a class="tb-brand" href="./" aria-label="Market Arena home"><span id="logoSlot"></span><span class="tb-name">Market Arena</span></a>
+    <span class="tb-sep brand-sep" aria-hidden="true">/</span>
+    <a class="tb-crumb" href="practice.html" id="backLink">Your project</a>
+    <span class="tb-sep" aria-hidden="true">/</span>
+    <span class="tb-here">Research</span>
+    <div class="tb-spacer"></div>
+    <div class="tb-actions"><div class="acct" id="acctBar"></div></div>
   </div>
 </header>
 
 <main class="rs-main">
   <div class="wrap">
-    <h2>Research your market</h2>
+    <h1 style="margin:0 0 6px">Research your market</h1>
     <p class="sub">Market Arena searches the public web — research papers, established news, industry
       publications and blogs, and real social and forum discussion — and summarises what buyers in
       this market care about and what holds them back. Every finding links to the page it came from.</p>
 
     <div class="rs-form">
       <label for="topic">What market is this?</label>
-      <input id="topic" maxlength="160" placeholder="e.g. ready-to-drink cold brew coffee in India">
+      <input id="topic" class="field" maxlength="160" placeholder="e.g. ready-to-drink cold brew coffee in India">
       <label for="brief">Anything that narrows it down? <span class="opt">Optional</span></label>
-      <textarea id="brief" maxlength="600" placeholder="Who you sell to, the price point, the channel."></textarea>
+      <textarea id="brief" class="field" maxlength="600" placeholder="Who you sell to, the price point, the channel."></textarea>
       <div class="rs-go">
         <button class="run" id="go">Research this market</button>
         <span class="rs-note" id="cost"></span>
@@ -105,12 +108,11 @@ import { LOGO_MARK, objectionIcon } from "./icons.js";
 import { esc, OBJ_LABEL } from "./app-shared.js";
 import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn, refresh } from "./account.js";
 
-document.getElementById("logoSlot").innerHTML = LOGO_MARK(36);
+document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
 const $ = (s) => document.querySelector(s);
 const SESSION_KEY = "market-arena-practice-session";
 const loadSession = () => { try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; } };
 
-const OBJ_TINT = { price: "#C0392B", trust: "#9A3F7A", relevance: "#2F4BD1", unclear: "#8A5A1F", none: "#3D7A4F" };
 const TYPE_LABEL = { paper: "Research", report: "Reports", news: "News", blog: "Industry & blogs", social: "Social & forums" };
 const TYPE_ORDER = ["paper", "report", "news", "blog", "social"];
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -120,8 +122,10 @@ const session = loadSession();
 if (session?.scenario) {
   $("#topic").value = session.scenario.title || "";
   $("#brief").value = session.scenario.brief || "";
+  // The breadcrumb names the project this research is for.
+  $("#backLink").textContent = session.scenario.title?.trim() || "Your project";
 } else {
-  $("#backLink").textContent = "← Start a project";
+  $("#backLink").textContent = "Start a project";
 }
 
 let result = null; // in memory only: this page never writes the research anywhere
@@ -129,7 +133,7 @@ let result = null; // in memory only: this page never writes the research anywhe
 function renderCost() {
   const m = account();
   const cost = m.costs?.ask ?? 10;
-  $("#cost").textContent = m.signedIn ? `${cost} credits · you have ${m.balance}` : `${cost} credits · sign in to run it`;
+  $("#cost").textContent = m.signedIn ? `Costs ${cost} credits. You have ${m.balance}.` : `Costs ${cost} credits. Sign in to run it.`;
   $("#go").textContent = m.signedIn ? "Research this market" : "Sign in to research";
 }
 
@@ -138,7 +142,7 @@ const host = (u) => { try { return new URL(u).host.replace(/^www\./, ""); } catc
 function renderResult(d) {
   const byUrl = Object.fromEntries(d.sources.map((s, i) => [s.url, i + 1]));
   const themes = d.themes.map((t) => `
-    <article class="rs-theme" style="--tc:${OBJ_TINT[t.objection]}">
+    <article class="rs-theme">
       <h3>${esc(t.theme)}</h3>
       <p>${esc(t.evidence)}</p>
       <div class="rs-chips">
@@ -152,12 +156,12 @@ function renderResult(d) {
     const list = d.sources.map((s, i) => ({ ...s, n: i + 1 })).filter((s) => s.type === type);
     return list.length ? `<div><h3>${TYPE_LABEL[type]}</h3><ol>${list.map((s) => `
       <li value="${s.n}"><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title)}</a>
-        <span class="pub">${esc(s.publisher)}${s.date ? ` · ${esc(s.date)}` : ""}</span></li>`).join("")}</ol></div>` : "";
+        <span class="pub">${esc(s.publisher)}${s.date ? `, ${esc(s.date)}` : ""}</span></li>`).join("")}</ol></div>` : "";
   }).join("");
 
   $("#out").innerHTML = `
     <p class="rs-summary">${esc(d.summary)}</p>
-    <p class="rs-meta">${d.sources.length} source${d.sources.length === 1 ? "" : "s"} · ${d.searches} search${d.searches === 1 ? "" : "es"} · ${(d.ms / 1000).toFixed(0)}s · ${d.charged} credits · ${d.balance} left${d.dropped > 0 ? ` · ${d.dropped} link${d.dropped > 1 ? "s" : ""} left out because the search never opened ${d.dropped > 1 ? "them" : "it"}` : ""}</p>
+    <p class="rs-meta">${d.sources.length} source${d.sources.length === 1 ? "" : "s"} from ${d.searches} search${d.searches === 1 ? "" : "es"}, in ${(d.ms / 1000).toFixed(0)} seconds. ${d.charged} credits used, ${d.balance} left.${d.dropped > 0 ? ` ${d.dropped} link${d.dropped > 1 ? "s were" : " was"} left out because the search never opened ${d.dropped > 1 ? "them" : "it"}.` : ""}</p>
     <section class="rs-sec"><h2>What buyers think</h2>
       <p class="sub">Strongest first. Each finding is kept only if at least one page the search actually opened supports it.</p>
       <div class="rs-themes">${themes || `<p class="sub">The sources didn't support any clear findings. Try describing the market more specifically.</p>`}</div>
@@ -196,8 +200,8 @@ function renderUse() {
       This is fixed at round 1, so every later round uses exactly the same lines.${result.withheld ? ` ${result.withheld} finding${result.withheld > 1 ? "s were" : " was"} held back by the screen.` : ""}</p>
     <ul class="ctx-list" style="margin:0 0 14px">${items.map((i) => `<li>${i.objection !== "none" ? objectionIcon(i.objection) : `<span class="ctx-pull" aria-hidden="true">+</span>`}<span>${esc(i.text)}</span></li>`).join("")}</ul>
     <div class="rs-go" style="margin-top:0">${attached
-      ? `<a class="run" href="practice.html" style="text-decoration:none">Back to your project →</a>`
-      : `<button class="run" id="useIt">Use in my simulation</button><a class="ghost" href="practice.html">Not now</a>`}</div>`;
+      ? `<a class="run" href="practice.html">Back to your project</a>`
+      : `<button class="run" id="useIt">Use in my simulation</button><a class="btn" href="practice.html">Not now</a>`}</div>`;
 }
 
 document.addEventListener("click", (e) => {

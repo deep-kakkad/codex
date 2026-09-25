@@ -6,7 +6,7 @@
 export const LOGO_MARK = (size = 32) => `
 <svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Market Arena">
   <circle cx="22" cy="24" r="17" stroke="currentColor" stroke-width="4"/>
-  <circle cx="38" cy="10" r="6" fill="var(--accent)"/>
+  <circle cx="38" cy="10" r="6" fill="var(--brand-dot, #FF5A36)"/>
 </svg>`;
 
 // The arena mark: four corner brackets around a decision point — a bounded
@@ -160,7 +160,11 @@ function hash(str) {
   return Math.abs(h);
 }
 
-export function buyerFace(persona, segmentIndex = 0, size = 48) {
+// `opts.tint` replaces the segment colour. The report passes "currentColor", so the
+// face takes whatever colour its container sets, which is how a buyer's pick colours
+// their face and how that colour can be animated in. `opts.dashed` marks a buyer whose
+// top two choices were too close to call.
+export function buyerFace(persona, segmentIndex = 0, size = 48, opts = {}) {
   const h = hash(persona?.id || persona?.name || "buyer");
   const skin = SKIN[h % SKIN.length];
   const hair = HAIR[(h >> 3) % HAIR.length];
@@ -168,12 +172,12 @@ export function buyerFace(persona, segmentIndex = 0, size = 48) {
   const eyes = EYES[(h >> 9) % EYES.length];
   const mouth = MOUTH[(h >> 12) % MOUTH.length];
   const brow = BROW[(h >> 15) % BROW.length];
-  const tint = segmentTint(segmentIndex);
+  const tint = opts.tint || segmentTint(segmentIndex);
   const label = persona?.name ? `${persona.name}${persona.segment ? `, ${persona.segment}` : ""}` : "Buyer";
   return `
 <svg class="buyerface" width="${size}" height="${size}" viewBox="0 0 48 48" role="img" aria-label="${String(label).replace(/"/g, "&quot;")}">
   <circle cx="24" cy="24" r="23" fill="${tint}" opacity="0.14"/>
-  <circle cx="24" cy="24" r="23" fill="none" stroke="${tint}" stroke-width="2"/>
+  <circle cx="24" cy="24" r="23" fill="none" stroke="${tint}" stroke-width="${opts.dashed ? 2.4 : 2}"${opts.dashed ? ' stroke-dasharray="5 4"' : ""}/>
   <path d="M13 44c1.5-7 5.5-10 11-10s9.5 3 11 10z" fill="${tint}" opacity="0.55"/>
   <ellipse cx="24" cy="26" rx="11" ry="12.5" fill="${skin}"/>
   <path d="${hair}" fill="${hairC}"/>
