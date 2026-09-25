@@ -3,10 +3,11 @@
 // deterministic fallback so custom personas always get a consistent icon), plus
 // icons for the objection taxonomy and the four funnel stages.
 
+// The logo is the arena in miniature: a half-circle of seats, one of them taken
+// by the brand colour. It is the same shape the product draws every round.
 export const LOGO_MARK = (size = 32) => `
 <svg width="${size}" height="${size}" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Market Arena">
-  <circle cx="22" cy="24" r="17" stroke="currentColor" stroke-width="4"/>
-  <circle cx="38" cy="10" r="6" fill="var(--brand-dot, #FF5A36)"/>
+  <circle cx="7.0" cy="33.0" r="5.2" fill="currentColor"/><circle cx="12.0" cy="21.0" r="5.2" fill="currentColor"/><circle cx="24.0" cy="16.0" r="5.2" fill="currentColor"/><circle cx="36.0" cy="21.0" r="5.2" fill="var(--brand-dot, #FF5A36)"/><circle cx="41.0" cy="33.0" r="5.2" fill="currentColor"/><rect x="4" y="41.5" width="40" height="3" rx="1.5" fill="currentColor" opacity=".35"/>
 </svg>`;
 
 // The arena mark: four corner brackets around a decision point — a bounded

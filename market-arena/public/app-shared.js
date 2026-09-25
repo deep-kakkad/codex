@@ -5,6 +5,7 @@
 // array; this module owns which round is on screen and only touches those ids.
 import { objectionIcon, stageIcon, segmentTint, buyerFace } from "./icons.js";
 import { menuButton, ICON } from "./ui.js";
+import { drawArena, liveArena, arenaLegend } from "./arena.js";
 import { EXTRA_FIELDS } from "./validate.js";
 import { GOAL_BY_KEY } from "./goals.js";
 
@@ -137,32 +138,37 @@ export function createResultsView({ readOnly = false } = {}) {
 
   /* ---- The round, live ---------------------------------------------------------
      Every buyer is a separate request, so they finish at different moments. The
-     server streams each decision as it lands and the Overview fills in one face at
-     a time, in that real order. The model is fast (a whole panel often decides in
-     a third of a second), so the reveal is paced to one face every REVEAL_MS: the
-     order is the model's, only the spacing is ours, and the copy says "in the order
-     they decided" rather than claiming each face is the instant it happened. */
+     server streams each decision as it lands and each buyer takes the next free seat
+     in the arena, in that real order. The model is fast (a whole panel often decides
+     in a third of a second), so arrivals are paced to one every REVEAL_MS: the order
+     is the model's, only the spacing is ours, and the copy says "in the order they
+     decided" rather than claiming each seat is the instant it happened. When the
+     round is in, the chamber sorts itself into blocs by choice. */
   const REVEAL_MS = 150;
   let live = null;
   function showLive(personas, versions) {
     showSkeleton();
     if (!has("#hero")) return;
     const segs = [...new Set(personas.map((p) => p.segment))];
+    const people = personas.map((p) => ({ ...p, segIndex: segs.indexOf(p.segment) }));
     live = {
       colorOf: { ...Object.fromEntries(versions.map((v) => [v.id, v.color])), none: NONE_COLOR },
       nameOf: { ...Object.fromEntries(versions.map((v) => [v.id, v.name])), none: "nothing" },
-      n: personas.length, done: 0, queue: [], timer: null, idle: [],
+      n: personas.length, done: 0, queue: [], timer: null, idle: [], arena: null,
     };
     $("#hero").innerHTML = `<div class="hero-body" aria-busy="true">
-      <p class="live-status"><span class="live-dot" aria-hidden="true"></span><span id="liveCount" aria-live="polite">0 of ${personas.length} buyers have decided</span></p>
-      <h2 class="hero-verdict">The buyers are reading your ads</h2>
-      <p class="hero-sub" id="liveLast">Each face fills in with the version that buyer chose, in the order they decided.</p>
-      <div class="votewall">${segs.map((s, si) => `<div class="vw-seg"><div class="vw-faces">
-        ${personas.filter((p) => p.segment === s).map((p) => `<span class="vw-face token live" data-live="${esc(p.id)}" style="--tc:#D4D4CF">${buyerFace(p, si, 40, { tint: "currentColor" })}</span>`).join("")}
-        </div><span class="vw-name">${esc(s)}</span></div>`).join("")}</div>
-      <div class="vw-key">${versions.map((v) => `<span><i class="sw" style="background:${v.color}"></i>${esc(v.name)}</span>`).join("")}
-        <span><i class="sw" style="background:${NONE_COLOR}"></i>Bought nothing</span></div>
+      <div class="hero-grid">
+        <div class="hero-main">
+          <p class="live-status"><span class="live-dot" aria-hidden="true"></span><span id="liveCount" aria-live="polite">0 of ${personas.length} buyers have decided</span></p>
+          <h2 class="hero-verdict">The buyers are reading your ads</h2>
+          <p class="hero-sub" id="liveLast">Each buyer takes a seat as they decide, in the order they decided, coloured by the version they chose.</p>
+          <div class="vw-key">${versions.map((v) => `<span><i class="sw" style="background:${v.color}"></i>${esc(v.name)}</span>`).join("")}
+            <span><i class="sw" style="background:${NONE_COLOR}"></i>Bought nothing</span></div>
+        </div>
+        <div class="hero-arena"><div id="heroArena"></div></div>
+      </div>
     </div>`;
+    live.arena = liveArena($("#heroArena"), { people, center: { big: "0", sub: `of ${personas.length} decided` } });
   }
   function liveDecided(b) {
     if (!live) return;
@@ -173,24 +179,46 @@ export function createResultsView({ readOnly = false } = {}) {
     const b = live.queue.shift();
     if (!b) { live.timer = null; live.idle.splice(0).forEach((f) => f()); return; }
     reveal(b);
-    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    live.timer = setTimeout(pump, reduced ? 0 : REVEAL_MS);
+    live.timer = setTimeout(pump, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : REVEAL_MS);
   }
-  // Resolves once every face that has arrived is on screen, so the verdict never
-  // lands before the last buyer has been shown deciding.
+  // Resolves once every buyer that has arrived is seated, so the verdict never lands
+  // before the last buyer has been shown deciding.
   function liveFinish() {
     if (!live || (!live.timer && !live.queue.length)) return Promise.resolve();
     return new Promise((res) => live.idle.push(res));
   }
   function reveal(b) {
-    const el = [...document.querySelectorAll("#hero [data-live]")].find((x) => x.dataset.live === b.id);
-    if (!el || el.classList.contains("decided")) return;
-    el.style.setProperty("--tc", live.colorOf[b.purchase] || NONE_COLOR);
-    el.classList.add("decided");
+    live.arena?.take(b.id, live.colorOf[b.purchase] || NONE_COLOR, b.margin < TOSSUP);
     live.done += 1;
+    live.arena?.setCenter({ big: String(live.done), sub: `of ${live.n} decided` });
     const count = $("#liveCount"), last = $("#liveLast");
     if (count) count.textContent = `${live.done} of ${live.n} buyers have decided`;
     if (last) last.textContent = `${b.name}, ${b.segment.toLowerCase()}, ${b.purchase === "none" ? "walked away" : `chose ${live.nameOf[b.purchase] || b.purchase}`}${b.margin < TOSSUP ? ", only just" : ""}.`;
+  }
+  // The round is in: the chamber sorts itself into blocs, then the report takes over
+  // with the chamber drawn in exactly those seats.
+  async function liveSort(r) {
+    if (!live?.arena) return;
+    const last = $("#liveLast");
+    if (last) last.textContent = "Everyone has decided. Sorting the room by choice.";
+    await live.arena.sort(seatOrder(r).map((c) => c.id));
+    live = null;
+  }
+
+  // Seating order for a finished round: blocs by outright picks (most on the left,
+  // "bought nothing" always on the right), then each buyer's place in the panel.
+  function blocsFor(r) {
+    const slotOf = (id) => r.slots[r.brands.findIndex((b) => b.id === id)];
+    const picks = (id) => picksFor(r, id);
+    const versions = [...r.brands].sort((a, b) => picks(b.id) - picks(a.id) || b.share - a.share)
+      .map((b) => ({ key: b.id, name: b.brand, color: COLORS[slotOf(b.id)] }));
+    return [...versions, { key: "none", name: "Bought nothing", color: NONE_COLOR }];
+  }
+  function seatOrder(r) {
+    const order = blocsFor(r).map((b) => b.key);
+    return r.customers.map((c, i) => ({ c, i }))
+      .sort((p, q) => order.indexOf(p.c.purchase) - order.indexOf(q.c.purchase) || p.i - q.i)
+      .map((x) => x.c);
   }
 
   /* ---- The result hero -------------------------------------------------------
@@ -222,22 +250,8 @@ export function createResultsView({ readOnly = false } = {}) {
     const bars = [...ranked.map((b) => ({ id: b.id, nm: b.brand, v: b.share, c: COLORS[slotOf(b)], none: false })),
                   { id: "none", nm: "Bought nothing", v: r.noPurchase.share, none: true }];
 
-    // The vote wall: every buyer, grouped by segment, coloured by what they picked.
-    // It is the round in one picture, and each face opens that buyer's evidence.
-    const wall = r.segments.map((s, si) => `
-      <div class="vw-seg">
-        <div class="vw-faces">${r.customers.filter((c) => c.segment === s).map((c, k) => {
-          const undecided = isTossup(c);
-          return `<button class="vw-face token" type="button" data-investigate="buyer:${c.id}"
-            style="--tc:${animate === true ? "#C9C9C4" : colorOf(c.purchase)};--d:${(si * 3 + k) * 90}ms" data-final="${colorOf(c.purchase)}"
-            aria-label="${esc(c.name)}, ${esc(s)}, picked ${esc(nameOf(c.purchase))}${undecided ? ", too close to call" : ""}">${buyerFace(c, si, 40, { tint: "currentColor", dashed: undecided })}</button>`;
-        }).join("")}</div>
-        <span class="vw-name">${esc(s)}</span>
-      </div>`).join("");
-    const key = [...r.brands.map((b) => `<span><i class="sw" style="background:${COLORS[slotOf(b)]}"></i>${esc(b.brand)}</span>`),
-      `<span><i class="sw" style="background:${NONE_COLOR}"></i>Bought nothing</span>`,
-      r.customers.some(isTossup) ? `<span><i class="sw dashed"></i>Too close to call</span>` : ""].join("");
-
+    const blocs = blocsFor(r);
+    const counts = Object.fromEntries(blocs.map((b) => [b.key, picksFor(r, b.key)]));
     $("#hero").classList.remove("hidden");
     $("#hero").innerHTML = `
       <div class="hero-body">
@@ -252,11 +266,11 @@ export function createResultsView({ readOnly = false } = {}) {
             ${r.goalNote ? `<p class="bn">Your note before the run: “${esc(r.goalNote)}”</p>` : ""}
           </div>`;
         })()}
+        <div class="hero-grid">
+        <div class="hero-main">
         <h2 class="hero-verdict">${verdict}</h2>
         <p class="hero-sub">${sub}</p>
-
-        <div class="votewall" role="group" aria-label="How each of the ${n} buyers decided">${wall}</div>
-        <div class="vw-key">${key}<span class="vw-hint">Select a face to see how that buyer decided.</span></div>
+        </div>
 
         <div class="hero-tiles">
           <button class="hero-tile probe-tile" type="button" data-investigate="share:${win.id}" style="--tc:${COLORS[slotOf(win)]}">
@@ -274,6 +288,12 @@ export function createResultsView({ readOnly = false } = {}) {
             <span class="v">${pct(r.noPurchase.share)}</span>
             <span class="n">${picksFor(r, "none")} of ${n} walked away outright</span>
           </button>
+        </div>
+        <div class="hero-arena">
+          <div id="heroArena" role="group" aria-label="The ${n} buyers, seated by the version they chose"></div>
+          ${arenaLegend(blocs, counts)}
+          <p class="arena-hint">Each seat is a buyer. Select one to see how they decided.${r.customers.some(isTossup) ? ` <span class="ah-dash"><i aria-hidden="true"></i>Dashed: too close to call.</span>` : ""}</p>
+        </div>
         </div>
 
         <p class="hero-barlab">Average choice probability <button class="whatis" data-def="share" aria-label="What does average choice probability mean?">?</button></p>
@@ -294,6 +314,14 @@ export function createResultsView({ readOnly = false } = {}) {
           </div>
         </div>
       </div>`;
+    const segIdx = (c) => r.segments.indexOf(c.segment);
+    drawArena($("#heroArena"), {
+      people: seatOrder(r).map((c) => ({
+        ...c, segIndex: segIdx(c), color: colorOf(c.purchase), dashed: isTossup(c),
+        label: `${c.name}, ${c.segment}, ${c.purchase === "none" ? "bought nothing" : `chose ${nameOf(c.purchase)}`}${isTossup(c) ? ", too close to call" : ""}`,
+      })),
+      center: { name: `<i class="sw" style="background:${COLORS[slotOf(win)]}"></i>${esc(win.brand)}`, big: pct(win.share), sub: tied ? `tied with ${esc(second.brand)}` : "average choice probability" },
+    });
   }
 
 
@@ -974,7 +1002,7 @@ export function createResultsView({ readOnly = false } = {}) {
 
   // Which round is on screen, for pages that offer their own way to switch.
   const viewedIndex = () => indexFor(getRounds());
-  return { renderResults, renderHistory, attachHandlers, resetOpen, showSkeleton, viewedIndex, setTab, showLive, liveDecided, liveFinish };
+  return { renderResults, renderHistory, attachHandlers, resetOpen, showSkeleton, viewedIndex, setTab, showLive, liveDecided, liveFinish, liveSort };
 }
 
 export function exportCsv(rounds, filename) {
