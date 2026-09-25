@@ -401,7 +401,7 @@ body > header:not(.topbar){padding:18px 0 16px;border-bottom:1px solid var(--lin
 .hero-next h3{font:600 16px var(--display);margin:0 0 4px}
 .hero-next p{margin:0;font:400 15px/1.55 var(--body);color:var(--muted);max-width:66ch}
 .hero-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.hero-explore{font:500 var(--t-ui) var(--body);color:var(--muted);text-decoration:none;padding:0 8px;height:36px;display:inline-flex;align-items:center;border-radius:var(--r-control)}
+.hero-explore{font:500 var(--t-ui) var(--body);color:var(--muted);text-decoration:none;padding:0 8px;height:36px;display:inline-flex;align-items:center;border:0;background:none;cursor:pointer;border-radius:var(--r-control)}
 .hero-explore:hover{color:var(--ink);background:var(--hover)}
 
 /* The market decided */
@@ -576,6 +576,76 @@ svg.history text{font:12px var(--body);fill:var(--muted)}
 .ask-meta{margin:10px 0 0;font:400 12px var(--body);color:var(--muted)}
 .ask-locked{font:400 var(--t-ui)/1.55 var(--body);color:var(--muted);margin:0}
 
+/* ============ Report tabs ============ */
+.rtab-btn{flex:none;height:46px;padding:0 12px;border:0;border-bottom:2px solid transparent;background:none;
+  font:500 var(--t-ui) var(--body);color:var(--muted);cursor:pointer;white-space:nowrap}
+.rtab-btn:hover{color:var(--ink)}
+.rtab-btn[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ink)}
+.rtab-btn:focus-visible{outline:2px solid var(--ink);outline-offset:-4px;border-radius:var(--r-control)}
+.tab-off{display:none!important}
+.rsec.first-in-tab{border-top:0}
+
+/* ============ The vote wall ============
+   Every buyer, grouped by segment, coloured by what they picked. The one bold
+   element on the page: the round in one picture. */
+.votewall{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:16px 20px;margin:4px 0 12px;
+  padding:18px 18px 14px;background:var(--canvas);border-radius:var(--r-panel)}
+.vw-seg{display:grid;gap:8px;align-content:start}
+.vw-faces{display:flex;flex-wrap:wrap;gap:6px}
+.vw-face{width:44px;height:44px;padding:2px;border:0;border-radius:50%;background:none;cursor:pointer;
+  transition:color .6s ease,transform .15s ease;transition-delay:var(--d,0ms),0ms}
+.vw-face:hover{transform:translateY(-2px)}
+.vw-face:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.vw-name{font:500 var(--t-small)/1.3 var(--body);color:var(--muted)}
+.vw-skel{width:40px;height:40px;border-radius:50%}
+.vw-face svg{width:100%;height:100%}
+@media (max-width:540px){
+  .votewall{grid-template-columns:repeat(2,minmax(0,1fr));padding:14px 12px 12px;gap:14px 12px}
+  .vw-face{width:36px;height:36px;padding:1px}
+  .vw-faces{gap:4px}
+  .vw-key .vw-hint{margin-left:0;flex-basis:100%}
+}
+.vw-key{display:flex;flex-wrap:wrap;align-items:center;gap:6px 16px;margin:0 0 24px;font:500 var(--t-small) var(--body);color:var(--muted)}
+.vw-key span{display:inline-flex;align-items:center;gap:6px}
+.vw-key .sw.dashed{background:none;border:1.5px dashed var(--muted);border-radius:50%}
+.vw-key .vw-hint{margin-left:auto;color:var(--faint);font-weight:400}
+.hero-running{margin:0 0 14px;font:500 var(--t-ui) var(--body);color:var(--muted)}
+
+/* ============ Every number opens its evidence ============ */
+.probe-tile{text-align:left;cursor:pointer;font:inherit;color:inherit;width:100%;transition:background-color .15s ease}
+.probe-tile:hover{background:#FAFAF9}
+.probe-tile:hover .n{color:var(--ink)}
+.hero-bar{width:100%;padding:6px 8px;margin:-6px -8px;border:0;border-radius:var(--r-control);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer;box-sizing:content-box}
+.hero-bar:hover{background:var(--canvas)}
+.probe{cursor:pointer;border-radius:var(--r-control)}
+.legend .probe{padding:4px 8px;margin:-4px -8px}
+.legend .probe:hover,.frow.probe:hover,.deltarow.probe:hover{background:var(--hover)}
+.frow.probe{padding:2px 6px;margin:4px -6px}
+.deltarow.probe{padding:10px 8px;margin:0 -8px}
+.sharebar [data-investigate]{cursor:pointer}
+.sharebar [data-investigate]:hover{filter:brightness(1.08)}
+.numlink{display:inline;padding:0 1px;border:0;border-bottom:1px dashed #A9A9A4;background:none;font:inherit;font-weight:600;color:inherit;cursor:pointer}
+.numlink:hover{border-bottom-style:solid;border-bottom-color:var(--ink)}
+[data-investigate]:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+
+/* Buyer rows in the drawer: who, the number, what they chose. */
+.erows{display:grid;gap:2px}
+.erow{display:grid;grid-template-columns:30px minmax(0,1.3fr) minmax(60px,1fr) 44px;gap:10px;align-items:center;width:100%;
+  padding:6px 8px;border:0;border-radius:var(--r-control);background:none;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.erow:hover{background:var(--canvas)}
+.erow-who{display:grid;min-width:0}
+.erow-who b{font:600 var(--t-ui) var(--body)}
+.erow-who span{font-size:var(--t-small);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.erow-who em{font-style:normal;color:var(--ink);font-weight:500}
+.erow-bar{height:8px;background:var(--canvas);border-radius:3px;overflow:hidden}
+.erow-bar i{display:block;height:100%;border-radius:3px}
+.erow-v{text-align:right;font:600 var(--t-ui) var(--body);font-variant-numeric:tabular-nums}
+button.dalt-row{width:100%;padding:4px 6px;margin:0 -6px;border:0;border-radius:var(--r-control);background:none;text-align:left;color:inherit;cursor:pointer;box-sizing:content-box}
+button.dalt-row:hover{background:var(--canvas)}
+.drawer-back{flex:none;display:grid;place-items:center;width:32px;height:32px;margin-right:-4px;border:1px solid var(--line-strong);border-radius:var(--r-control);background:var(--paper);color:var(--muted);cursor:pointer}
+.drawer-back svg{transform:rotate(90deg)}
+.drawer-back:hover{background:var(--hover);color:var(--ink)}
+
 /* ============ Investigation drawer ============ */
 .whatis{display:inline-grid;place-items:center;width:18px;height:18px;padding:0;margin-left:4px;border:1px solid var(--line-strong);border-radius:50%;
   background:var(--paper);font:600 11px/1 var(--body);color:var(--muted);cursor:help;vertical-align:1px}
@@ -692,7 +762,8 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline;text
   .topbar{position:static;border-bottom:1px solid var(--line);background:#fff;backdrop-filter:none}
   .tb-actions,.round-btn svg,.tb-project svg,.toasts,.menu,
   body > header:not(.topbar) .toolbar,#directory,#pickerSection,#builder,#editor,#builderBar,#ghost,#reportBar,
-  .run-row,.detail,.asksec,.hero-actions,footer .credit,.person .conf{display:none!important}
+  .run-row,.detail,.asksec,.hero-actions,footer .credit,.person .conf,.vw-hint{display:none!important}
+  .tab-off{display:block!important}
   body > header:not(.topbar){border-bottom:none;padding:0 0 14px}
   .hero-res,.rsec{break-inside:avoid-page}
   .funnel,.suggest,.deltarow,.pitch{break-inside:avoid}

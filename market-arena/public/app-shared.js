@@ -106,7 +106,19 @@ export function createResultsView({ readOnly = false } = {}) {
     if (has("#ghost")) $("#ghost").classList.add("hidden");
     ["#csv", "#pdf", "#share"].forEach((id) => { if (has(id)) $(id).disabled = true; });
     $("#flags").innerHTML = "";
-    if (has("#hero")) $("#hero").classList.add("hidden");
+    // The Overview gets its own loading state: the panel of faces, waiting to decide.
+    if (has("#hero")) {
+      $("#hero").classList.remove("hidden");
+      $("#hero").innerHTML = `<div class="hero-body" aria-busy="true">
+        <p class="hero-running">The buyers are reading your ads…</p>
+        <i class="skel" style="height:40px;width:52%;margin:0 0 14px"></i>
+        <i class="skel" style="height:16px;width:78%;margin:0 0 26px"></i>
+        <div class="votewall">${Array.from({ length: 4 }).map(() => `<div class="vw-seg"><div class="vw-faces">
+          ${Array.from({ length: 3 }).map(() => `<i class="skel vw-skel"></i>`).join("")}</div><i class="skel" style="height:12px;width:70%"></i></div>`).join("")}</div>
+      </div>`;
+      activeTab = "overview";
+      renderTabs();
+    }
     $("#marketTitle").textContent = "Reading the room…";
     $("#sharebar").innerHTML = `<div class="skel" style="width:100%;height:100%;border-radius:0"></div>`;
     $("#legend").innerHTML = Array.from({ length: 3 }).map(() => `<i class="skel" style="width:110px;height:26px"></i>`).join("");
@@ -127,7 +139,7 @@ export function createResultsView({ readOnly = false } = {}) {
      Everything below it is evidence for the two things stated here: what happened,
      and what to do next. Built from the same numbers the sections use, so the hero
      can never disagree with the report underneath it. */
-  function renderHero(r, prev, idx, total) {
+  function renderHero(r, prev, idx, total, animate = false) {
     if (!has("#hero")) return;
     const n = panelOf(r);
     const ranked = [...r.brands].sort((a, b) => b.share - a.share);
@@ -135,6 +147,8 @@ export function createResultsView({ readOnly = false } = {}) {
     const gap = Math.round((win.share - second.share) * 100);
     const tied = gap < 5;
     const slotOf = (b) => r.slots[r.brands.findIndex((x) => x.id === b.id)];
+    const colorOf = (id) => id === "none" ? NONE_COLOR : COLORS[slotOf(r.brands.find((b) => b.id === id))];
+    const nameOf = (id) => id === "none" ? "nothing" : r.brands.find((b) => b.id === id)?.brand || id;
 
     // The objection that costs the leader most, which is also the tile the user clicks.
     const [objKey, objVal] = Object.entries(win.objections || {})
@@ -144,11 +158,27 @@ export function createResultsView({ readOnly = false } = {}) {
       ? `${esc(win.brand)} and ${esc(second.brand)} are tied`
       : `${esc(win.brand)} leads this round`;
     const sub = tied
-      ? `${pct(win.share)} against ${pct(second.share)} — inside the noise of a re-run, so this round does not separate them. ${cap(OBJ_NOUN[objKey])} is the objection to attack first.`
+      ? `${pct(win.share)} against ${pct(second.share)}, inside the noise of a re-run, so this round does not separate them. ${cap(OBJ_NOUN[objKey])} is the objection to attack first.`
       : `${pct(win.share)} average choice probability, ${gap} points clear. ${cap(OBJ_NOUN[objKey])} is the objection holding it back.`;
 
-    const bars = [...ranked.map((b) => ({ nm: b.brand, v: b.share, c: COLORS[slotOf(b)], none: false })),
-                  { nm: "Bought nothing", v: r.noPurchase.share, none: true }];
+    const bars = [...ranked.map((b) => ({ id: b.id, nm: b.brand, v: b.share, c: COLORS[slotOf(b)], none: false })),
+                  { id: "none", nm: "Bought nothing", v: r.noPurchase.share, none: true }];
+
+    // The vote wall: every buyer, grouped by segment, coloured by what they picked.
+    // It is the round in one picture, and each face opens that buyer's evidence.
+    const wall = r.segments.map((s, si) => `
+      <div class="vw-seg">
+        <div class="vw-faces">${r.customers.filter((c) => c.segment === s).map((c, k) => {
+          const undecided = isTossup(c);
+          return `<button class="vw-face token" type="button" data-investigate="buyer:${c.id}"
+            style="--tc:${animate ? "#C9C9C4" : colorOf(c.purchase)};--d:${(si * 3 + k) * 90}ms" data-final="${colorOf(c.purchase)}"
+            aria-label="${esc(c.name)}, ${esc(s)}, picked ${esc(nameOf(c.purchase))}${undecided ? ", too close to call" : ""}">${buyerFace(c, si, 40, { tint: "currentColor", dashed: undecided })}</button>`;
+        }).join("")}</div>
+        <span class="vw-name">${esc(s)}</span>
+      </div>`).join("");
+    const key = [...r.brands.map((b) => `<span><i class="sw" style="background:${COLORS[slotOf(b)]}"></i>${esc(b.brand)}</span>`),
+      `<span><i class="sw" style="background:${NONE_COLOR}"></i>Bought nothing</span>`,
+      r.customers.some(isTossup) ? `<span><i class="sw dashed"></i>Too close to call</span>` : ""].join("");
 
     $("#hero").classList.remove("hidden");
     $("#hero").innerHTML = `
@@ -157,7 +187,7 @@ export function createResultsView({ readOnly = false } = {}) {
           const g = GOAL_BY_KEY[r.goal];
           if (!g) return "";
           // The brief is answered in its own terms, from this round's numbers, before
-          // the general verdict — otherwise the question the user asked gets buried.
+          // the general verdict, otherwise the question the user asked gets buried.
           return `<div class="hero-brief">
             <span class="bq">You asked: ${esc(g.q)}</span>
             <p class="ba">${g.answer(r)}</p>
@@ -167,37 +197,43 @@ export function createResultsView({ readOnly = false } = {}) {
         <h2 class="hero-verdict">${verdict}</h2>
         <p class="hero-sub">${sub}</p>
 
+        <div class="votewall" role="group" aria-label="How each of the ${n} buyers decided">${wall}</div>
+        <div class="vw-key">${key}<span class="vw-hint">Select a face to see how that buyer decided.</span></div>
+
         <div class="hero-tiles">
-          <div class="hero-tile" style="--tc:${COLORS[slotOf(win)]}">
-            <span class="k">Leading version <button class="whatis" data-def="share" aria-label="What does average choice probability mean?">?</button></span>
+          <button class="hero-tile probe-tile" type="button" data-investigate="share:${win.id}" style="--tc:${COLORS[slotOf(win)]}">
+            <span class="k">Leading version</span>
             <span class="v">${pct(win.share)}</span>
             <span class="n">${esc(win.brand)}, picked outright by ${picksFor(r, win.id)} of ${n} buyers</span>
-          </div>
-          <button class="hero-tile obj-tile" data-investigate="obj:${objKey}">
+          </button>
+          <button class="hero-tile probe-tile" type="button" data-investigate="obj:${objKey}:${win.id}">
             <span class="k">Top objection</span>
             <span class="v">${pct(objVal)}</span>
             <span class="n">${cap(OBJ_NOUN[objKey])}, against ${esc(win.brand)}</span>
-            <span class="tile-link">See the buyers behind it</span>
+          </button>
+          <button class="hero-tile probe-tile" type="button" data-investigate="share:none">
+            <span class="k">Bought nothing</span>
+            <span class="v">${pct(r.noPurchase.share)}</span>
+            <span class="n">${picksFor(r, "none")} of ${n} walked away outright</span>
           </button>
         </div>
 
         <p class="hero-barlab">Average choice probability <button class="whatis" data-def="share" aria-label="What does average choice probability mean?">?</button></p>
         <div class="hero-bars">
           ${bars.map((b) => `
-            <div class="hero-bar ${b.none ? "none" : ""}" ${b.c ? `style="--c:${b.c}"` : ""}>
+            <button class="hero-bar ${b.none ? "none" : ""}" type="button" data-investigate="share:${b.id}" ${b.c ? `style="--c:${b.c}"` : ""}>
               <span class="nm">${esc(b.nm)}</span><span class="pc">${pct(b.v)}</span>
               <span class="track"><span class="fill" style="width:${pct(b.v)}"></span></span>
-            </div>`).join("")}
+            </button>`).join("")}
         </div>
 
         <div class="hero-next">
-          <h3>Suggested next experiment</h3>
+          <h3>Next test</h3>
           <p>Change <b>${esc(win.brand)}</b>'s ${esc(OBJ_LEVER[objKey] || "pitch")} and hold everything else, so the next round measures that one change and nothing else.</p>
-        </div>
-
-        <div class="hero-actions">
-          ${readOnly ? "" : `<button class="btn" data-prepare-round>Edit versions for round ${total + 1}</button>`}
-          <a class="hero-explore" href="#secMarket">See the full analysis</a>
+          <div class="hero-actions">
+            ${readOnly ? "" : `<button class="btn" data-prepare-round>Edit versions for round ${total + 1}</button>`}
+            <button class="hero-explore" type="button" data-tab-go="market">See how the market split</button>
+          </div>
         </div>
       </div>`;
   }
@@ -223,6 +259,9 @@ export function createResultsView({ readOnly = false } = {}) {
   };
 
   let drawerEl = null, scrimEl = null, lastFocus = null;
+  // Evidence can lead to more evidence: a number opens its buyers, a buyer opens
+  // their decision. The stack is what "Back" returns to.
+  let drawerStack = [];
 
   function ensureDrawer() {
     if (drawerEl) return;
@@ -237,14 +276,28 @@ export function createResultsView({ readOnly = false } = {}) {
   }
   function openDrawer(html) {
     ensureDrawer();
-    lastFocus = document.activeElement;
-    drawerEl.innerHTML = html;
+    const already = drawerEl.classList.contains("open");
+    if (already) drawerStack.push({ html: drawerEl.innerHTML, scroll: drawerEl.querySelector(".drawer-body")?.scrollTop || 0 });
+    else { drawerStack = []; lastFocus = document.activeElement; }
+    paintDrawer(html);
     requestAnimationFrame(() => { scrimEl.classList.add("open"); drawerEl.classList.add("open"); });
-    drawerEl.querySelector(".drawer-x")?.focus();
+  }
+  function paintDrawer(html, scroll = 0) {
+    drawerEl.innerHTML = html;
+    if (drawerStack.length) drawerEl.querySelector(".drawer-head")?.insertAdjacentHTML("afterbegin",
+      `<button class="drawer-back" type="button" aria-label="Back">${ICON.chevron}</button>`);
+    const body = drawerEl.querySelector(".drawer-body");
+    if (body) body.scrollTop = scroll;
+    (drawerEl.querySelector(".drawer-back") || drawerEl.querySelector(".drawer-x"))?.focus();
+  }
+  function drawerBack() {
+    const prev = drawerStack.pop();
+    if (prev) paintDrawer(prev.html, prev.scroll);
   }
   function closeDrawer() {
     if (!drawerEl) return;
     scrimEl.classList.remove("open"); drawerEl.classList.remove("open");
+    drawerStack = [];
     lastFocus?.focus?.();
   }
 
@@ -330,37 +383,125 @@ export function createResultsView({ readOnly = false } = {}) {
     openDrawer(shell(`${c.segment}`, esc(c.name), body));
   }
 
+  // One row per buyer: face, who they are, a bar for the number in question, and
+  // what they actually chose. Each row opens that buyer.
+  function buyerRows(r, rows, { color, note }) {
+    const segs = r.segments;
+    return `<div class="erows">${rows.map(({ c, v }) => `
+      <button class="erow" type="button" data-investigate="buyer:${c.id}">
+        ${buyerFace(c, segs.indexOf(c.segment), 30)}
+        <span class="erow-who"><b>${esc(c.name)}</b><span>${esc(c.segment)}${note ? `, ${note(c)}` : ""}</span></span>
+        <span class="erow-bar"><i style="width:${pct(v)};background:${color}"></i></span>
+        <span class="erow-v">${pct(v)}</span>
+      </button>`).join("")}</div>`;
+  }
+  const colorFor = (r, id) => id === "none" ? NONE_COLOR : COLORS[r.slots[r.brands.findIndex((b) => b.id === id)]];
+  const choiceName = (r, id) => id === "none" ? "nothing" : r.brands.find((b) => b.id === id)?.brand || id;
+
+  // A share figure: the average of every buyer's probability, so the evidence is
+  // every buyer's probability, highest first, and how it splits by segment.
+  function investigateShare(r, id) {
+    const none = id === "none";
+    const b = none ? null : r.brands.find((x) => x.id === id);
+    if (!none && !b) return;
+    const name = none ? "Bought nothing" : b.brand;
+    const share = none ? r.noPurchase.share : b.share;
+    const bySeg = none ? r.noPurchase.bySegment : b.bySegment;
+    const n = panelOf(r), picks = picksFor(r, id);
+    const rows = r.customers.map((c) => ({ c, v: c.purchaseProbs[id] ?? 0 })).sort((x, y) => y.v - x.v);
+    const body = `
+      <p class="drawer-lede">${pct(share)} is the average of all ${n} buyers' chance of ${none ? "buying nothing" : `picking ${esc(name)}`}.
+        ${picks} of ${n} ${none ? "walked away outright" : "picked it outright"}. A buyer counts towards the average even when it was not their top choice.</p>
+      <h4>Every buyer's chance</h4>
+      ${buyerRows(r, rows, { color: colorFor(r, id), note: (c) => c.purchase === id ? `<em>${none ? "walked away" : "picked it"}</em>` : `picked ${esc(choiceName(r, c.purchase))}` })}
+      <h4>By segment</h4>
+      <div class="dalt">${r.segments.map((s) => `
+        <button class="dalt-row" type="button" data-investigate="seg:${r.segments.indexOf(s)}:${id}" style="--c:${colorFor(r, id)}">
+          <span>${esc(s)}</span><span class="t"><i style="width:${pct(bySeg[s] ?? 0)}"></i></span><span class="p">${pct(bySeg[s] ?? 0)}</span>
+        </button>`).join("")}</div>`;
+    openDrawer(shell(none ? "Walk-aways" : "Average choice probability", `${esc(name)}: ${pct(share)}`, body));
+  }
+
+  // A funnel figure: the average of one stage's score across buyers.
+  const STAGE_SCORE = { attention: (c, id) => c.byBrand[id].attention, interest: (c, id) => c.byBrand[id].appeal,
+    belief: (c, id) => c.byBrand[id].belief, purchase: (c, id) => c.purchaseProbs[id] ?? 0 };
+  function investigateStage(r, stage, id) {
+    const b = r.brands.find((x) => x.id === id);
+    if (!b || !STAGE_SCORE[stage]) return;
+    const [label, def] = DEFS[stage];
+    const rows = r.customers.map((c) => ({ c, v: STAGE_SCORE[stage](c, id) })).sort((x, y) => y.v - x.v);
+    const low = rows.filter((x) => x.v < .4).length;
+    const body = `
+      <p class="drawer-lede">${def} ${pct(b.funnel[stage])} is the average across ${panelOf(r)} buyers for ${esc(b.brand)}.
+        ${low ? `${low} buyer${low === 1 ? " scores" : "s score"} it under 40% here, which is where it loses them.` : "No buyer scores it under 40% here."}</p>
+      <h4>Every buyer's score</h4>
+      ${buyerRows(r, rows, { color: colorFor(r, id), note: (c) => `picked ${esc(choiceName(r, c.purchase))}` })}`;
+    openDrawer(shell(`${b.brand}: ${label.toLowerCase()}`, `${esc(label)}: ${pct(b.funnel[stage])}`, body));
+  }
+
+  // A segment cell: the buyers in that segment and everything each of them weighed.
+  function investigateSegment(r, si, id) {
+    const seg = r.segments[si];
+    if (seg == null) return;
+    const members = r.customers.filter((c) => c.segment === seg);
+    const none = id === "none";
+    const b = none ? null : r.brands.find((x) => x.id === id);
+    const v = none ? r.noPurchase.bySegment[seg] : b?.bySegment[seg];
+    const name = none ? "buying nothing" : `picking ${esc(b?.brand)}`;
+    const body = `
+      <p class="drawer-lede">${pct(v ?? 0)} is the average chance of ${name} among the ${members.length} ${esc(seg)} buyers.
+        With ${members.length} buyers, treat this as a direction rather than a measurement.</p>
+      <h4>The buyers in this segment</h4>
+      ${members.map((c) => `
+        <div class="dbuyer">
+          <div class="dbuyer-top">${buyerFace(c, si, 32)}<b>${esc(c.name)}</b><span class="dbuyer-seg">Picked ${esc(choiceName(r, c.purchase))}</span>
+            <span class="dbuyer-rate">${pct(c.purchaseProbs[id] ?? 0)}</span></div>
+          <p class="dbuyer-prof">${esc(c.profile)}</p>
+          ${alternatives(r, c)}
+        </div>`).join("")}`;
+    openDrawer(shell(seg, `${esc(seg)}: ${pct(v ?? 0)} ${none ? "bought nothing" : `for ${esc(b?.brand)}`}`, body));
+  }
+
   function showDefinition(key) {
     const [title, text] = DEFS[key] || ["", ""];
     openDrawer(shell("Definition", esc(title), `<p>${esc(text)}</p>`));
   }
 
-  // Every investigable number goes through one listener, so new call sites only
-  // need a data-investigate attribute rather than their own wiring.
+  // Every number in the report is a claim with evidence behind it. They all go
+  // through one listener, so a new call site needs only a data-investigate attribute:
+  //   share:ID  obj:KEY:ID  stage:STAGE:ID  seg:INDEX:ID  buyer:ID
+  function investigate(spec) {
+    if (!current) return;
+    const [kind, a, b] = spec.split(":");
+    if (kind === "obj") return investigateObjection(current, a, b);
+    if (kind === "share") return investigateShare(current, a);
+    if (kind === "stage") return investigateStage(current, a, b);
+    if (kind === "seg") return investigateSegment(current, +a, b);
+    if (kind === "buyer") return investigateBuyer(current, a);
+  }
   document.addEventListener("click", (e) => {
     if (e.target.closest(".drawer-x")) return closeDrawer();
+    if (e.target.closest(".drawer-back")) return drawerBack();
     const def = e.target.closest("[data-def]");
     if (def) return showDefinition(def.dataset.def);
     const probe = e.target.closest("[data-investigate]");
-    if (probe && current) {
-      const [kind, a, b] = probe.dataset.investigate.split(":");
-      if (kind === "obj") return investigateObjection(current, a, b);
-    }
+    if (probe) return investigate(probe.dataset.investigate);
     const person = e.target.closest(".person[data-p]");
     if (person && current) return investigateBuyer(current, person.dataset.p);
   });
+  // Cells and bars that are not buttons still answer to the keyboard.
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Enter" && e.key !== " ") return;
-    const probe = e.target.closest?.(".cell.probe[data-investigate]");
-    if (!probe || !current) return;
+    const probe = e.target.closest?.("[data-investigate]");
+    if (!probe || probe.tagName === "BUTTON") return;
     e.preventDefault();
-    const [kind, a, b] = probe.dataset.investigate.split(":");
-    if (kind === "obj") investigateObjection(current, a, b);
+    investigate(probe.dataset.investigate);
   });
 
   // index: omit to show the latest round, or pass one to view an earlier round.
   function renderResults(rounds, animate, index) {
     viewIndex = index == null ? null : index;
+    if (animate) activeTab = "overview";
     const idx = indexFor(rounds);
     const r = rounds[idx];
     current = r;
@@ -390,20 +531,20 @@ export function createResultsView({ readOnly = false } = {}) {
     const barLabel = (p) => p.id !== "none" ? (p.share >= .07 ? pct(p.share) : "")
       : (p.share >= .16 ? `${pct(p.share)} bought nothing` : p.share >= .07 ? pct(p.share) : "");
     $("#sharebar").innerHTML = parts.map((p) =>
-      `<div class="${p.id === "none" ? "none" : ""}" style="flex-grow:${animate ? 0.0001 : p.share};${p.c ? `background:${p.c};color:${p.ink ? "var(--ink)" : "#fff"}` : ""}">${barLabel(p)}</div>`).join("");
+      `<div class="${p.id === "none" ? "none" : ""}" data-investigate="share:${p.id}" role="button" tabindex="0" aria-label="${p.id === "none" ? "Bought nothing" : esc(r.brands.find((b) => b.id === p.id).brand)}, ${pct(p.share)}" style="flex-grow:${animate ? 0.0001 : p.share};${p.c ? `background:${p.c};color:${p.ink ? "var(--ink)" : "#fff"}` : ""}">${barLabel(p)}</div>`).join("");
     if (animate) requestAnimationFrame(() => requestAnimationFrame(() =>
       [...$("#sharebar").children].forEach((el, i) => el.style.flexGrow = parts[i].share)));
 
     $("#legend").innerHTML = r.brands.map((b, i) => `
-      <div><span class="sw" style="background:${COLORS[r.slots[i]]}"></span><span>${esc(b.brand)}</span>
+      <div class="probe" data-investigate="share:${b.id}" role="button" tabindex="0"><span class="sw" style="background:${COLORS[r.slots[i]]}"></span><span>${esc(b.brand)}</span>
       <span class="pct num">${pct(b.share)}</span><span class="picks num">${picksFor(r, b.id)} of ${panelOf(r)}</span>${deltaChip(b.share, prev ? bySlot(prev, r.slots[i])?.share : null)}</div>`).join("") +
-      `<div class="none-entry"><span class="sw" style="background:repeating-linear-gradient(135deg,#B9B9B4 0 3px,#DADAD6 3px 6px)"></span><span>Bought nothing</span><span class="pct num">${pct(r.noPurchase.share)}</span><span class="picks num">${picksFor(r, "none")} of ${panelOf(r)}</span></div>`;
+      `<div class="none-entry probe" data-investigate="share:none" role="button" tabindex="0"><span class="sw" style="background:repeating-linear-gradient(135deg,#B9B9B4 0 3px,#DADAD6 3px 6px)"></span><span>Bought nothing</span><span class="pct num">${pct(r.noPurchase.share)}</span><span class="picks num">${picksFor(r, "none")} of ${panelOf(r)}</span></div>`;
 
     // Both numbers above are real and they disagree on purpose. Saying so here is
     // cheaper than letting a reader decide the report is broken.
     $("#numNote").innerHTML = `The percentage is <b>average choice probability</b> — across all ${panelOf(r)} buyers, how likely each was to pick that version. The count is <b>outright picks</b>: buyers whose top choice it was. They differ because a buyer leaning 40/35/25 contributes to all three percentages but is counted only once.`;
 
-    renderHero(r, prev, idx, rounds.length);
+    renderHero(r, prev, idx, rounds.length, animate);
     renderExplain(r, prev);
     renderPitches(r);
 
@@ -424,7 +565,7 @@ export function createResultsView({ readOnly = false } = {}) {
     $("#funnels").innerHTML = r.brands.map((b, i) => {
       const { worst, gap } = biggestDrop(b);
       return `<div class="funnel" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3>
-        ${STAGES.map(([k, lab]) => `<div class="frow"><span class="flab">${stageIcon(k)}${lab}</span><span class="track"><i style="width:${pct(b.funnel[k])}"></i></span><span class="num">${pct(b.funnel[k])}</span></div>`).join("")}
+        ${STAGES.map(([k, lab]) => `<div class="frow probe" data-investigate="stage:${k}:${b.id}" role="button" tabindex="0"><span class="flab">${stageIcon(k)}${lab}</span><span class="track"><i style="width:${pct(b.funnel[k])}"></i></span><span class="num">${pct(b.funnel[k])}</span></div>`).join("")}
         <p class="drop">Biggest drop is from ${STAGES[worst - 1][1].toLowerCase()} to ${STAGES[worst][1].toLowerCase()}, ${Math.round(gap * 100)} points.</p></div>`;
     }).join("");
 
@@ -433,7 +574,7 @@ export function createResultsView({ readOnly = false } = {}) {
     const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * 60)}%, transparent)`;
     $("#heatKey").innerHTML = heatKey("share", "share of that segment");
     $("#heat").innerHTML = `<thead><tr><th scope="col">Segment</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}<th scope="col">Bought nothing</th></tr></thead><tbody>` +
-      r.segments.map((s) => `<tr><th scope="row">${esc(s)}</th>${r.brands.map((b, i) => `<td class="cell num" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell num" style="${heat(r.noPurchase.bySegment[s], "#8E8A7B")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
+      r.segments.map((s, si) => `<tr><th scope="row">${esc(s)}</th>${r.brands.map((b, i) => `<td class="cell num probe" data-investigate="seg:${si}:${b.id}" role="button" tabindex="0" title="See these buyers" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell num probe" data-investigate="seg:${si}:none" role="button" tabindex="0" title="See these buyers" style="${heat(r.noPurchase.bySegment[s], "#8E8E95")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
 
     const brandIds = r.brands.map((b) => b.id);
     $("#segInsights").innerHTML = `<ul class="seginsights">` + r.segments.map((s) => {
@@ -450,7 +591,7 @@ export function createResultsView({ readOnly = false } = {}) {
       `</tbody></table></div>` + heatKey("obj", "share of buyers citing it") +
       r.brands.map((b) => {
         const [topK, topV] = topObjection(b);
-        return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <b class="num">${pct(topV)}</b> cite ${OBJ_NOUN[topK]}.</p>`;
+        return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <button class="numlink" type="button" data-investigate="obj:${topK}:${b.id}">${pct(topV)}</button> cite ${OBJ_NOUN[topK]}.</p>`;
       }).join("");
 
     renderContext(r);
@@ -582,7 +723,7 @@ export function createResultsView({ readOnly = false } = {}) {
         <div class="pitch-top"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>${b.share === maxShare ? `<span class="pitch-lead">Leading</span>` : ""}</div>
         <h4>${esc(b.headline)}</h4>
         <p>${esc(b.valueProp)}</p>
-        <div class="pitch-bottom"><span class="pitch-price num">${esc(b.price)}</span><span class="pitch-share num">${pct(b.share)}</span></div>
+        <div class="pitch-bottom"><span class="pitch-price num">${esc(b.price)}</span><button class="pitch-share num numlink" type="button" data-investigate="share:${b.id}" aria-label="${esc(b.brand)}, ${pct(b.share)}. See the buyers">${pct(b.share)}</button></div>
       </div>`).join("");
   }
 
@@ -633,7 +774,7 @@ export function createResultsView({ readOnly = false } = {}) {
     $("#deltaSec").classList.toggle("hidden", !switched.length);
     if (!switched.length) return;
     $("#deltas").innerHTML = switched.map(({ c, from, to, appeal }) => `
-      <div class="deltarow">${buyerFace(c, curr.segments.indexOf(c.segment), 32)}<span class="dname">${esc(c.name)}</span>
+      <div class="deltarow probe" data-investigate="buyer:${c.id}" role="button" tabindex="0">${buyerFace(c, curr.segments.indexOf(c.segment), 32)}<span class="dname">${esc(c.name)}</span>
         <span class="dmove"><span class="dfrom">${esc(from)}</span><span class="darrow">→</span><span class="dto">${esc(to)}</span></span>
         ${appeal != null ? `<span class="dappeal num">${pct(appeal)} appeal</span>` : ""}
       </div>`).join("");
@@ -681,41 +822,86 @@ export function createResultsView({ readOnly = false } = {}) {
     $("#history").innerHTML = svg + "</svg>";
   }
 
-  // Sections come and go with the round (no diff on round one, no switchers if
-  // nobody moved), so the navigation is worked out from the ones actually on screen.
-  // They are not numbered: the report is a set of questions, not a sequence.
-  function numberSections() {
-    // Nav entries for sections this round doesn't have would scroll to nothing.
-    document.querySelectorAll("#reportNav a").forEach((a) => {
-      const target = document.querySelector(a.getAttribute("href"));
-      a.classList.toggle("hidden", !target || target.classList.contains("hidden"));
+  /* ---- Tabs ------------------------------------------------------------------
+     The report is an Overview that answers the question, and detail tabs that hold
+     the evidence. Every section stays in the one document and tabs only hide the
+     others, so printing and "Download PDF" still get the whole report. A tab with
+     nothing in it for this round (no research, no history yet) is not offered. */
+  const TABS = [
+    { key: "overview", label: "Overview", els: () => [$("#hero")?.parentElement, $("#askSec")?.parentElement] },
+    { key: "market", label: "Market", ids: ["secMarket"] },
+    { key: "buyers", label: "Buyers", ids: ["secBuyers", "deltaSec"] },
+    { key: "versions", label: "Versions", ids: ["pitchSec", "secFunnels", "suggestSec"] },
+    { key: "segments", label: "Segments", ids: ["secSegments"] },
+    { key: "objections", label: "Objections", ids: ["secObjections"] },
+    { key: "research", label: "Research", ids: ["contextSec"] },
+    { key: "history", label: "History", ids: ["changesSec", "historySec"] },
+  ];
+  const TAB_KEYS = TABS.map((t) => t.key);
+  let activeTab = TAB_KEYS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "overview";
+  const panelsOf = (t) => (t.els ? t.els() : t.ids.map((id) => document.getElementById(id))).filter(Boolean);
+  const tabAvailable = (t) => t.key === "overview"
+    ? has("#hero") && !$("#hero").classList.contains("hidden")
+    : panelsOf(t).some((el) => !el.classList.contains("hidden"));
+
+  function renderTabs() {
+    const nav = $("#reportNav");
+    if (!nav) return;
+    const avail = TABS.filter(tabAvailable);
+    if (!avail.some((t) => t.key === activeTab)) activeTab = avail[0]?.key || "overview";
+    nav.setAttribute("role", "tablist");
+    nav.innerHTML = avail.map((t) => `<button class="rtab-btn" role="tab" type="button" id="tab-${t.key}" data-tab="${t.key}"
+      aria-selected="${t.key === activeTab}" tabindex="${t.key === activeTab ? 0 : -1}">${t.label}</button>`).join("");
+    TABS.forEach((t) => {
+      let first = true;
+      panelsOf(t).forEach((el) => {
+        const on = t.key === activeTab;
+        el.classList.toggle("tab-off", !on);
+        el.setAttribute("role", "tabpanel");
+        el.setAttribute("aria-labelledby", `tab-${t.key}`);
+        // The first visible section in a tab needs no rule above it.
+        const shows = on && !el.classList.contains("hidden");
+        el.classList.toggle("first-in-tab", shows && first);
+        if (shows) first = false;
+      });
     });
   }
 
-  // Highlights the report-nav link for whichever section is currently on screen.
-  function watchSections() {
-    const nav = $("#reportNav");
-    if (!nav || !("IntersectionObserver" in window)) return;
-    const links = [...nav.querySelectorAll("a")];
-    const setActive = (href) => links.forEach((a) => a.classList.toggle("active", a.getAttribute("href") === href));
-    // Two sections sit side by side on a wide screen, so a click has to win over
-    // the observer until the scroll it triggered has settled.
-    let clickedUntil = 0;
-    nav.addEventListener("click", (e) => {
-      const a = e.target.closest("a"); if (!a) return;
-      clickedUntil = Date.now() + 900;
-      setActive(a.getAttribute("href"));
-    });
-    const seen = new Map();
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => seen.set(e.target.id, e.intersectionRatio));
-      if (Date.now() < clickedUntil) return;
-      let bestId = null, best = 0;
-      seen.forEach((ratio, id) => { if (ratio > best) { best = ratio; bestId = id; } });
-      if (bestId) setActive("#" + bestId);
-    }, { threshold: [0, .15, .4, .75] });
-    links.forEach((a) => { const el = document.querySelector(a.getAttribute("href")); if (el) io.observe(el); });
+  function setTab(key, { focus = false } = {}) {
+    if (!TAB_KEYS.includes(key)) return;
+    activeTab = key;
+    renderTabs();
+    try { history.replaceState(null, "", `${location.pathname}${location.search}#${key}`); } catch {}
+    // Land at the top of the report, not wherever the previous tab was scrolled to.
+    const res = $("#results");
+    if (res) {
+      const offset = ($(".topbar")?.offsetHeight || 0) + ($("#reportBar")?.offsetHeight || 0) + 8;
+      const top = res.getBoundingClientRect().top + scrollY - offset;
+      if (scrollY > top) scrollTo({ top: Math.max(0, top) });
+    }
+    if (focus) document.getElementById(`tab-${key}`)?.focus();
   }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("#reportNav [data-tab]");
+    if (t) return setTab(t.dataset.tab);
+    const go = e.target.closest("[data-tab-go]");
+    if (go) setTab(go.dataset.tabGo);
+  });
+  document.addEventListener("keydown", (e) => {
+    const t = e.target.closest?.("#reportNav [data-tab]");
+    if (!t) return;
+    const all = [...document.querySelectorAll("#reportNav [data-tab]")];
+    const i = all.indexOf(t);
+    const next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: all.length - 1 }[e.key];
+    if (next == null) return;
+    e.preventDefault();
+    const target = all[(next + all.length) % all.length];
+    setTab(target.dataset.tab, { focus: true });
+  });
+
+  // Kept under its old name: callers render the round, then this settles the tabs.
+  function numberSections() { renderTabs(); }
 
   function attachHandlers(getRoundsFn) {
     getRounds = getRoundsFn;
@@ -725,13 +911,12 @@ export function createResultsView({ readOnly = false } = {}) {
       open = open === btn.dataset.p ? null : btn.dataset.p;
       showDetail();
     });
-    watchSections();
   }
   function resetOpen() { open = null; viewIndex = null; }
 
   // Which round is on screen, for pages that offer their own way to switch.
   const viewedIndex = () => indexFor(getRounds());
-  return { renderResults, renderHistory, attachHandlers, resetOpen, showSkeleton, viewedIndex };
+  return { renderResults, renderHistory, attachHandlers, resetOpen, showSkeleton, viewedIndex, setTab };
 }
 
 export function exportCsv(rounds, filename) {
