@@ -76,6 +76,7 @@
           <label for="scenBrief">What is happening in this market?</label>
           <textarea id="scenBrief" maxlength="280" style="min-height:60px"></textarea>
         </div>
+        <div class="rcard" id="researchCard"></div>
         <div class="step-go"><button class="ghost" data-goto="2">Next: buyers →</button></div>
       </div>
     </section>
@@ -150,6 +151,7 @@
         <a href="#secFunnels">Funnels</a>
         <a href="#secSegments">Segments</a>
         <a href="#secObjections">Objections</a>
+        <a href="#contextSec">Research</a>
         <a href="#suggestSec">Next test</a>
         <a href="#changesSec">Changes</a>
         <a href="#historySec">History</a>
@@ -261,6 +263,19 @@
       </div>
     </section>
 
+    <section class="rsec hidden" id="contextSec">
+      <div class="wrap">
+        <header class="rsec-head">
+          <span class="rsec-num"></span>
+          <div>
+            <h2>What the buyers were told about the market</h2>
+            <p class="sub">Findings from public sources — research, news, industry writing and social discussion — that every buyer read before judging the ads.</p>
+          </div>
+        </header>
+        <div id="context"></div>
+      </div>
+    </section>
+
     <section class="rsec hidden" id="suggestSec">
       <div class="wrap">
         <header class="rsec-head">
@@ -324,7 +339,7 @@
 </footer>
 
 <script type="module">
-import { LOGO_MARK, personaIcon, caseMark, caseTint, buyerFace, segmentTint } from "./icons.js";
+import { LOGO_MARK, personaIcon, caseMark, caseTint, buyerFace, segmentTint, objectionIcon } from "./icons.js";
 import { createResultsView, exportCsv, esc } from "./app-shared.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
@@ -403,14 +418,14 @@ function renderSavedGrid() {
     </div>`).join("");
   $("#savedGrid").onclick = (e) => {
     const loadId = e.target.dataset.load, delId = e.target.dataset.del;
-    if (loadId) { const s = saved.find((x) => x.id === loadId); if (s) loadScenario({ scenario: { ...s.scenario }, personas: s.personas.map((p) => ({ ...p })), teams: s.teams.map((t) => ({ ...t })), rounds: (s.rounds || []).map((r) => ({ ...r })) }, 3); }
+    if (loadId) { const s = saved.find((x) => x.id === loadId); if (s) loadScenario({ scenario: { ...s.scenario }, personas: s.personas.map((p) => ({ ...p })), teams: s.teams.map((t) => ({ ...t })), rounds: (s.rounds || []).map((r) => ({ ...r })), research: s.research || null }, 3); }
     if (delId) { saveJSON(SAVED_KEY, saved.filter((x) => x.id !== delId)); renderSavedGrid(); }
   };
 }
 
 const DEFAULT_PANEL = 8;
-function loadScenario({ scenario, personas, teams, rounds }, startStep) {
-  state = { scenario, personas, teams, rounds: rounds || [] };
+function loadScenario({ scenario, personas, teams, rounds, research }, startStep) {
+  state = { scenario, personas, teams, rounds: rounds || [], ...(research ? { research } : {}) };
   // Keep every buyer the case shipped with. Panels open at 8, and sizing back up
   // should hand back the written profiles rather than empty cards.
   state.personaPool = personas.map((p) => ({ ...p }));
@@ -438,7 +453,60 @@ function showBuilder() {
   renderDirectory();
   renderPersonas();
   renderBrands();
+  renderResearchCard();
 }
+
+/* ---- Public research ------------------------------------------------------
+   The research itself lives on its own page and is never saved. What the project
+   keeps is only the short list of findings the buyers read, and round 1 fixes it:
+   later rounds reuse round 1's list (or its absence), so a change between rounds is
+   always a change in the ads, never in what the buyers were told. */
+const contextForNextRound = () => (state.rounds.length ? state.rounds[0].context || null : state.research || null);
+
+function renderResearchCard() {
+  const card = $("#researchCard");
+  if (!card || !state) return;
+  const locked = state.rounds.length > 0;
+  const ctx = contextForNextRound();
+  const lines = (c) => `<ul class="ctx-list">${c.items.map((i) => `<li>${i.objection !== "none" ? objectionIcon(i.objection) : `<span class="ctx-pull" aria-hidden="true">+</span>`}<span>${esc(i.text)}</span></li>`).join("")}</ul>`;
+  const cost = `<span class="rcost">${account().costs?.ask ?? 10} credits</span>`;
+  card.classList.toggle("on", Boolean(ctx));
+  if (locked) {
+    card.innerHTML = ctx
+      ? `<h3>Buyers know what the public says about this market</h3>
+         <p>Round 1 gave every buyer these ${ctx.items.length} findings from public research, and every round in this project uses the same ones so the rounds stay comparable.</p>
+         ${lines(ctx)}<span class="lock">Fixed at round 1 · <a href="research.html">Open the research page</a></span>`
+      : `<h3>This project runs without public research</h3>
+         <p>Round 1 ran without it, so later rounds do too — adding it now would change what buyers know between rounds and make them incomparable. Start a new project to test with research.</p>`;
+    return;
+  }
+  card.innerHTML = ctx
+    ? `<h3>Buyers will read public research</h3>
+       <p>Before they see your ads, every buyer reads these findings. This is fixed once you run round 1.</p>
+       ${lines(ctx)}
+       <div class="rrow"><a class="ghost" href="research.html">Research again</a><button class="ghost" id="dropResearch">Remove</button></div>`
+    : `<h3>Ground your buyers in public research ${cost}</h3>
+       <p>Search research papers, news, industry writing and social discussion for what real buyers in this market think, and give your buyers the strongest findings before they see your ads. Optional — and fixed once you run round 1.</p>
+       <div class="rrow"><a class="ghost" href="research.html">Research this market →</a></div>`;
+}
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#dropResearch") || !state || state.rounds.length) return;
+  delete state.research; save(); renderResearchCard();
+});
+
+// The research page writes to the same session. If this tab is open alongside it,
+// pick up the findings without clobbering anything typed here since.
+window.addEventListener("storage", (e) => {
+  if (e.key !== SESSION_KEY || !state || state.rounds.length) return;
+  try {
+    const incoming = JSON.parse(e.newValue || "null");
+    if (incoming?.research?.researchedAt !== state.research?.researchedAt) {
+      if (incoming?.research) state.research = incoming.research; else delete state.research;
+      save(); renderResearchCard();
+    }
+  } catch {}
+});
 
 // After a round the editor folds into a one-line bar, so reading results and
 // rewriting copy don't fight each other for the same screen.
@@ -684,7 +752,7 @@ $("#saveScenario").addEventListener("click", () => {
   const name = prompt("Name this project", state.scenario.title || "My project");
   if (!name) return;
   const saved = loadJSON(SAVED_KEY, []);
-  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })) });
+  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })), ...(state.research ? { research: state.research } : {}) });
   saveJSON(SAVED_KEY, saved.slice(0, 20));
   setStatus(state.rounds.length ? `Project saved in this browser, with ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""}.` : "Project saved in this browser.", false);
 });
@@ -737,13 +805,13 @@ async function runRound() {
   view.showSkeleton();
   try {
     const res = await fetch("/api/round", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "practice", teams, personas }) });
+      body: JSON.stringify({ mode: "practice", teams, personas, context: contextForNextRound() }) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "The round didn't run. Try again.");
     data.slots = state.teams.map((t) => t.slot);
     data.goal = state.goal || null;
     data.goalNote = state.goalNote || "";
-    state.rounds.push(data); save();
+    state.rounds.push(data); save(); renderResearchCard();
     setStatus("", false); view.resetOpen();
     renderBrands(); view.renderResults(state.rounds, true);
     collapseBuilder(true);
@@ -888,7 +956,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-onAccountChange(() => renderAsk());
+onAccountChange(() => { renderAsk(); renderResearchCard(); });
 </script>
 </body>
 </html>

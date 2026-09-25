@@ -114,6 +114,7 @@ export function createResultsView() {
     $("#pitches").innerHTML = ""; $("#funnels").innerHTML = ""; $("#heat").innerHTML = "";
     $("#objections").innerHTML = ""; $("#segInsights").innerHTML = "";
     ["#pitchSec", "#suggestSec", "#changesSec", "#deltaSec"].forEach((s) => $(s).classList.add("hidden"));
+    if (has("#contextSec")) $("#contextSec").classList.add("hidden");
   }
 
 
@@ -449,6 +450,7 @@ export function createResultsView() {
         return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <b class="num">${pct(topV)}</b> cite ${OBJ_NOUN[topK]}.</p>`;
       }).join("");
 
+    renderContext(r);
     renderSuggestions(r);
     renderChanges(r, prev);
     renderDeltas(r, prev);
@@ -456,6 +458,41 @@ export function createResultsView() {
     renderHistory(rounds, idx);
     numberSections();
     $("#meta").textContent = `${r.model}, ${r.tokens.toLocaleString()} tokens, ${(r.ms / 1000).toFixed(1)}s`;
+  }
+
+  // What public research told the buyers, next to what the buyers then did with it.
+  // The two columns are different measures and the section says so: research counts
+  // how strongly a concern shows up in public sources, the panel counts how often it
+  // was a buyer's main reason. Agreement is a sanity check on the simulation, and a
+  // gap is worth a look, but neither is a score.
+  function renderContext(r) {
+    if (!has("#contextSec")) return;
+    const items = r.context?.items || [];
+    $("#contextSec").classList.toggle("hidden", !items.length);
+    if (!items.length) { $("#context").innerHTML = ""; return; }
+    const barriers = items.filter((i) => i.objection !== "none");
+    const pulls = items.filter((i) => i.objection === "none");
+    const wTotal = barriers.reduce((s2, i) => s2 + (i.weight || 0), 0) || 1;
+    const research = Object.fromEntries(OBJ_ORDER.map((k) => [k, barriers.filter((i) => i.objection === k).reduce((s2, i) => s2 + (i.weight || 0), 0) / wTotal]));
+    const panelRaw = Object.fromEntries(OBJ_ORDER.map((k) => [k, r.brands.reduce((s2, b) => s2 + (b.objections[k] || 0), 0) / r.brands.length]));
+    const pTotal = OBJ_ORDER.reduce((s2, k) => s2 + panelRaw[k], 0) || 1;
+    const panel = Object.fromEntries(OBJ_ORDER.map((k) => [k, panelRaw[k] / pTotal]));
+    const when = r.context.researchedAt ? new Date(r.context.researchedAt) : null;
+    const line = (i) => `<li>${i.objection !== "none" ? objectionIcon(i.objection) : `<span class="ctx-pull" aria-hidden="true">+</span>`}<span>${esc(i.text)}</span></li>`;
+    $("#context").innerHTML = `
+      <p class="ctx-meta">Researched ${when && !isNaN(when) ? when.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : ""}${r.context.topic ? ` for “${esc(r.context.topic)}”` : ""}. Every buyer read these lines before seeing the ads, and every round in this project uses the same ones.</p>
+      <div class="ctx-cols">
+        <div><h3 class="ctx-h">What holds buyers back</h3><ul class="ctx-list">${barriers.map(line).join("") || `<li class="muted">The research found no clear barriers.</li>`}</ul></div>
+        <div><h3 class="ctx-h">What pulls them in</h3><ul class="ctx-list">${pulls.map(line).join("") || `<li class="muted">The research found no clear pull.</li>`}</ul></div>
+      </div>
+      ${barriers.length ? `<h3 class="ctx-h" style="margin-top:22px">Research against your buyers</h3>
+      <div class="ctx-compare" role="table" aria-label="Objection mix: research versus buyers">
+        <div class="ctx-row ctx-headrow" role="row"><span role="columnheader">Objection</span><span role="columnheader">In the research</span><span role="columnheader">Your buyers' main reason</span></div>
+        ${OBJ_ORDER.map((k) => `<div class="ctx-row" role="row"><span role="cell">${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</span>
+          <span role="cell" class="ctx-bar"><i style="width:${pct(research[k])}"></i><b class="num">${pct(research[k])}</b></span>
+          <span role="cell" class="ctx-bar panel"><i style="width:${pct(panel[k])}"></i><b class="num">${pct(panel[k])}</b></span></div>`).join("")}
+      </div>
+      <p class="ctx-note">Both columns are shares of the four objections, so each sums to 100%. They measure different things — how strongly a concern shows up in public sources, and how often it was a buyer's main reason not to buy — so read a big gap as something to check, not as an error.</p>` : ""}`;
   }
 
   const listWords = (xs) => xs.length < 2 ? (xs[0] || "") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];

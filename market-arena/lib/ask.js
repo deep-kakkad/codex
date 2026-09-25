@@ -40,6 +40,12 @@ HOW TO ANSWER
   Never estimate it, never infer it from a related figure, never state a number
   you did not read. An invented figure is the worst thing you can produce.
 
+MARKET CONTEXT
+If marketContext is present, every buyer read those public-research findings before
+judging the ads. You may say what the buyers were told and whether their objections
+line up with it. The findings describe public sources, not these buyers and not
+real customers, so never present them as a measured result of this round.
+
 WHEN TO REFUSE
 If the question cannot be answered from this round, say so plainly in one sentence
 and say what would answer it. Do this for anything about real-world outcomes,
@@ -62,6 +68,7 @@ export function reportFor(round) {
   return {
     goal: round.goal || null,
     goalNote: round.goalNote || null,
+    marketContext: round.context?.items?.length ? round.context.items.map((i) => i.text) : null,
     panel: panelOf(round),
     segments: round.segments,
     versions: round.brands.map((b) => ({

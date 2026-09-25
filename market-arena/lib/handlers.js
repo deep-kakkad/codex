@@ -1,6 +1,7 @@
 // Shared request handling for the local server and the Netlify functions.
 import { runRound, validateTeams, validatePersonas, LIMITS, PERSONA_LIMITS } from "./engine.js";
-import { SCENARIO, PERSONAS, DEFAULT_TEAMS } from "./scenario.js";
+import { SCENARIO, PERSONAS, DEFAULT_TEAMS, OBJECTIONS } from "./scenario.js";
+import { CONTEXT_MAX, CONTEXT_TEXT_MAX } from "./research.js";
 import { TEMPLATES } from "./templates.js";
 import { saveShare, getShareById } from "./store.js";
 import { ask as askModel, ASK_COST_CREDITS } from "./ask.js";
@@ -31,10 +32,34 @@ export function templates() {
   return [200, { templates: TEMPLATES, limits: LIMITS, personaLimits: PERSONA_LIMITS }];
 }
 
+// Market context arrives from the browser, which got it from /api/research. Anyone can
+// edit it on the way, but the only rounds it can affect are their own, so this checks
+// shape and size rather than provenance: short lines, a known objection, nothing else.
+export function cleanContext(ctx) {
+  if (ctx == null) return [null, null];
+  if (typeof ctx !== "object" || !Array.isArray(ctx.items)) return [null, "The market research attached to this round is malformed."];
+  if (ctx.items.length > CONTEXT_MAX) return [null, `Use at most ${CONTEXT_MAX} research findings in a round.`];
+  const items = [];
+  for (const it of ctx.items) {
+    const text = typeof it?.text === "string" ? it.text.trim() : "";
+    if (!text || text.length > CONTEXT_TEXT_MAX) return [null, "A research finding is empty or too long."];
+    if (!(it.objection in OBJECTIONS)) return [null, "A research finding has an unknown objection."];
+    const weight = Number(it.weight);
+    items.push({ text, objection: it.objection, weight: Number.isFinite(weight) ? Math.max(0, Math.min(1, weight)) : 0 });
+  }
+  if (!items.length) return [null, null];
+  return [{
+    topic: String(ctx.topic || "").slice(0, 160),
+    researchedAt: String(ctx.researchedAt || "").slice(0, 40),
+    items,
+  }, null];
+}
+
 export async function round(rawBody, code, ip) {
   let body;
   try { body = JSON.parse(rawBody || "{}"); } catch { return [400, { error: "The request wasn't valid JSON." }]; }
   const { teams, personas, mode } = body;
+  const [context, contextProblem] = cleanContext(body.context);
 
   if (mode === "practice") {
     if (!process.env.TYPESAFE_API_KEY) return [500, { error: "The server has no TypeSafe API key. Set TYPESAFE_API_KEY and restart." }];
@@ -43,7 +68,8 @@ export async function round(rawBody, code, ip) {
     if (teamProblem) return [400, { error: teamProblem }];
     const personaProblem = validatePersonas(personas);
     if (personaProblem) return [400, { error: personaProblem }];
-    try { return [200, await runRound(teams, personas || undefined)]; }
+    if (contextProblem) return [400, { error: contextProblem }];
+    try { return [200, await runRound(teams, personas || undefined, context)]; }
     catch (e) { console.error(e); return [502, { error: "The market simulation couldn't reach TypeSafe. Run the round again in a moment." }]; }
   }
 
