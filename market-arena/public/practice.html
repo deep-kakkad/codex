@@ -478,6 +478,7 @@ menuButton($("#moreBtn"), () => {
     { label: $("#directory").classList.contains("open") ? "Hide the buyers" : "Meet the buyers", onSelect: toggleDirectory },
     { label: "Download CSV", disabled: !hasRounds, onSelect: () => exportCsv(state.rounds, "market-arena-results.csv") },
     { label: "Download PDF", disabled: !hasRounds, onSelect: () => window.print() },
+    { label: "Pricing", onSelect: () => { location.href = "pricing.html"; } },
     { separator: true },
     { label: "Start over", danger: true, onSelect: startOver },
   ];
@@ -895,6 +896,30 @@ function showFieldProblem(problem, kind) {
   el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 }
 
+// Reads the streamed round: one JSON object per line. Buyers are handed to `onBuyer`
+// as they arrive; the full result is returned at the end.
+async function readRound(res, onBuyer) {
+  const reader = res.body.getReader(), dec = new TextDecoder();
+  let buf = "", result = null;
+  const handle = (line) => {
+    if (!line.trim()) return;
+    const m = JSON.parse(line);
+    if (m.type === "buyer") onBuyer(m);
+    else if (m.type === "result") result = m.data;
+    else if (m.type === "error") throw new Error(m.error);
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let i;
+    while ((i = buf.indexOf("\n")) >= 0) { handle(buf.slice(0, i)); buf = buf.slice(i + 1); }
+  }
+  handle(buf);
+  if (!result) throw new Error("The round stopped before it finished. Try again.");
+  return result;
+}
+
 async function runRound() {
   // Validate before anything announces work. The old order set the status line and
   // the skeleton first, so an invalid round showed "Showing your ads to 12 buyers…"
@@ -914,25 +939,35 @@ async function runRound() {
   buttons.forEach((b) => (b.disabled = true));
   running = true; renderTopbar();
   setStatus(`Showing your ads to ${state.personas.length} buyers…`, false);
-  view.showSkeleton();
+  // The Overview goes live straight away: one grey face per buyer, filling in as
+  // each decides. Fold the editor so the panel is what's on screen.
+  view.showLive(personas, state.teams.map((t, i) => ({ id: `t${i + 1}`, name: t.brand, color: COLORS[t.slot] })));
+  collapseBuilder(true);
+  $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   try {
-    const res = await fetch("/api/round", { method: "POST", headers: { "Content-Type": "application/json" },
+    const res = await fetch("/api/round", { method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" },
       body: JSON.stringify({ mode: "practice", teams, personas, context: contextForNextRound() }) });
-    const data = await res.json();
+    const data = (res.headers.get("content-type") || "").includes("ndjson") && res.body
+      ? await readRound(res, (b) => view.liveDecided(b))
+      : await res.json();
     if (!res.ok) throw new Error(data.error || "The round didn't run. Try again.");
+    await view.liveFinish();
     data.slots = state.teams.map((t) => t.slot);
     data.goal = state.goal || null;
     data.goalNote = state.goalNote || "";
     state.rounds.push(data); save(); renderResearchCard();
     setStatus("", false); view.resetOpen();
-    renderBrands(); view.renderResults(state.rounds, true);
+    // "live": the faces are already filled in, so they are not greyed and replayed.
+    renderBrands(); view.renderResults(state.rounds, "live");
     collapseBuilder(true);
     $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   } catch (err) {
     setStatus(err.message, true);
     toast(err.message, { tone: "error" });
     // Put the last good report back rather than leaving a skeleton or nothing.
-    if (state.rounds.length) view.renderResults(state.rounds, false); else $("#results").classList.add("hidden");
+    if (state.rounds.length) view.renderResults(state.rounds, false);
+    else { $("#results").classList.add("hidden"); $("#reportBar").classList.add("hidden"); collapseBuilder(false); }
   }
   running = false;
   buttons.forEach((b) => (b.disabled = false));

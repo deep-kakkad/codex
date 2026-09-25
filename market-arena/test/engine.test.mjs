@@ -117,6 +117,14 @@ assert.ok(!seen.find((b) => !b.state.customer).state.market_context, "the ad int
 assert.deepEqual(rc.context, context, "the result carries exactly what the buyers were told");
 console.log("ok  research reaches every buyer when given, and is absent otherwise");
 
+/* --- 6b. each buyer is reported as they decide ----------------------------- */
+const heard = [];
+const rs = await runRound(teams, personas, null, (b) => heard.push(b));
+assert.equal(heard.length, 12, "one report per buyer");
+assert.deepEqual(new Set(heard.map((b) => b.id)), new Set(personas.map((p) => p.id)), "every buyer reported once");
+heard.forEach((b) => assert.equal(b.purchase, rs.customers.find((c) => c.id === b.id).purchase, "the streamed pick matches the final result"));
+console.log("ok  every buyer's pick is reported as it lands, and matches the final result");
+
 /* --- 7. research lines are screened for instructions ---------------------- */
 const { checkContext } = await import("../lib/engine.js");
 globalThis.fetch = async (_url, opts) => {

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%23121212' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23FF5A36'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<title>Pricing | Market Arena</title>
+<meta name="description" content="Start with 100 free credits. Rounds are free during the beta; questions and market research cost 10 credits each.">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap tb-inner">
+    <a class="tb-brand" href="./" aria-label="Market Arena home"><span id="logoSlot"></span><span class="tb-name">Market Arena</span></a>
+    <span class="tb-sep brand-sep" aria-hidden="true">/</span>
+    <span class="tb-here">Pricing</span>
+    <div class="tb-spacer"></div>
+    <div class="tb-actions"><div class="acct" id="acctBar"></div><a class="btn-primary" href="practice.html">Start a project</a></div>
+  </div>
+</header>
+
+<main class="wrap page">
+  <div class="page-head">
+    <h1>Pricing</h1>
+    <p class="sub">Start with 100 free credits, no card needed. You only spend credits on the things that cost money to run: questions and market research. Rounds are free while Market Arena is in beta.</p>
+  </div>
+
+  <section class="price-sec" aria-labelledby="costsH">
+    <h2 class="group-h" id="costsH">What uses credits</h2>
+    <div class="costs">
+      <div class="cost-row"><span><b>Run a round</b><span>Every buyer judges every version. Up to 20 rounds an hour.</span></span><span class="cost-v">Free in beta</span></div>
+      <div class="cost-row"><span><b>Ask a question about a round</b><span>Answered from that round's numbers only.</span></span><span class="cost-v" id="askCostV">10 credits</span></div>
+      <div class="cost-row"><span><b>Research a market</b><span>Live search of research, news, industry writing and social discussion.</span></span><span class="cost-v" id="resCostV">10 credits</span></div>
+      <div class="cost-row"><span><b>Share a round, download CSV or PDF</b><span>Anyone with the link can view it.</span></span><span class="cost-v">Free</span></div>
+    </div>
+  </section>
+
+  <section class="price-sec" aria-labelledby="packsH">
+    <h2 class="group-h" id="packsH">Credit packs</h2>
+    <p class="sub" id="packsNote"></p>
+    <div class="packs" id="packs"></div>
+  </section>
+
+  <section class="price-sec" aria-labelledby="faqH">
+    <h2 class="group-h" id="faqH">Questions</h2>
+    <div class="faq">
+      <details><summary>What happens if a question or research run fails?</summary><p>Nothing is charged. Credits are taken when you ask, and given straight back if the answer doesn't arrive.</p></details>
+      <details><summary>Why are rounds free?</summary><p>A round costs a fraction of a cent to run. They are free during the beta, up to 20 an hour from one connection, so a public link can't be used to run up a bill.</p></details>
+      <details><summary>Do I need a card to start?</summary><p>No. Every new account gets 100 credits, which is ten questions or research runs.</p></details>
+      <details><summary>How do I pay for more?</summary><p>By card through Stripe, once top-ups open. Credits appear in your account as soon as Stripe confirms the payment.</p></details>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap row"><span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a way to decide what deserves a real test, not as market research.</span></div></footer>
+
+<script type="module">
+import { LOGO_MARK } from "./icons.js";
+import { initAccount, mountAccountBar, onAccountChange } from "./account.js";
+import { packCard } from "./billing-ui.js";
+document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
+mountAccountBar(document.getElementById("acctBar"));
+onAccountChange((m) => {
+  const packs = m.billing?.packs || [];
+  const ask = m.costs?.ask ?? 10;
+  document.getElementById("askCostV").textContent = `${ask} credits`;
+  document.getElementById("resCostV").textContent = `${ask} credits`;
+  document.getElementById("packsNote").textContent = m.billing?.enabled
+    ? "Pay once, use the credits whenever you like."
+    : "Top-ups open soon. Until then, every account starts with 100 free credits.";
+  document.getElementById("packs").innerHTML = packs.map((p, i) => packCard(p, { featured: i === 1, ask })).join("");
+});
+initAccount();
+</script>
+</body>
+</html>

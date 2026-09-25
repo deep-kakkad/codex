@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='22' cy='24' r='17' fill='none' stroke='%23121212' stroke-width='4'/><circle cx='38' cy='10' r='6' fill='%23FF5A36'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<title>Usage and billing | Market Arena</title>
+<meta name="robots" content="noindex">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap tb-inner">
+    <a class="tb-brand" href="./" aria-label="Market Arena home"><span id="logoSlot"></span><span class="tb-name">Market Arena</span></a>
+    <span class="tb-sep brand-sep" aria-hidden="true">/</span>
+    <span class="tb-here">Usage and billing</span>
+    <div class="tb-spacer"></div>
+    <div class="tb-actions"><div class="acct" id="acctBar"></div><a class="btn" href="practice.html">Back to your project</a></div>
+  </div>
+</header>
+
+<main class="wrap page">
+  <div class="page-head"><h1>Usage and billing</h1></div>
+  <div id="signedOut" class="hidden empty">
+    <p>Sign in to see your credits and what you've used them on.</p>
+    <button class="btn-primary" type="button" data-signin-page>Sign in</button>
+  </div>
+  <div id="signedIn" class="hidden">
+    <section class="balance">
+      <div><span class="bal-k">Credits left</span><span class="bal-v" id="bal">0</span></div>
+      <p class="bal-note" id="balNote"></p>
+    </section>
+    <section class="price-sec" aria-labelledby="buyH">
+      <h2 class="group-h" id="buyH">Buy credits</h2>
+      <p class="sub" id="buyNote"></p>
+      <div class="packs" id="packs"></div>
+    </section>
+    <section class="price-sec" aria-labelledby="histH">
+      <h2 class="group-h" id="histH">History</h2>
+      <div class="tablewrap ledger-wrap"><table class="ledger"><thead><tr><th scope="col">When</th><th scope="col">What</th><th scope="col" class="n">Credits</th></tr></thead><tbody id="ledger"></tbody></table></div>
+    </section>
+  </div>
+</main>
+
+<script type="module">
+import { LOGO_MARK } from "./icons.js";
+import { initAccount, mountAccountBar, onAccountChange, open as openSignIn, account } from "./account.js";
+import { packCard } from "./billing-ui.js";
+import { toast } from "./ui.js";
+const $ = (s) => document.querySelector(s);
+$("#logoSlot").innerHTML = LOGO_MARK(22);
+mountAccountBar($("#acctBar"));
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const when = (t) => new Date(t).toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+
+async function load() {
+  const res = await fetch("/api/usage");
+  if (res.status === 401) return;
+  const d = await res.json();
+  if (!res.ok) return toast(d.error || "Couldn't load your usage.", { tone: "error" });
+  $("#bal").textContent = d.balance.toLocaleString();
+  $("#balNote").textContent = `Asking a question or running research costs ${d.costs.ask} credits. Rounds are free during the beta.`;
+  $("#ledger").innerHTML = d.entries.length ? d.entries.map((e) => `<tr><td>${when(e.at)}</td><td>${esc(e.what)}</td>
+    <td class="n ${e.delta > 0 ? "plus" : ""}">${e.delta > 0 ? "+" : "−"}${Math.abs(e.delta).toLocaleString()}</td></tr>`).join("")
+    : `<tr><td colspan="3" class="muted">Nothing yet.</td></tr>`;
+  return d.balance;
+}
+
+onAccountChange((m) => {
+  $("#signedOut").classList.toggle("hidden", m.signedIn);
+  $("#signedIn").classList.toggle("hidden", !m.signedIn);
+  if (!m.signedIn) return;
+  const ask = m.costs?.ask ?? 10;
+  $("#buyNote").textContent = m.billing?.enabled ? "Pay once by card through Stripe. Credits appear as soon as the payment is confirmed."
+    : "Top-ups open soon. Until then, every account starts with 100 free credits.";
+  $("#packs").innerHTML = (m.billing?.packs || []).map((p, i) => packCard(p, { featured: i === 1, ask })).join("");
+  load();
+});
+document.addEventListener("click", (e) => { if (e.target.closest("[data-signin-page]")) openSignIn("login"); });
+
+// Back from Stripe. Credits are granted by Stripe's webhook, which can land a moment
+// after the redirect, so the balance is re-read a few times rather than trusted now.
+const q = new URLSearchParams(location.search);
+if (q.has("paid")) {
+  toast("Payment received. Your credits appear here as soon as Stripe confirms it.");
+  let tries = 0, start = null;
+  const poll = async () => {
+    const b = await load().catch(() => null);
+    if (start == null) start = b;
+    if (b != null && start != null && b > start) { toast("Credits added."); (await import("./account.js")).refresh(); return; }
+    if (++tries < 8) setTimeout(poll, 2000);
+  };
+  setTimeout(poll, 1500);
+}
+if (q.has("cancelled")) toast("Payment cancelled. Nothing was charged.");
+if (q.has("paid") || q.has("cancelled")) history.replaceState(null, "", location.pathname);
+initAccount();
+</script>
+</body>
+</html>

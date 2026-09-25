@@ -72,3 +72,37 @@ export async function logAsk(userId, roundId, question, out, error) {
      out?.ms ?? null, error ?? null],
   );
 }
+
+// Credits bought through Stripe. The session id is the reference, and the entry is
+// only written if that reference has never been credited, so a webhook Stripe
+// retries cannot pay out twice.
+export async function creditTopup(userId, credits, ref, note) {
+  const rows = await sql(
+    `INSERT INTO credit_entries (user_id, delta, reason, ref, note)
+     SELECT $1, $2, 'topup', $3, $4
+     WHERE NOT EXISTS (SELECT 1 FROM credit_entries WHERE reason = 'topup' AND ref = $3)
+     RETURNING id`,
+    [userId, credits, ref, note],
+  );
+  return rows.length > 0;
+}
+
+// The ledger, in words a person reads.
+function describe(e) {
+  if (e.reason === "signup") return "Welcome credits";
+  if (e.reason === "topup") return e.note || "Bought credits";
+  if (e.reason === "refund") return "Refund for a failed request";
+  if (e.reason === "adjust") return e.note || "Adjustment";
+  if (e.reason === "round") return "Round";
+  if (e.reason === "ask") return e.ref?.startsWith("research:") ? `Research: ${e.ref.slice(9)}` : "Question about a round";
+  return e.reason;
+}
+
+export async function usageOf(userId, limit = 50) {
+  const rows = await sql(
+    `SELECT delta, reason, ref, note, created_at FROM credit_entries
+     WHERE user_id = $1 ORDER BY created_at DESC, id DESC LIMIT $2`,
+    [userId, limit],
+  );
+  return rows.map((e) => ({ at: e.created_at, delta: Number(e.delta), what: describe(e), reason: e.reason }));
+}

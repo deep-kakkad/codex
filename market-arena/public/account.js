@@ -127,6 +127,15 @@ export function open(mode = "login") {
 }
 function close() { document.getElementById("authPanel")?.classList.add("hidden"); }
 
+// "3 min ago", "2 h ago", "4 Sep": short enough for a menu line.
+function ago(t) {
+  const s = (Date.now() - new Date(t).getTime()) / 1000;
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.round(s / 60)} min ago`;
+  if (s < 86400) return `${Math.round(s / 3600)} h ago`;
+  return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+}
+
 export async function signOut() {
   try { (await load()).logout(); } catch {}
   await refresh();
@@ -147,6 +156,11 @@ export function mountAccountBar(host) {
     if (btn) menuButton(btn, () => [
       { heading: m.email },
       { note: `${m.balance} credits left. Asking a question or running research costs ${m.costs?.ask ?? 10}.` },
+      ...((m.recent || []).length ? [{ heading: "Recent" },
+        ...m.recent.map((e) => ({ note: `${e.delta > 0 ? "+" : "−"}${Math.abs(e.delta)}  ${e.what}, ${ago(e.at)}` }))] : []),
+      { separator: true },
+      { label: "Usage and billing", onSelect: () => { location.href = "account.html"; } },
+      { label: "Pricing", onSelect: () => { location.href = "pricing.html"; } },
       { separator: true },
       { label: "Sign out", onSelect: signOut },
     ], { align: "end", label: "Account" });

@@ -55,30 +55,59 @@ export function cleanContext(ctx) {
   }, null];
 }
 
-export async function round(rawBody, code, ip) {
+// Checks a round request and, if it is good, returns a `run(onBuyer)` that runs it.
+// A bad request comes back as `{ error: [status, body] }` before anything runs.
+export function prepareRound(rawBody, code, ip) {
   let body;
-  try { body = JSON.parse(rawBody || "{}"); } catch { return [400, { error: "The request wasn't valid JSON." }]; }
+  try { body = JSON.parse(rawBody || "{}"); } catch { return { error: [400, { error: "The request wasn't valid JSON." }] }; }
   const { teams, personas, mode } = body;
   const [context, contextProblem] = cleanContext(body.context);
+  const noKey = { error: [500, { error: "The server has no TypeSafe API key. Set TYPESAFE_API_KEY and restart." }] };
 
   if (mode === "practice") {
-    if (!process.env.TYPESAFE_API_KEY) return [500, { error: "The server has no TypeSafe API key. Set TYPESAFE_API_KEY and restart." }];
-    if (practiceRateLimited(ip)) return [429, { error: "Too many practice rounds from this connection in the last hour. Try again later." }];
+    if (!process.env.TYPESAFE_API_KEY) return noKey;
+    if (practiceRateLimited(ip)) return { error: [429, { error: "Too many practice rounds from this connection in the last hour. Try again later." }] };
     const teamProblem = validateTeams(teams);
-    if (teamProblem) return [400, { error: teamProblem }];
+    if (teamProblem) return { error: [400, { error: teamProblem }] };
     const personaProblem = validatePersonas(personas);
-    if (personaProblem) return [400, { error: personaProblem }];
-    if (contextProblem) return [400, { error: contextProblem }];
-    try { return [200, await runRound(teams, personas || undefined, context)]; }
-    catch (e) { console.error(e); return [502, { error: "The market simulation couldn't reach TypeSafe. Run the round again in a moment." }]; }
+    if (personaProblem) return { error: [400, { error: personaProblem }] };
+    if (contextProblem) return { error: [400, { error: contextProblem }] };
+    return { run: (onBuyer) => runRound(teams, personas || undefined, context, onBuyer) };
   }
 
-  if (!codeOk(code)) return [401, { error: "That class code isn't right. Ask your facilitator for it." }];
-  if (!process.env.TYPESAFE_API_KEY) return [500, { error: "The server has no TypeSafe API key. Set TYPESAFE_API_KEY and restart." }];
+  if (!codeOk(code)) return { error: [401, { error: "That class code isn't right. Ask your facilitator for it." }] };
+  if (!process.env.TYPESAFE_API_KEY) return noKey;
   const problem = validateTeams(teams);
-  if (problem) return [400, { error: problem }];
-  try { return [200, await runRound(teams)]; }
-  catch (e) { console.error(e); return [502, { error: "The market simulation couldn't reach TypeSafe. Run the round again in a moment." }]; }
+  if (problem) return { error: [400, { error: problem }] };
+  return { run: (onBuyer) => runRound(teams, undefined, null, onBuyer) };
+}
+export const ROUND_FAILED = "The market simulation couldn't reach TypeSafe. Run the round again in a moment.";
+
+export async function round(rawBody, code, ip) {
+  const prep = prepareRound(rawBody, code, ip);
+  if (prep.error) return prep.error;
+  try { return [200, await prep.run()]; }
+  catch (e) { console.error(e); return [502, { error: ROUND_FAILED }]; }
+}
+
+// The same round, streamed as newline-delimited JSON: a "start" line, one "buyer"
+// line per buyer in the order they decided, then the full "result" (or an "error").
+export function roundStream(prep) {
+  const enc = new TextEncoder();
+  return new ReadableStream({
+    async start(ctrl) {
+      const send = (o) => ctrl.enqueue(enc.encode(JSON.stringify(o) + "\n"));
+      send({ type: "start" });
+      try {
+        const data = await prep.run((b) => send({ type: "buyer", ...b }));
+        send({ type: "result", data });
+      } catch (e) {
+        console.error(e);
+        send({ type: "error", error: ROUND_FAILED });
+      }
+      ctrl.close();
+    },
+  });
 }
 
 // A shared snapshot is exactly one round's result plus a little display context —

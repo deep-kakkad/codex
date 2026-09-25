@@ -135,6 +135,64 @@ export function createResultsView({ readOnly = false } = {}) {
   }
 
 
+  /* ---- The round, live ---------------------------------------------------------
+     Every buyer is a separate request, so they finish at different moments. The
+     server streams each decision as it lands and the Overview fills in one face at
+     a time, in that real order. The model is fast (a whole panel often decides in
+     a third of a second), so the reveal is paced to one face every REVEAL_MS: the
+     order is the model's, only the spacing is ours, and the copy says "in the order
+     they decided" rather than claiming each face is the instant it happened. */
+  const REVEAL_MS = 150;
+  let live = null;
+  function showLive(personas, versions) {
+    showSkeleton();
+    if (!has("#hero")) return;
+    const segs = [...new Set(personas.map((p) => p.segment))];
+    live = {
+      colorOf: { ...Object.fromEntries(versions.map((v) => [v.id, v.color])), none: NONE_COLOR },
+      nameOf: { ...Object.fromEntries(versions.map((v) => [v.id, v.name])), none: "nothing" },
+      n: personas.length, done: 0, queue: [], timer: null, idle: [],
+    };
+    $("#hero").innerHTML = `<div class="hero-body" aria-busy="true">
+      <p class="live-status"><span class="live-dot" aria-hidden="true"></span><span id="liveCount" aria-live="polite">0 of ${personas.length} buyers have decided</span></p>
+      <h2 class="hero-verdict">The buyers are reading your ads</h2>
+      <p class="hero-sub" id="liveLast">Each face fills in with the version that buyer chose, in the order they decided.</p>
+      <div class="votewall">${segs.map((s, si) => `<div class="vw-seg"><div class="vw-faces">
+        ${personas.filter((p) => p.segment === s).map((p) => `<span class="vw-face token live" data-live="${esc(p.id)}" style="--tc:#D4D4CF">${buyerFace(p, si, 40, { tint: "currentColor" })}</span>`).join("")}
+        </div><span class="vw-name">${esc(s)}</span></div>`).join("")}</div>
+      <div class="vw-key">${versions.map((v) => `<span><i class="sw" style="background:${v.color}"></i>${esc(v.name)}</span>`).join("")}
+        <span><i class="sw" style="background:${NONE_COLOR}"></i>Bought nothing</span></div>
+    </div>`;
+  }
+  function liveDecided(b) {
+    if (!live) return;
+    live.queue.push(b);
+    if (!live.timer) pump();
+  }
+  function pump() {
+    const b = live.queue.shift();
+    if (!b) { live.timer = null; live.idle.splice(0).forEach((f) => f()); return; }
+    reveal(b);
+    const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    live.timer = setTimeout(pump, reduced ? 0 : REVEAL_MS);
+  }
+  // Resolves once every face that has arrived is on screen, so the verdict never
+  // lands before the last buyer has been shown deciding.
+  function liveFinish() {
+    if (!live || (!live.timer && !live.queue.length)) return Promise.resolve();
+    return new Promise((res) => live.idle.push(res));
+  }
+  function reveal(b) {
+    const el = [...document.querySelectorAll("#hero [data-live]")].find((x) => x.dataset.live === b.id);
+    if (!el || el.classList.contains("decided")) return;
+    el.style.setProperty("--tc", live.colorOf[b.purchase] || NONE_COLOR);
+    el.classList.add("decided");
+    live.done += 1;
+    const count = $("#liveCount"), last = $("#liveLast");
+    if (count) count.textContent = `${live.done} of ${live.n} buyers have decided`;
+    if (last) last.textContent = `${b.name}, ${b.segment.toLowerCase()}, ${b.purchase === "none" ? "walked away" : `chose ${live.nameOf[b.purchase] || b.purchase}`}${b.margin < TOSSUP ? ", only just" : ""}.`;
+  }
+
   /* ---- The result hero -------------------------------------------------------
      Everything below it is evidence for the two things stated here: what happened,
      and what to do next. Built from the same numbers the sections use, so the hero
@@ -171,7 +229,7 @@ export function createResultsView({ readOnly = false } = {}) {
         <div class="vw-faces">${r.customers.filter((c) => c.segment === s).map((c, k) => {
           const undecided = isTossup(c);
           return `<button class="vw-face token" type="button" data-investigate="buyer:${c.id}"
-            style="--tc:${animate ? "#C9C9C4" : colorOf(c.purchase)};--d:${(si * 3 + k) * 90}ms" data-final="${colorOf(c.purchase)}"
+            style="--tc:${animate === true ? "#C9C9C4" : colorOf(c.purchase)};--d:${(si * 3 + k) * 90}ms" data-final="${colorOf(c.purchase)}"
             aria-label="${esc(c.name)}, ${esc(s)}, picked ${esc(nameOf(c.purchase))}${undecided ? ", too close to call" : ""}">${buyerFace(c, si, 40, { tint: "currentColor", dashed: undecided })}</button>`;
         }).join("")}</div>
         <span class="vw-name">${esc(s)}</span>
@@ -916,7 +974,7 @@ export function createResultsView({ readOnly = false } = {}) {
 
   // Which round is on screen, for pages that offer their own way to switch.
   const viewedIndex = () => indexFor(getRounds());
-  return { renderResults, renderHistory, attachHandlers, resetOpen, showSkeleton, viewedIndex, setTab };
+  return { renderResults, renderHistory, attachHandlers, resetOpen, showSkeleton, viewedIndex, setTab, showLive, liveDecided, liveFinish };
 }
 
 export function exportCsv(rounds, filename) {

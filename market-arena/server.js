@@ -11,7 +11,7 @@ try {
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^['"]|['"]$/g, "");
   });
 } catch {}
-const { scenario, templates, round, share, getShare, askRound } = await import("./lib/handlers.js");
+const { scenario, templates, round, share, getShare, askRound, prepareRound, roundStream } = await import("./lib/handlers.js");
 if (!process.env.TYPESAFE_API_KEY) { console.error("Set TYPESAFE_API_KEY in your shell or a .env file, then start again."); process.exit(1); }
 
 const PUBLIC = fileURLToPath(new URL("./public", import.meta.url));
@@ -25,6 +25,14 @@ http.createServer(async (req, res) => {
   if (req.method === "POST" && url === "/api/round") {
     let body = "";
     for await (const c of req) { body += c; if (body.length > 20000) return send(res, [413, { error: "Request too large." }]); }
+    if ((req.headers.accept || "").includes("application/x-ndjson")) {
+      const prep = prepareRound(body, req.headers["x-arena-code"], req.socket.remoteAddress);
+      if (prep.error) return send(res, prep.error);
+      res.writeHead(200, { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache" });
+      const reader = roundStream(prep).getReader();
+      for (;;) { const { done, value } = await reader.read(); if (done) break; res.write(value); }
+      return res.end();
+    }
     return send(res, await round(body, req.headers["x-arena-code"], req.socket.remoteAddress));
   }
   if (req.method === "POST" && url === "/api/share") {

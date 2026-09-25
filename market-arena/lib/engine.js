@@ -85,7 +85,10 @@ export async function checkContext(items) {
 const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 const r3 = (x) => Math.round(x * 1000) / 1000;
 
-export async function runRound(teams, customPersonas, context = null) {
+// `onBuyer`, when given, is called as each buyer's answer arrives, in the order
+// they actually come back, so a caller can show the panel deciding in real time.
+// It only reports; the round's numbers are still computed once every buyer is in.
+export async function runRound(teams, customPersonas, context = null, onBuyer = null) {
   const marketContext = context?.items?.length ? context.items.map((c) => c.text) : null;
   const personas = customPersonas ? normalizePersonas(customPersonas) : PERSONAS;
   const ids = teams.map((_, i) => `t${i + 1}`);
@@ -122,7 +125,16 @@ export async function runRound(teams, customPersonas, context = null) {
           ads: Object.fromEntries(order.map((id) => [id, adOf[id]])),
         },
         customerQuestions(order, brandOf, Boolean(marketContext)),
-      );
+      ).then((reply) => {
+        if (onBuyer) {
+          try {
+            const pr = reply.answers.purchase;
+            const v = Object.values(pr.probabilities).sort((x, y) => y - x);
+            onBuyer({ id: p.id, name: p.name, segment: p.segment, purchase: pr.choice, margin: r3((v[0] ?? 0) - (v[1] ?? 0)) });
+          } catch {}
+        }
+        return reply;
+      });
     }),
   ]);
 
