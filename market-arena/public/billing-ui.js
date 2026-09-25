@@ -19,10 +19,9 @@ export function packCard(p, { featured = false, ask = 10 } = {}) {
       ? `<button class="${featured ? "btn-primary" : "btn"}" type="button" data-buy="${esc(p.id)}">Buy ${esc(p.label)}</button>`
       : `<button class="btn" type="button" data-buy-signin>Sign in to buy</button>`;
   return `<div class="pack${featured ? " featured" : ""}">
-    ${featured ? `<span class="pack-tag">Most teams start here</span>` : ""}
+    <div class="pack-top"><span class="pack-credits">${esc(p.label)}</span>${featured ? `<span class="pack-tag">Most teams start here</span>` : ""}</div>
     <span class="pack-price">${money(p.cents, p.currency)}</span>
-    <span class="pack-credits">${esc(p.label)}</span>
-    <span class="pack-use">About ${actions.toLocaleString()} questions or research runs, ${money(Math.round(p.cents / actions), p.currency)} each</span>
+    <span class="pack-use">About ${actions.toLocaleString()} questions or research runs<span class="pack-unit">${money(Math.round(p.cents / actions), p.currency)} each</span></span>
     ${button}
   </div>`;
 }

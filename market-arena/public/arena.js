@@ -104,11 +104,12 @@ function observe(host, render) {
 
 /* A chamber that fills as buyers decide.
    people: every buyer, in segment order; they start as empty seats.
-   Returns { take(id, color, dashed), sort(blocs, blocOf), setCenter(center) }. */
-export function liveArena(host, { people, center }) {
+   seat: an optional seat size, the same option drawArena takes.
+   Returns { take(id, color, dashed), sort(ids), setCenter(center) }. */
+export function liveArena(host, { people, center, seat }) {
   host.classList.add("arena", "is-live");
   const w = host.clientWidth || 520;
-  const L = layout(people.length, w);
+  const L = layout(people.length, w, { seat });
   host.style.height = `${L.height}px`;
   host.innerHTML = tiers(L, w) + L.seats.map((p) => `<span class="seat-empty" style="width:${L.s}px;height:${L.s}px;transform:translate(${(p.x - L.s / 2).toFixed(1)}px,${(p.y - L.s / 2).toFixed(1)}px)"></span>`).join("")
     + people.map((p) => `<span class="seat live" data-seat="${esc(p.id)}" style="--tc:#C9C9C4;width:${L.s}px;height:${L.s}px;transform:translate(${(L.cx - L.s / 2).toFixed(1)}px,${(L.cy - L.s / 2).toFixed(1)}px)">${buyerFace(p, p.segIndex ?? 0, L.s, { tint: "currentColor" })}</span>`).join("")

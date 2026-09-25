@@ -73,13 +73,15 @@
 
         <h2>Set the scene</h2>
         <p class="sub">Name this scenario and say what is going on in the market. This is for you and your team — buyers never see it, they only see the ads.</p>
-        <div class="brand scene">
-          <label for="scenTitle">Scenario name</label>
-          <input id="scenTitle" class="name" maxlength="80">
-          <label for="scenBrief">What is happening in this market?</label>
-          <textarea id="scenBrief" maxlength="280" style="min-height:60px"></textarea>
+        <div class="scene-grid">
+          <div class="brand scene">
+            <label for="scenTitle">Scenario name</label>
+            <input id="scenTitle" class="name" maxlength="80">
+            <label for="scenBrief">What is happening in this market?</label>
+            <textarea id="scenBrief" maxlength="280" style="min-height:60px"></textarea>
+          </div>
+          <div class="rcard" id="researchCard"></div>
         </div>
-        <div class="rcard" id="researchCard"></div>
         <div class="step-go"><button class="btn" data-goto="2">Continue to buyers</button></div>
       </div>
     </section>

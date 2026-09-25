@@ -65,6 +65,9 @@ const has = (s) => Boolean(document.querySelector(s));
 
 // Colour for "bought nothing": a neutral grey, so it never reads as a fifth version.
 const NONE_COLOR = "#8E8E95";
+// The strongest a heat-map tile gets, in percent of its colour: light enough that
+// ink figures stay readable on the darkest tile, and the key uses the same scale.
+const HEAT_MAX = { seg: 50, obj: 40 };
 
 // `readOnly` is for the shared view, which has no editor to send anyone to.
 export function createResultsView({ readOnly = false } = {}) {
@@ -655,9 +658,9 @@ export function createResultsView({ readOnly = false } = {}) {
         <p class="drop">Biggest drop is from ${STAGES[worst - 1][1].toLowerCase()} to ${STAGES[worst][1].toLowerCase()}, ${Math.round(gap * 100)} points.</p></div>`;
     }).join("");
 
-    // Fill is capped at 60% so ink text stays readable on every version colour; white
+    // Fill is capped at 50% so ink text stays readable on every version colour; white
     // text on a half-strength fill was the old failure (2-3:1 on teal).
-    const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * 60)}%, transparent)`;
+    const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * HEAT_MAX.seg)}%, var(--paper))`;
     $("#heatKey").innerHTML = heatKey("share", "share of that segment");
     $("#heat").innerHTML = `<thead><tr><th scope="col">Segment</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}<th scope="col">Bought nothing</th></tr></thead><tbody>` +
       r.segments.map((s, si) => `<tr><th scope="row">${esc(s)}</th>${r.brands.map((b, i) => `<td class="cell num probe" data-investigate="seg:${si}:${b.id}" role="button" tabindex="0" title="See these buyers" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell num probe" data-investigate="seg:${si}:none" role="button" tabindex="0" title="See these buyers" style="${heat(r.noPurchase.bySegment[s], "#8E8E95")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
@@ -671,7 +674,7 @@ export function createResultsView({ readOnly = false } = {}) {
       return top ? `<li><b>${esc(s)}</b> buyers are mostly held back by ${objectionIcon(top[0])} ${OBJ_NOUN[top[0]]}.</li>` : "";
     }).join("") + `</ul>`;
 
-    const objHeat = (v) => `background:color-mix(in srgb, var(--ink) ${Math.round(v * 55)}%, transparent)`;
+    const objHeat = (v) => `background:color-mix(in srgb, var(--ink) ${Math.round(v * HEAT_MAX.obj)}%, var(--paper))`;
     $("#objections").innerHTML = `<div class="tablewrap"><table class="heat"><thead><tr><th scope="col">Objection</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}</tr></thead><tbody>` +
       OBJ_ORDER.map((k) => `<tr><th scope="row">${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</th>${r.brands.map((b) => `<td class="cell num probe" style="${objHeat(b.objections[k])}" data-investigate="obj:${k}:${b.id}" role="button" tabindex="0" title="See the buyers behind this number">${pct(b.objections[k])}</td>`).join("")}</tr>`).join("") +
       `</tbody></table></div>` + heatKey("obj", "share of buyers citing it") +
@@ -788,7 +791,7 @@ export function createResultsView({ readOnly = false } = {}) {
 
   // One shared key for both heatmaps, built with the same colour-mix the cells use.
   function heatKey(kind, note) {
-    const swatch = (v) => `background:color-mix(in srgb, var(--ink) ${Math.round(v * (kind === "obj" ? 55 : 60))}%, transparent)`;
+    const swatch = (v) => `background:color-mix(in srgb, var(--ink) ${Math.round(v * HEAT_MAX[kind === "obj" ? "obj" : "seg"])}%, var(--paper))`;
     return `<div class="heatkey"><span class="num">0%</span>${[0, .25, .5, .75, 1].map((v) => `<i style="${swatch(v)}"></i>`).join("")}<span class="num">100%</span><span class="hk-note">${note}</span></div>`;
   }
 

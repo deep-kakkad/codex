@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Market Arena | Test your pitches on a market before you spend on one</title>
 <meta name="description" content="Put two to four versions of your message in front of a panel of simulated buyers. See who picks what, what holds the rest back, and what to test next. Start free.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='7.0' cy='33.0' r='5.6' fill='%23121212'/><circle cx='12.0' cy='21.0' r='5.6' fill='%23121212'/><circle cx='24.0' cy='16.0' r='5.6' fill='%23121212'/><circle cx='36.0' cy='21.0' r='5.6' fill='%23FF5A36'/><circle cx='41.0' cy='33.0' r='5.6' fill='%23121212'/><rect x='4' y='41.5' width='40' height='3.4' rx='1.7' fill='%23121212' opacity='.4'/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wdth,wght@0,75..100,400..700;1,75..100,400..700&display=swap" rel="stylesheet">
@@ -17,6 +17,7 @@
     <a class="tb-brand" href="./" aria-label="Market Arena home"><span id="logoSlot"></span><span class="tb-name">Market Arena</span></a>
     <nav class="home-nav" aria-label="Site">
       <a href="#how">How it works</a>
+      <a href="#evidence">Evidence</a>
       <a href="#method">Method</a>
       <a href="pricing.html">Pricing</a>
     </nav>
@@ -26,101 +27,151 @@
 </header>
 
 <main>
-  <section class="home-hero">
-    <div class="wrap home-hero-grid">
-      <div class="home-hero-copy">
-        <h1>Make your pitches compete before your budget does.</h1>
-        <p class="home-lede">Put two to four versions of your message in front of a panel of simulated buyers. See who picks what, what holds the rest back, and what to test next, in seconds.</p>
-        <div class="home-ctas">
-          <a class="btn-primary home-cta" href="practice.html">Start free</a>
-          <button class="btn home-cta" type="button" id="replay">Watch the round again</button>
+  <!-- The hero: the promise, then the product doing it. -->
+  <section class="h-hero">
+    <div class="wrap h-hero-copy">
+      <p class="h-pill"><span class="live-dot" aria-hidden="true"></span>Simulated buyers, real decisions, in seconds</p>
+      <h1 class="h-title"><span class="nb">Make your pitches compete</span> <span class="nb">before your budget does.</span></h1>
+      <p class="h-lede">Put two to four versions of your message in front of a panel of simulated buyers. See who picks what, what holds the rest back, and what to test next.</p>
+      <div class="h-ctas">
+        <a class="btn-primary h-cta" href="practice.html">Start free</a>
+        <button class="btn h-cta" type="button" id="replay">Watch the round again</button>
+      </div>
+      <p class="h-fine">100 free credits when you sign up. No card.</p>
+    </div>
+
+    <div class="wrap h-stage-wrap">
+      <svg class="h-rings" aria-hidden="true" viewBox="0 0 2400 1000" preserveAspectRatio="xMidYMax slice"></svg>
+      <figure class="h-stage" aria-label="A real round, replayed">
+        <div class="stage-bar">
+          <span class="sb-mark" id="stageMark"></span>
+          <span class="sb-title">Coffee subscription</span>
+          <span class="sb-sep" aria-hidden="true">/</span>
+          <span class="sb-round">Round 1</span>
+          <span class="sb-status" id="stageStatus"><span class="live-dot" aria-hidden="true"></span><span id="stageStatusText">Waiting to start</span></span>
         </div>
-        <p class="home-fine">100 free credits when you sign up. No card.</p>
-      </div>
-      <figure class="home-demo" aria-label="A real round, replayed">
-        <div class="demo-ads" id="demoAds"></div>
-        <div id="demoArena"></div>
-        <div id="demoLegend"></div>
-        <figcaption class="demo-cap" id="demoCap">A real round from the coffee case, replayed: 12 simulated buyers, three versions of a subscription ad.</figcaption>
+        <div class="stage-body">
+          <div class="stage-ads" id="demoAds"></div>
+          <div class="stage-arena">
+            <div id="demoArena"></div>
+            <div id="demoLegend" class="stage-legend"></div>
+            <p class="demo-cap" id="demoCap" aria-live="polite"></p>
+          </div>
+          <div class="stage-feed">
+            <p class="feed-h" id="feedHead">Decisions</p>
+            <ol class="feed" id="demoFeed" aria-live="off"></ol>
+          </div>
+        </div>
       </figure>
+      <p class="h-stage-note">A real round from the coffee case, replayed: 12 simulated buyers, three versions of a subscription ad.</p>
     </div>
   </section>
 
-  <section class="home-sec" id="how">
+  <section class="h-sec" id="how">
     <div class="wrap">
-      <h2 class="home-h2">How a round works</h2>
-      <ol class="steps3">
-        <li><span class="st-n">1</span><h3>Describe the market</h3><p>Start from a ready-made case or write your own: who the buyers are, what they care about, what they doubt. Four to sixteen buyers, grouped into segments.</p><div class="st-vis" id="visBuyers"></div></li>
-        <li><span class="st-n">2</span><h3>Write the versions</h3><p>A headline, a value proposition and a price for each, plus a call to action, an offer or proof if you want to test those too.</p><div class="st-vis" id="visAds"></div></li>
-        <li><span class="st-n">3</span><h3>Run it</h3><p>Every buyer sees every version side by side and picks one, or walks away. You get the verdict, who chose what, and why the rest said no.</p><div class="st-vis" id="visArena"></div></li>
-      </ol>
+      <div class="h-head">
+        <p class="h-kicker">How it works</p>
+        <h2 class="h-h2">From two ideas to a verdict in three steps</h2>
+      </div>
+      <div class="h-steps">
+        <article class="h-step">
+          <div class="h-vis" id="visBuyers"></div>
+          <p class="h-stepn">Step 1</p>
+          <h3>Describe the market</h3>
+          <p>Start from a ready-made case or write your own: who the buyers are, what they care about, what they doubt. Four to sixteen buyers, grouped into segments.</p>
+        </article>
+        <article class="h-step">
+          <div class="h-vis" id="visAds"></div>
+          <p class="h-stepn">Step 2</p>
+          <h3>Write the versions</h3>
+          <p>A headline, a value proposition and a price for each, plus a call to action, an offer or proof if you want to test those too.</p>
+        </article>
+        <article class="h-step">
+          <div class="h-vis" id="visArena"></div>
+          <p class="h-stepn">Step 3</p>
+          <h3>Run it</h3>
+          <p>Every buyer sees every version side by side and picks one, or walks away. You get the verdict, who chose what, and why the rest said no.</p>
+        </article>
+      </div>
     </div>
   </section>
 
-  <section class="home-sec">
-    <div class="wrap home-split">
-      <div>
-        <h2 class="home-h2">Every number opens its evidence</h2>
-        <p class="home-p">A figure in the report is a claim. Select it and you see the buyers behind it: who chose what, how sure they were, and the objection that held the others back. Then change one thing and run it again.</p>
-        <ul class="home-list">
-          <li>The verdict, answered in the terms of the question you asked</li>
-          <li>Where each version lost people, from noticed to bought</li>
-          <li>Which segment each version actually works on</li>
-          <li>The one change worth testing next</li>
-        </ul>
-      </div>
-      <div class="drawer-mock" aria-label="Example: the buyers behind a number">
-        <div class="dm-head"><span class="dm-kick">Average choice probability</span><span class="dm-title">C: 41%</span></div>
-        <div class="dm-body" id="evidence"></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="home-sec">
+  <section class="h-sec h-sec-dark" id="evidence">
     <div class="wrap">
-      <h2 class="home-h2">Questions a round answers</h2>
+      <div class="h-dark">
+        <svg class="h-dark-rings" aria-hidden="true" viewBox="0 0 1200 600" preserveAspectRatio="xMaxYMax slice"></svg>
+        <div class="h-dark-copy">
+          <p class="h-kicker">Evidence, not a score</p>
+          <h2 class="h-h2">Every number opens its evidence</h2>
+          <p class="h-p">A figure in the report is a claim. Select it and you see the buyers behind it: who chose what, how sure they were, and the objection that held the others back. Then change one thing and run it again.</p>
+          <ul class="h-points">
+            <li><b>The verdict</b><span>answered in the terms of the question you asked</span></li>
+            <li><b>The funnel</b><span>where each version lost people, from noticed to bought</span></li>
+            <li><b>The segments</b><span>which buyers each version actually works on</span></li>
+            <li><b>The next test</b><span>the one change worth making before you run again</span></li>
+          </ul>
+        </div>
+        <div class="drawer-mock" aria-label="Example: the buyers behind a number">
+          <div class="dm-head"><span class="dm-kick">Average choice probability</span><span class="dm-title">Version C: 41%</span></div>
+          <div class="dm-body" id="evidenceRows"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="h-sec">
+    <div class="wrap h-split">
+      <div class="h-head h-head-side">
+        <p class="h-kicker">Use it for</p>
+        <h2 class="h-h2">Questions a round answers</h2>
+        <p class="h-p">Pick one before you run. The report leads with the number that answers it, and says so plainly when the round can't.</p>
+      </div>
       <div class="questions" id="questions"></div>
     </div>
   </section>
 
-  <section class="home-sec" id="method">
+  <section class="h-sec" id="method">
     <div class="wrap">
-      <h2 class="home-h2">Honest about what it is</h2>
-      <p class="home-p">A simulator, not a crystal ball. It is for deciding which idea deserves a real test, and it is built so you can see how far to trust each result.</p>
+      <div class="h-head">
+        <p class="h-kicker">Method</p>
+        <h2 class="h-h2">Honest about what it is</h2>
+        <p class="h-p">A simulator, not a crystal ball. It is for deciding which idea deserves a real test, and it is built so you can see how far to trust each result.</p>
+      </div>
       <div class="facts">
-        <div><b>12.5 points</b><h3>Order doesn't win</h3><p>Listing a version first moved its share by 12.5 points in our tests. So every buyer sees the versions in a different order, and the effect cancels out.</p></div>
-        <div><b>About 1 point</b><h3>Ties are called ties</h3><p>Identical re-runs move share by about a point. Gaps under five points are reported as a tie, not a win.</p></div>
-        <div><b>5 questions</b><h3>No invented quotes</h3><p>Each buyer answers typed questions: would they notice it, how appealing it is, do they believe it, what holds them back, and which they'd buy. Nothing is written in a buyer's voice.</p></div>
+        <div><b>12.5 pts</b><h3>Order doesn't win</h3><p>Listing a version first moved its share by 12.5 points in our tests. So every buyer sees the versions in a different order, and the effect cancels out.</p></div>
+        <div><b>~1 pt</b><h3>Ties are called ties</h3><p>Identical re-runs move share by about a point. Gaps under five points are reported as a tie, not a win.</p></div>
+        <div><b>5</b><h3>Questions, no quotes</h3><p>Each buyer answers typed questions: would they notice it, how appealing it is, do they believe it, what holds them back, and which they'd buy. Nothing is written in a buyer's voice.</p></div>
         <div><b>Pinned</b><h3>Results don't drift</h3><p>The buyer model's version is fixed, so a saved round means the same thing next month as it did today.</p></div>
       </div>
     </div>
   </section>
 
-  <section class="home-sec home-price">
-    <div class="wrap home-split">
-      <div>
-        <h2 class="home-h2">Start with 100 free credits</h2>
-        <p class="home-p">Rounds are free while Market Arena is in beta. Asking a question about a round or researching a market costs 10 credits.</p>
-      </div>
-      <div class="home-price-cta"><a class="btn" href="pricing.html">See pricing</a></div>
-    </div>
-  </section>
-
-  <section class="home-final">
+  <section class="h-final">
     <div class="wrap">
       <div id="finalArena" class="final-arena"></div>
       <h2>You've got two ideas.<br>Make them compete.</h2>
-      <a class="btn-primary home-cta" href="practice.html">Start free</a>
+      <div class="h-ctas">
+        <a class="btn-primary h-cta" href="practice.html">Start free</a>
+        <a class="btn h-cta" href="pricing.html">See pricing</a>
+      </div>
+      <p class="h-fine">100 free credits when you sign up. Rounds are free while we're in beta.</p>
     </div>
   </section>
 </main>
 
-<footer>
-  <div class="wrap row">
-    <span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a way to decide what deserves a real test, not as market research.</span>
-    <span><a href="pricing.html">Pricing</a> &nbsp; <a href="practice.html">Start a project</a></span>
+<footer class="h-foot">
+  <div class="wrap h-foot-grid">
+    <div class="hf-brand">
+      <a class="tb-brand" href="./"><span id="footMark"></span><span>Market Arena</span></a>
+      <p>Competitive message testing for marketing teams.</p>
+    </div>
+    <nav class="hf-col" aria-label="Product"><h4>Product</h4><a href="practice.html">Start a project</a><a href="pricing.html">Pricing</a><a href="account.html">Your account</a></nav>
+    <nav class="hf-col" aria-label="Learn"><h4>Learn</h4><a href="#how">How it works</a><a href="#evidence">Evidence</a><a href="#method">Method</a></nav>
   </div>
-  <div class="wrap row credit"><span>Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span></div>
+  <div class="wrap h-foot-base">
+    <span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a way to decide what deserves a real test, not as market research.</span>
+    <span class="credit">Built by <a href="https://linkedin.com/in/deepkakkad" target="_blank" rel="noopener">Deep Kakkad</a></span>
+  </div>
 </footer>
 
 <script type="module">
@@ -131,6 +182,8 @@ import { GOALS } from "./goals.js";
 import { initAccount, mountAccountBar } from "./account.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
+document.getElementById("footMark").innerHTML = LOGO_MARK(20);
+document.getElementById("stageMark").innerHTML = LOGO_MARK(16);
 mountAccountBar(document.getElementById("acctBar"));
 initAccount();
 
@@ -140,11 +193,11 @@ const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const sleep = (ms) => new Promise((r) => setTimeout(r, reduced() ? 0 : ms));
 const pct = (x) => Math.round(x * 100) + "%";
 const COLOR = { A: "var(--b1)", B: "var(--b2)", C: "var(--b3)", none: "#8E8E95" };
-const NAME = { A: "Version A", B: "Version B", C: "Version C", none: "Bought nothing" };
 const R1 = ARENA.round1;
 const segs = [...new Set(ARENA.buyers.map((b) => b.segment))];
 const people = ARENA.buyers.map((b) => ({ ...b, segIndex: segs.indexOf(b.segment) }));
 const choice = (b) => R1.decisions[b.id].choice;
+const choiceText = (k) => k === "none" ? "walked away" : `chose ${k}`;
 
 // Blocs by outright picks, "bought nothing" on the right; the same rule as the app.
 const counts = { A: 0, B: 0, C: 0, none: 0 };
@@ -154,68 +207,110 @@ const blocs = [...["A", "B", "C"].sort((a, b) => counts[b] - counts[a] || R1.sha
 const order = blocs.map((b) => b.key);
 const seated = [...people].sort((p, q) => order.indexOf(choice(p)) - order.indexOf(choice(q)) || people.indexOf(p) - people.indexOf(q));
 const finalPeople = seated.map((b) => ({ ...b, color: COLOR[choice(b)], label: `${b.name}, ${b.segment}, ${choice(b) === "none" ? "bought nothing" : "chose " + choice(b)}` }));
-const center = { name: `<i class="sw" style="background:${COLOR.C}"></i>Version C`, big: pct(R1.share.C), sub: "average choice probability" };
+const LEAD = ["A", "B", "C"].sort((a, b) => R1.share[b] - R1.share[a])[0];
+const center = { name: `<i class="sw" style="background:${COLOR[LEAD]}"></i>Version ${LEAD}`, big: pct(R1.share[LEAD]), sub: "average choice probability" };
+const SEAT = () => (innerWidth < 720 ? undefined : 50);
 
-function ads(leading) {
-  $("#demoAds").innerHTML = ARENA.versions.map((v) => `
-    <div class="demo-ad${leading === v.id ? " lead" : ""}"><span class="da-top"><i class="sw" style="background:${COLOR[v.id]}"></i>${v.id}${leading === v.id ? '<span class="pitch-lead">Leading</span>' : ""}</span>
-      <b>${esc(v.headline)}</b><span class="da-price">${esc(v.priceR1)}</span></div>`).join("");
+// The three ads on the left of the stage. While the round runs each counts the
+// buyers who picked it; once it's over each shows its share.
+function ads({ live = {}, done = false } = {}) {
+  $("#demoAds").innerHTML = ARENA.versions.map((v) => {
+    const lead = done && v.id === LEAD;
+    return `<div class="stage-ad${lead ? " lead" : ""}" style="--c:${COLOR[v.id]}">
+      <span class="sa-top"><i class="sw" style="background:${COLOR[v.id]}"></i>Version ${v.id}${lead ? '<span class="pitch-lead">Leading</span>' : ""}</span>
+      <b>${esc(v.headline)}</b>
+      <span class="sa-foot"><span>${esc(v.priceR1)}</span><span class="sa-n">${done ? pct(R1.share[v.id]) : `${live[v.id] || 0} picked`}</span></span>
+    </div>`;
+  }).join("");
+}
+
+function status(text, liveNow = false) {
+  $("#stageStatusText").textContent = text;
+  $("#stageStatus").classList.toggle("on", liveNow);
 }
 
 // The replay: buyers take seats one by one, then the room sorts by choice. The
 // seating order here is the panel interleaved by segment, not a recorded arrival
-// order, which is why the caption says "replayed".
+// order, which is why the note under the stage says "replayed".
 let running = false;
 async function play() {
   if (running) return;
   running = true;
   $("#replay").disabled = true;
-  ads(null);
+  const tally = { A: 0, B: 0, C: 0, none: 0 };
+  ads({ live: tally });
   $("#demoLegend").innerHTML = "";
+  $("#demoFeed").innerHTML = "";
+  $("#feedHead").textContent = "Decisions";
   $("#demoCap").textContent = "The buyers are reading the three ads.";
-  const arena = liveArena($("#demoArena"), { people, center: { big: "0", sub: `of ${people.length} decided` } });
+  status("Buyers are reading", true);
+  const arena = liveArena($("#demoArena"), { people, center: { big: "0", sub: `of ${people.length} decided` }, seat: SEAT() });
   const arrival = [];
   for (let i = 0; i < 3; i++) for (let s = 0; s < segs.length; s++) { const b = people.filter((p) => p.segIndex === s)[i]; if (b) arrival.push(b); }
-  await sleep(500);
+  await sleep(600);
   for (const [n, b] of arrival.entries()) {
-    arena.take(b.id, COLOR[choice(b)], R1.decisions[b.id].confidence < 0.3);
+    const k = choice(b);
+    tally[k]++;
+    arena.take(b.id, COLOR[k], R1.decisions[b.id].confidence < 0.3);
     arena.setCenter({ big: String(n + 1), sub: `of ${people.length} decided` });
-    $("#demoCap").textContent = `${b.name}, ${b.segment.toLowerCase()}, ${choice(b) === "none" ? "walked away" : "chose version " + choice(b)}.`;
-    await sleep(170);
+    ads({ live: tally });
+    $("#demoFeed").insertAdjacentHTML("afterbegin", `<li style="--c:${COLOR[k]}">${buyerFace(b, b.segIndex, 26)}
+      <span class="fd-who"><b>${esc(b.name)}</b><span>${esc(b.segment)}</span></span><span class="fd-pick"><i class="sw" style="background:${COLOR[k]}"></i>${k === "none" ? "None" : k}</span></li>`);
+    $("#demoCap").textContent = `${b.name}, ${b.segment.toLowerCase()}, ${choiceText(k)}.`;
+    status(`${n + 1} of ${people.length} decided`, true);
+    await sleep(210);
   }
+  $("#feedHead").textContent = `All ${people.length} decided`;
   $("#demoCap").textContent = "Everyone has decided. Sorting the room by choice.";
+  status("Sorting by choice", true);
   await sleep(350);
   await arena.sort(seated.map((b) => b.id));
-  drawArena($("#demoArena"), { people: finalPeople, center, investigate: false });
-  $("#demoLegend").innerHTML = arenaLegend(blocs, counts);
-  ads("C");
-  $("#demoCap").textContent = "A real round from the coffee case, replayed: 12 simulated buyers, three versions of a subscription ad.";
+  finish();
   $("#replay").disabled = false;
   running = false;
 }
-$("#replay").addEventListener("click", play);
-if (reduced()) {
-  ads("C");
-  drawArena($("#demoArena"), { people: finalPeople, center, investigate: false });
+
+function finish() {
+  drawArena($("#demoArena"), { people: finalPeople, center, investigate: false, seat: SEAT() });
   $("#demoLegend").innerHTML = arenaLegend(blocs, counts);
-} else {
-  ads(null);
-  setTimeout(play, 400);
+  ads({ done: true });
+  if (!$("#demoFeed").children.length) {
+    $("#demoFeed").innerHTML = [...people].reverse().map((b) => `<li style="--c:${COLOR[choice(b)]}">${buyerFace(b, b.segIndex, 26)}
+      <span class="fd-who"><b>${esc(b.name)}</b><span>${esc(b.segment)}</span></span><span class="fd-pick"><i class="sw" style="background:${COLOR[choice(b)]}"></i>${choice(b) === "none" ? "None" : choice(b)}</span></li>`).join("");
+    $("#feedHead").textContent = `All ${people.length} decided`;
+  }
+  $("#demoCap").textContent = `Version ${LEAD} leads. ${counts[LEAD]} of ${people.length} picked it outright.`;
+  status("Round complete");
 }
 
-// Step visuals, made from the same sample.
-$("#visBuyers").innerHTML = `<div class="vis-faces">${people.map((b) => buyerFace(b, b.segIndex, 30)).join("")}</div>
-  <div class="vis-segs">${segs.map((s, i) => `<span><i class="sw" style="background:${segmentTint(i)}"></i>${esc(s)}</span>`).join("")}</div>`;
-$("#visAds").innerHTML = ARENA.versions.map((v) => `<div class="vis-ad"><i class="sw" style="background:${COLOR[v.id]}"></i><b>${esc(v.headline)}</b><span>${esc(v.priceR1)}</span></div>`).join("");
-drawArena($("#visArena"), { people: finalPeople, investigate: false, seat: 20 });
-drawArena($("#finalArena"), { people: finalPeople, investigate: false, seat: 26 });
+$("#replay").addEventListener("click", play);
+if (reduced()) finish();
+else { ads(); setTimeout(play, 500); }
 
-// The evidence mock: every buyer who chose C, how sure they were, from the real round.
-const cRows = people.filter((b) => choice(b) === "C").sort((a, b) => R1.decisions[b.id].confidence - R1.decisions[a.id].confidence);
-$("#evidence").innerHTML = `<p class="dm-lede">41% is the average of all 12 buyers' chance of picking C. ${cRows.length} of 12 picked it outright.</p>`
+// Rings behind the stage and the dark panel: the tiers of the chamber, drawn
+// far larger than the page so only their arcs show.
+const rings = (el, cx, cy, from, step, n) => {
+  el.innerHTML = Array.from({ length: n }, (_, i) => { const r = from + i * step;
+    return `<path d="M ${cx - r} ${cy} A ${r} ${r} 0 0 1 ${cx + r} ${cy}"/>`; }).join("");
+};
+rings($(".h-rings"), 1200, 1000, 420, 120, 7);
+rings($(".h-dark-rings"), 1060, 640, 120, 90, 7);
+
+// Step visuals, made from the same sample.
+$("#visBuyers").innerHTML = `<div class="vis-faces">${people.map((b) => buyerFace(b, b.segIndex, 34)).join("")}</div>
+  <div class="vis-segs">${segs.map((s, i) => `<span><i class="sw" style="background:${segmentTint(i)}"></i>${esc(s)}</span>`).join("")}</div>`;
+$("#visAds").innerHTML = `<div class="vis-ads">${ARENA.versions.map((v) => `<div class="vis-ad" style="--c:${COLOR[v.id]}"><span class="va-k">${v.id}</span><b>${esc(v.headline)}</b><span>${esc(v.priceR1)}</span></div>`).join("")}</div>`;
+$("#visArena").innerHTML = `<div class="vis-arena" id="visArenaInner"></div>`;
+drawArena($("#visArenaInner"), { people: finalPeople, investigate: false, seat: 24 });
+drawArena($("#finalArena"), { people: finalPeople, investigate: false, seat: 30 });
+
+// The evidence mock: every buyer who chose the leader, how sure they were, from the real round.
+$(".dm-title").textContent = `Version ${LEAD}: ${pct(R1.share[LEAD])}`;
+const cRows = people.filter((b) => choice(b) === LEAD).sort((a, b) => R1.decisions[b.id].confidence - R1.decisions[a.id].confidence);
+$("#evidenceRows").innerHTML = `<p class="dm-lede">${pct(R1.share[LEAD])} is the average of all ${people.length} buyers' chance of picking ${LEAD}. ${cRows.length} of ${people.length} picked it outright.</p>`
   + cRows.map((b) => `<div class="erow static">${buyerFace(b, b.segIndex, 30)}
       <span class="erow-who"><b>${esc(b.name)}</b><span>${esc(b.segment)}, <em>picked it</em></span></span>
-      <span class="erow-bar"><i style="width:${pct(R1.decisions[b.id].confidence)};background:${COLOR.C}"></i></span>
+      <span class="erow-bar"><i style="width:${pct(R1.decisions[b.id].confidence)};background:${COLOR[LEAD]}"></i></span>
       <span class="erow-v">${pct(R1.decisions[b.id].confidence)}</span></div>`).join("")
   + `<p class="dm-note">Bars show how sure each buyer was of their pick.</p>`;
 
