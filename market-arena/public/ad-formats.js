@@ -8,12 +8,15 @@
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// Each option carries a small outline of its placement, so the switcher reads as
+// "pick how the ad looks" at a glance rather than as a row of words.
+const svg = (d) => `<svg class="fmt-ic" viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 export const FORMATS = [
-  { key: "card", label: "Card", short: "Card" },
-  { key: "social", label: "Social post", short: "Social" },
-  { key: "search", label: "Search ad", short: "Search" },
-  { key: "landing", label: "Landing page", short: "Landing" },
-  { key: "email", label: "Email", short: "Email" },
+  { key: "card", label: "Card", short: "Card", icon: svg('<rect x="2.5" y="3" width="11" height="10" rx="2"/><path d="M5 6.2h6M5 8.4h6M5 10.6h3.5"/>') },
+  { key: "social", label: "Social post", short: "Social", icon: svg('<rect x="3" y="1.8" width="10" height="12.4" rx="2"/><circle cx="5.4" cy="4.3" r=".6" fill="currentColor" stroke="none"/><rect x="5" y="6.3" width="6" height="5" rx=".8"/>') },
+  { key: "search", label: "Search ad", short: "Search", icon: svg('<circle cx="7" cy="7" r="4.2"/><path d="m10.2 10.2 3.3 3.3"/>') },
+  { key: "landing", label: "Landing page", short: "Landing", icon: svg('<rect x="1.8" y="2.8" width="12.4" height="10.4" rx="1.8"/><path d="M1.8 5.6h12.4"/><circle cx="3.9" cy="4.2" r=".45" fill="currentColor" stroke="none"/><circle cx="5.4" cy="4.2" r=".45" fill="currentColor" stroke="none"/><rect x="4.2" y="7.6" width="7.6" height="3.2" rx=".8" fill="currentColor" stroke="none" opacity=".35"/>') },
+  { key: "email", label: "Email", short: "Email", icon: svg('<rect x="2" y="3.5" width="12" height="9" rx="1.6"/><path d="m2.6 4.6 5.4 4.2 5.4-4.2"/>') },
 ];
 export const FORMAT_KEYS = FORMATS.map((f) => f.key);
 export const formatOf = (k) => (FORMAT_KEYS.includes(k) ? k : "card");
@@ -111,5 +114,5 @@ export function adMock(ad, format, { draft = false } = {}) {
 export function formatSwitch(current, name) {
   const cur = formatOf(current);
   return `<div class="seg-ctl fmt-switch" role="radiogroup" aria-label="Show the ads as">${FORMATS.map((f) =>
-    `<button type="button" class="psize fmt-btn${f.key === cur ? " active" : ""}" role="radio" aria-checked="${f.key === cur}" data-fmt="${f.key}" data-fmt-for="${name}" aria-label="${f.label}"><span class="fl">${f.label}</span><span class="fs" aria-hidden="true">${f.short}</span></button>`).join("")}</div>`;
+    `<button type="button" class="psize fmt-btn${f.key === cur ? " active" : ""}" role="radio" aria-checked="${f.key === cur}" data-fmt="${f.key}" data-fmt-for="${name}" aria-label="${f.label}">${f.icon}<span class="fl">${f.label}</span><span class="fs" aria-hidden="true">${f.short}</span></button>`).join("")}</div>`;
 }
