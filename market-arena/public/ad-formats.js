@@ -6,6 +6,8 @@
 // how the ads are shown to the person running the test. Every mock is generic:
 // no platform's logo, name or colours, just the shape of the placement.
 
+import { sentences } from "./ad-parts.js";
+
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 // Each option carries a small outline of its placement, so the switcher reads as
@@ -37,19 +39,30 @@ const I = {
 };
 
 /* ad: { brand, headline, valueProp, price, extras: { subheadline, cta, offer, proof, audience, visual } }
-   draft: true in the builder, where empty fields show what is still missing. */
-export function adMock(ad, format, { draft = false } = {}) {
+   draft: true in the builder, where empty fields show what is still missing.
+   marks: in the report, what did the work: { id, parts: { key: { pull: 1|2|0, push: bool, title } } }.
+   A marked part is drawn with a highlighter (it convinced buyers) or a wavy underline
+   (it put them off), and opens its evidence when selected. */
+export function adMock(ad, format, { draft = false, marks = null } = {}) {
   const x = ad.extras || {};
+  const mk = (key, html) => {
+    const m = marks?.parts?.[key];
+    if (!m || !html) return html;
+    const cls = [m.pull === 1 ? "mk-pull1" : m.pull === 2 ? "mk-pull2" : "", m.push ? "mk-push" : ""].filter(Boolean).join(" ");
+    return cls ? `<span class="mk ${cls}" data-investigate="part:${marks.id}:${key}" role="button" tabindex="0" title="${esc(m.title)}">${html}</span>` : html;
+  };
   const brand = field(ad.brand, "Unnamed", draft) || "Brand";
-  const headline = field(ad.headline, "No headline yet", draft);
-  const body = field(ad.valueProp, "No value proposition yet", draft);
-  const price = field(ad.price, "No price", draft);
-  const cta = x.cta ? esc(x.cta) : "Learn more";
-  const sub = x.subheadline ? `<p class="m-sub">${esc(x.subheadline)}</p>` : "";
-  const offer = x.offer ? `<span class="m-offer">${esc(x.offer)}</span>` : "";
-  const proof = x.proof ? esc(x.proof) : "";
-  const audience = x.audience ? esc(x.audience) : "";
-  const visual = x.visual ? `<span class="m-visual">${esc(x.visual)}</span>` : "";
+  const headline = mk("headline", field(ad.headline, "No headline yet", draft));
+  const body = marks ? sentences(ad.valueProp).map((t, i) => mk(`body${i + 1}`, esc(t))).join(" ") : field(ad.valueProp, "No value proposition yet", draft);
+  const price = mk("price", field(ad.price, "No price", draft));
+  const cta = x.cta ? mk("cta", esc(x.cta)) : "Learn more";
+  const subTxt = x.subheadline ? mk("subheadline", esc(x.subheadline)) : "";
+  const sub = subTxt ? `<p class="m-sub">${subTxt}</p>` : "";
+  const offerTxt = x.offer ? mk("offer", esc(x.offer)) : "";
+  const offer = offerTxt ? `<span class="m-offer">${offerTxt}</span>` : "";
+  const proof = x.proof ? mk("proof", esc(x.proof)) : "";
+  const audience = x.audience ? mk("audience", esc(x.audience)) : "";
+  const visual = x.visual ? `<span class="m-visual">${mk("visual", esc(x.visual))}</span>` : "";
 
   switch (formatOf(format)) {
     case "social":
@@ -65,9 +78,9 @@ export function adMock(ad, format, { draft = false } = {}) {
       return `<div class="mock m-search">
         <span class="mse-spon">Sponsored</span>
         <div class="mse-site"><span class="m-avatar sm">${initial(ad.brand)}</span><span><b>${brand}</b></span></div>
-        <p class="mse-title">${headline}${x.subheadline ? ` <span class="mse-sep">|</span> ${esc(x.subheadline)}` : ""}</p>
+        <p class="mse-title">${headline}${subTxt ? ` <span class="mse-sep">|</span> ${subTxt}` : ""}</p>
         <p class="mse-desc">${body}${proof ? ` ${proof}` : ""}</p>
-        <div class="mse-links"><span>${price}</span>${x.offer ? `<span>${esc(x.offer)}</span>` : ""}<span>${cta}</span></div>
+        <div class="mse-links"><span>${price}</span>${offerTxt ? `<span>${offerTxt}</span>` : ""}<span>${cta}</span></div>
       </div>`;
     case "landing":
       return `<div class="mock m-landing">
@@ -76,9 +89,9 @@ export function adMock(ad, format, { draft = false } = {}) {
         <div class="ml-hero">
           ${audience ? `<span class="m-eyebrow">${audience}</span>` : ""}
           <p class="ml-hl">${headline}</p>
-          <p class="ml-body">${x.subheadline ? esc(x.subheadline) : body}</p>
+          <p class="ml-body">${subTxt || body}</p>
           <div class="ml-ctas"><span class="ml-btn">${cta}</span><span class="m-price">${price}</span></div>
-          ${x.offer ? `<p class="ml-offer">${esc(x.offer)}</p>` : ""}
+          ${offerTxt ? `<p class="ml-offer">${offerTxt}</p>` : ""}
           ${proof ? `<p class="ml-proof">${I.check}${proof}</p>` : ""}
         </div>
         <div class="ml-media">${visual || `<span class="ml-mono" aria-hidden="true">${initial(ad.brand)}</span>`}</div>
@@ -91,8 +104,8 @@ export function adMock(ad, format, { draft = false } = {}) {
           <div class="me-main">
             <div class="me-top"><b>${brand}</b><span class="me-tag">Ad</span><span class="me-time">9:41</span></div>
             <p class="me-subj">${headline}</p>
-            <p class="me-pre">${x.subheadline ? esc(x.subheadline) + " " : ""}${body}</p>
-            <div class="me-chips"><span>${price}</span>${x.offer ? `<span>${esc(x.offer)}</span>` : ""}</div>
+            <p class="me-pre">${subTxt ? subTxt + " " : ""}${body}</p>
+            <div class="me-chips"><span>${price}</span>${offerTxt ? `<span>${offerTxt}</span>` : ""}</div>
           </div>
           <span class="me-star">${I.star}</span>
         </div>
@@ -103,7 +116,7 @@ export function adMock(ad, format, { draft = false } = {}) {
         <p class="mc-hl">${headline}</p>
         ${sub}
         <p class="mc-body">${body}</p>
-        ${[["Call to action", x.cta], ["Offer", x.offer], ["Proof", x.proof], ["For", x.audience], ["Visual", x.visual]].filter(([, v]) => v).map(([k, v]) => `<p class="pitch-x"><span class="xk">${k}</span>${esc(v)}</p>`).join("")}
+        ${[["Call to action", "cta"], ["Offer", "offer"], ["Proof", "proof"], ["For", "audience"], ["Visual", "visual"]].filter(([, k]) => x[k]).map(([label, k]) => `<p class="pitch-x"><span class="xk">${label}</span>${mk(k, esc(x[k]))}</p>`).join("")}
         <p class="mc-price">${price}</p>
       </div>`;
   }

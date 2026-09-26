@@ -2,6 +2,7 @@
 // One request per customer: every brand's ad is judged in parallel inside it.
 import { PERSONAS, OBJECTIONS } from "./scenario.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS } from "../public/validate.js";
+import { adParts } from "../public/ad-parts.js";
 
 const API = "https://api.typesafe.ai/v1/systemone";
 // Pinned, not `jev-latest`: a moving alias can change every number in a saved
@@ -61,6 +62,25 @@ function customerQuestions(order, brandOf, withContext = false) {
   return q;
 }
 
+// Which part of each ad did the work, and which part cost it. Each option quotes the
+// exact words, so an answer maps straight back onto the ad. Checked before shipping:
+// removing the part buyers named most persuasive cost that ad 4–24 points of share;
+// removing the one named least cost 0–3.
+// Asked in a separate request, never alongside the purchase questions: in the same
+// request they nudged share by up to a point, and a round's numbers must not depend
+// on whether this was switched on.
+function partQuestions(order, partsOf) {
+  const q = {};
+  order.forEach((id) => {
+    if (!(partsOf[id]?.length > 1)) return;
+    const ad = `\`ads.${id}\``;
+    const opts = Object.fromEntries(partsOf[id].map((p) => [p.key, `${p.label} in ${ad}: “${p.text}”`]));
+    q[`${id}__pull`] = { type: "choice", instructions: `Which single part of the ad in ${ad} would most make \`customer\` want this product?`, criteria: opts };
+    q[`${id}__push`] = { type: "choice", instructions: `Which single part of the ad in ${ad} would most put \`customer\` off or make them doubt it? If nothing does, choose "none".`, criteria: { ...opts, none: "Nothing in the ad puts them off" } };
+  });
+  return q;
+}
+
 // Flags copy written to game the judges instead of persuading customers.
 function integrityQuestions(ids) {
   return Object.fromEntries(ids.map((id) => [id, {
@@ -88,7 +108,7 @@ const r3 = (x) => Math.round(x * 1000) / 1000;
 // `onBuyer`, when given, is called as each buyer's answer arrives, in the order
 // they actually come back, so a caller can show the panel deciding in real time.
 // It only reports; the round's numbers are still computed once every buyer is in.
-export async function runRound(teams, customPersonas, context = null, onBuyer = null) {
+export async function runRound(teams, customPersonas, context = null, onBuyer = null, { parts = true } = {}) {
   const marketContext = context?.items?.length ? context.items.map((c) => c.text) : null;
   const personas = customPersonas ? normalizePersonas(customPersonas) : PERSONAS;
   const ids = teams.map((_, i) => `t${i + 1}`);
@@ -102,6 +122,7 @@ export async function runRound(teams, customPersonas, context = null, onBuyer = 
     ...extrasOf(teams[i]),
   }]));
   const brandOf = Object.fromEntries(ids.map((id) => [id, adOf[id].brand]));
+  const partsOf = parts ? Object.fromEntries(ids.map((id, i) => [id, adParts({ ...teams[i], extras: teams[i].extras || {} })])) : null;
   const ads = Object.fromEntries(ids.map((id) => [id, adOf[id]]));
   const started = Date.now();
 
@@ -114,6 +135,16 @@ export async function runRound(teams, customPersonas, context = null, onBuyer = 
   const rotate = (arr, by) => arr.map((_, i) => arr[(i + by) % arr.length]);
   const orderFor = (k) => rotate(ids, k % ids.length);
 
+  const stateFor = (p, k) => ({
+    customer: p.profile,
+    ...(marketContext ? { market_context: marketContext } : {}),
+    ads: Object.fromEntries(orderFor(k).map((id) => [id, adOf[id]])),
+  });
+  // Sent at the same moment as the buyers' decisions, so they cost no extra time.
+  // If they fail, the round still stands; the report just has no marks.
+  const partReplies = partsOf && Object.keys(partQuestions(ids, partsOf)).length
+    ? Promise.all(personas.map((p, k) => ask(stateFor(p, k), partQuestions(orderFor(k), partsOf)).catch(() => null)))
+    : Promise.resolve([]);
   const [integrity, ...replies] = await Promise.all([
     ask({ ads }, integrityQuestions(ids)),
     ...personas.map((p, k) => {
@@ -138,8 +169,9 @@ export async function runRound(teams, customPersonas, context = null, onBuyer = 
     }),
   ]);
 
+  const parted = await partReplies;
   const customers = personas.map((p, k) => {
-    const a = replies[k].answers;
+    const a = { ...replies[k].answers, ...(parted[k]?.answers || {}) };
     return {
       id: p.id, name: p.name, segment: p.segment, profile: p.profile,
       purchase: a.purchase.choice,
@@ -155,6 +187,8 @@ export async function runRound(teams, customPersonas, context = null, onBuyer = 
         belief: r3(a[`${id}__belief`].noul),
         objection: a[`${id}__objection`].choice,
         objectionProbs: a[`${id}__objection`].probabilities,
+        ...(a[`${id}__pull`] ? { pull: a[`${id}__pull`].choice, pullProbs: a[`${id}__pull`].probabilities } : {}),
+        ...(a[`${id}__push`] ? { push: a[`${id}__push`].choice, pushProbs: a[`${id}__push`].probabilities } : {}),
       }])),
     };
   });
@@ -185,8 +219,24 @@ export async function runRound(teams, customPersonas, context = null, onBuyer = 
     bySegmentPicks: Object.fromEntries(segments.map((s) => [s, picksOf(segmentOf(s), id)])),
     objections: Object.fromEntries(Object.keys(OBJECTIONS).map((o) => [o, r3(avg(customers.map((c) => c.byBrand[id].objectionProbs[o] ?? 0)))])),
     flagged: integrity.answers[id].noul >= 0.6,
+    // What did the work: the ad's parts, and for each the panel's average probability
+    // of naming it as the most persuasive (pull) or the most off-putting (push).
+    ...(partsOf?.[id]?.length > 1 && customers.some((c) => c.byBrand[id].pullProbs) ? (() => {
+      // Averaged over the buyers whose answer came back, so one failed request can't
+      // drag every part towards zero.
+      const mean = (list, k, key) => r3(avg(list.filter((c) => c.byBrand[id][k]).map((c) => c.byBrand[id][k][key] ?? 0)));
+      const keys = partsOf[id].map((p) => p.key);
+      const table = (list, k, extra = []) => Object.fromEntries([...keys, ...extra].map((key) => [key, mean(list, k, key)]));
+      return {
+        parts: partsOf[id].map(({ key, label, text }) => ({ key, label, text })),
+        pull: table(customers, "pullProbs"),
+        push: table(customers, "pushProbs", ["none"]),
+        pullBySegment: Object.fromEntries(segments.map((s) => [s, table(segmentOf(s), "pullProbs")])),
+        pushBySegment: Object.fromEntries(segments.map((s) => [s, table(segmentOf(s), "pushProbs", ["none"])])),
+      };
+    })() : {}),
   }));
-  customers.forEach((c) => Object.values(c.byBrand).forEach((b) => delete b.objectionProbs));
+  customers.forEach((c) => Object.values(c.byBrand).forEach((b) => { delete b.objectionProbs; delete b.pullProbs; delete b.pushProbs; }));
 
   const tokens = [integrity, ...replies].reduce((s, r) => s + (r.usage?.input_tokens || 0), 0);
   return {

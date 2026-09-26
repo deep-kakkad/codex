@@ -7,6 +7,7 @@ import { objectionIcon, stageIcon, segmentTint, buyerFace } from "./icons.js";
 import { menuButton, ICON } from "./ui.js";
 import { drawArena, liveArena, arenaLegend } from "./arena.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
+import { clearPush } from "./ad-parts.js";
 import { EXTRA_FIELDS } from "./validate.js";
 import { GOAL_BY_KEY } from "./goals.js";
 
@@ -69,6 +70,21 @@ const NONE_COLOR = "#8E8E95";
 // The strongest a heat-map tile gets, in percent of its colour: light enough that
 // ink figures stay readable on the darkest tile, and the key uses the same scale.
 const HEAT_MAX = { seg: 50, obj: 40 };
+
+// What did the work in one ad: the part buyers most often named as what made them
+// want it, a runner-up worth marking, and the part that put them off, but only when
+// one clearly stands out (see clearPush). Rounds run before this existed have no parts.
+const PULL_MIN = 0.15;
+export function workOf(b) {
+  if (!b?.parts?.length || !b.pull) return null;
+  const ranked = b.parts.map((p) => ({ ...p, v: b.pull[p.key] ?? 0 })).sort((x, y) => y.v - x.v);
+  const top = ranked[0]?.v >= PULL_MIN ? ranked[0] : null;
+  const second = top && ranked[1]?.v >= PULL_MIN ? ranked[1] : null;
+  const cp = clearPush(b.push);
+  const push = cp ? { ...b.parts.find((p) => p.key === cp.key), v: cp.share } : null;
+  return { top, second, push };
+}
+const quoteOf = (t, n = 64) => `“${t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t}”`;
 
 // `readOnly` is for the shared view, which has no editor to send anyone to.
 export function createResultsView({ readOnly = false, onFormat = null, getFormat = null } = {}) {
@@ -312,7 +328,14 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
 
         <div class="hero-next">
           <h3>Next test</h3>
-          <p>Change <b>${esc(win.brand)}</b>'s ${esc(OBJ_LEVER[objKey] || "pitch")} and hold everything else, so the next round measures that one change and nothing else.</p>
+          <p>${workOf(win)?.push
+            ? `Rewrite <b>${esc(win.brand)}</b>'s ${esc(workOf(win).push.label.replace(/^The /, "").toLowerCase())}, ${esc(quoteOf(workOf(win).push.text, 60))}, which put off ${pct(workOf(win).push.v)} of buyers, and hold everything else, so the next round measures that one change and nothing else.`
+            : `Change <b>${esc(win.brand)}</b>'s ${esc(OBJ_LEVER[objKey] || "pitch")} and hold everything else, so the next round measures that one change and nothing else.`}</p>
+          ${(() => { const w = workOf(win); if (!w || (!w.top && !w.push)) return "";
+            return `<div class="keepfix">
+              ${w.top ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.top.key}"><span class="kf-k">Keep</span><i class="k-hl"></i><span class="kf-t">${esc(quoteOf(w.top.text, 70))}</span><span class="kf-v">convinced ${pct(w.top.v)}</span></button>` : ""}
+              ${w.push ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.push.key}"><span class="kf-k">Fix</span><i class="k-wave"></i><span class="kf-t">${esc(quoteOf(w.push.text, 70))}</span><span class="kf-v">put off ${pct(w.push.v)}</span></button>` : ""}
+            </div>`; })()}
           <div class="hero-actions">
             ${readOnly ? "" : `<button class="btn" data-prepare-round>Edit versions for round ${total + 1}</button>`}
             <button class="hero-explore" type="button" data-tab-go="market">See how the market split</button>
@@ -553,6 +576,44 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     openDrawer(shell(seg, `${esc(seg)}: ${pct(v ?? 0)} ${none ? "bought nothing" : `for ${esc(b?.brand)}`}`, body));
   }
 
+  // One part of one ad: how often buyers named it as what most made them want the
+  // product, how often as what most put them off, who, and how that splits by segment.
+  function investigatePart(r, id, key) {
+    const b = r.brands.find((x) => x.id === id);
+    const part = b?.parts?.find((p) => p.key === key);
+    if (!part) return;
+    const n = panelOf(r);
+    const named = (k) => r.customers.filter((c) => c.byBrand[id]?.[k] === key);
+    const pullers = named("pull"), pushers = named("push");
+    const w = workOf(b);
+    const pushClear = w?.push?.key === key;
+    const color = colorFor(r, id);
+    const partRow = (p) => `
+      <button class="prow${p.key === key ? " on" : ""}" type="button" data-investigate="part:${id}:${p.key}">
+        <span class="prow-t"><span class="prow-l">${esc(p.label)}</span>${esc(quoteOf(p.text, 80))}</span>
+        <span class="prow-v"><i class="k-hl"></i>${pct(b.pull[p.key] ?? 0)}</span>
+        <span class="prow-v"><i class="k-wave"></i>${pct(b.push[p.key] ?? 0)}</span>
+      </button>`;
+    const body = `
+      <p class="drawer-lede">Each buyer named the one part of ${esc(b.brand)}'s ad that most made them want it, and the one that most put them off.
+        ${(b.push[key] ?? 0) > (b.pull[key] ?? 0)
+          ? `${pushers.length} of ${n} named this part as what most put them off (${pct(b.push[key] ?? 0)} on average); ${pullers.length} named it as what most made them want it (${pct(b.pull[key] ?? 0)}).`
+          : `${pullers.length} of ${n} named this part as what most made them want it (${pct(b.pull[key] ?? 0)} on average); ${pushers.length} named it as what most put them off (${pct(b.push[key] ?? 0)}).`}
+        ${pushClear ? "That is a clear finding: fix this before anything else." : (b.push[key] ?? 0) >= 0.15 ? "No single part clearly stands out as off-putting in this ad, so treat that as a hint rather than a finding." : ""}</p>
+      <h4>Every part of this ad</h4>
+      <div class="prows"><div class="prow prow-h"><span></span><span>Convinced</span><span>Put off</span></div>${b.parts.map(partRow).join("")}
+        <div class="prow prow-none"><span class="prow-t">Nothing put them off</span><span></span><span class="prow-v">${pct(b.push.none ?? 0)}</span></div></div>
+      ${[[pushClear || (b.push[key] ?? 0) > (b.pull[key] ?? 0) ? pushers : pullers, pushClear || (b.push[key] ?? 0) > (b.pull[key] ?? 0) ? "Buyers it put off most" : "Buyers it convinced most"],
+         [pushClear || (b.push[key] ?? 0) > (b.pull[key] ?? 0) ? pullers : pushers, pushClear || (b.push[key] ?? 0) > (b.pull[key] ?? 0) ? "Buyers it convinced most" : "Buyers it put off most"]]
+        .filter(([list]) => list.length).map(([list, h]) => `<h4>${h}</h4>${buyerRows(r, list.map((c) => ({ c, v: c.purchaseProbs[id] ?? 0 })), { color, note: (c) => `picked ${esc(choiceName(r, c.purchase))}` })}`).join("")}
+      ${pullers.length || pushers.length ? `<p class="drawer-note">Bars show each buyer's chance of picking ${esc(b.brand)}.</p>` : ""}
+      ${b.pullBySegment ? `<h4>Convinced, by segment</h4>
+        <div class="dalt">${r.segments.map((s) => `
+          <div class="dalt-row" style="--c:#E9B949"><span>${esc(s)}</span><span class="t"><i style="width:${pct(b.pullBySegment[s]?.[key] ?? 0)}"></i></span><span class="p">${pct(b.pullBySegment[s]?.[key] ?? 0)}</span></div>`).join("")}</div>` : ""}
+      <p class="drawer-note">The buyers read the ad's exact words. They can't see layout, type size or images, so this says which words did the work, not what caught the eye.</p>`;
+    openDrawer(shell(`${b.brand}: what did the work`, esc(quoteOf(part.text, 90)), body));
+  }
+
   function showDefinition(key) {
     const [title, text] = DEFS[key] || ["", ""];
     openDrawer(shell("Definition", esc(title), `<p>${esc(text)}</p>`));
@@ -560,7 +621,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
 
   // Every number in the report is a claim with evidence behind it. They all go
   // through one listener, so a new call site needs only a data-investigate attribute:
-  //   share:ID  obj:KEY:ID  stage:STAGE:ID  seg:INDEX:ID  buyer:ID
+  //   share:ID  obj:KEY:ID  stage:STAGE:ID  seg:INDEX:ID  buyer:ID  part:ID:KEY
   function investigate(spec) {
     if (!current) return;
     const [kind, a, b] = spec.split(":");
@@ -569,6 +630,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     if (kind === "stage") return investigateStage(current, a, b);
     if (kind === "seg") return investigateSegment(current, +a, b);
     if (kind === "buyer") return investigateBuyer(current, a);
+    if (kind === "part") return investigatePart(current, a, b);
   }
   document.addEventListener("click", (e) => {
     if (e.target.closest(".drawer-x")) return closeDrawer();
@@ -818,16 +880,40 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
       $("#pitches").insertAdjacentHTML("beforebegin", `<div class="fmt-tools" id="pitchFmt"></div>`);
       tools = $("#pitchFmt");
     }
-    tools.innerHTML = `${formatSwitch(fmt, "report")}<span class="fmt-note">Buyers read the same words in every format.</span>`;
+    const hasWork = r.brands.some((b) => workOf(b));
+    tools.innerHTML = `${formatSwitch(fmt, "report")}
+      ${hasWork ? `<button type="button" class="work-toggle" aria-pressed="${showWork}" data-work-toggle>What did the work</button>
+        <span class="work-key${showWork ? "" : " hidden"}"><span><i class="k-hl"></i>convinced buyers</span><span><i class="k-wave"></i>put them off</span></span>` : ""}
+      <span class="fmt-note">Buyers read the same words in every format.</span>`;
     const maxShare = Math.max(...r.brands.map((b) => b.share));
-    $("#pitches").className = `pitches ads fmt-${fmt}`;
-    $("#pitches").innerHTML = r.brands.map((b, i) => `
+    $("#pitches").className = `pitches ads fmt-${fmt}${showWork ? " show-work" : ""}`;
+    $("#pitches").innerHTML = r.brands.map((b, i) => {
+      const w = showWork ? workOf(b) : null;
+      const marks = w ? { id: b.id, parts: {
+        ...(w.second ? { [w.second.key]: { pull: 2, title: `Convinced ${pct(w.second.v)} of buyers` } } : {}),
+        ...(w.top ? { [w.top.key]: { pull: 1, title: `Convinced ${pct(w.top.v)} of buyers` } } : {}),
+      } } : null;
+      if (w?.push) marks.parts[w.push.key] = { ...(marks.parts[w.push.key] || {}), push: true, title: `Put off ${pct(w.push.v)} of buyers` };
+      return `
       <figure class="adf${b.share === maxShare ? " lead" : ""}" style="--c:${COLORS[r.slots[i]]}">
-        ${adMock(b, fmt)}
+        ${adMock(b, fmt, { marks })}
         <figcaption class="adf-meta"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>${b.share === maxShare ? `<span class="pitch-lead">Leading</span>` : ""}
           <button class="pitch-share num numlink" type="button" data-investigate="share:${b.id}" aria-label="${esc(b.brand)}, ${pct(b.share)}. See the buyers">${pct(b.share)}</button></figcaption>
-      </figure>`).join("");
+        ${w ? `<div class="adf-why">
+          ${w.top ? `<button type="button" class="why" data-investigate="part:${b.id}:${w.top.key}"><i class="k-hl"></i><span class="why-t">${esc(quoteOf(w.top.text))}</span><b>${pct(w.top.v)}</b></button>`
+                  : `<span class="why why-none">No single part stood out as the reason to buy</span>`}
+          ${w.push ? `<button type="button" class="why" data-investigate="part:${b.id}:${w.push.key}"><i class="k-wave"></i><span class="why-t">${esc(w.push.label.toLowerCase().startsWith("line") ? quoteOf(w.push.text) : w.push.label.replace(/^The /, "the "))}</span><b>${pct(w.push.v)}</b></button>`
+                   : `<span class="why why-none">Nothing stood out as off-putting</span>`}
+        </div>` : ""}
+      </figure>`;
+    }).join("");
   }
+  let showWork = true;
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("[data-work-toggle]") || !pitchRound) return;
+    showWork = !showWork;
+    renderPitches(pitchRound);
+  });
   document.addEventListener("click", (e) => {
     const b = e.target.closest('[data-fmt-for="report"]');
     if (!b || !pitchRound) return;

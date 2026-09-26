@@ -94,7 +94,8 @@ function describe(e) {
   if (e.reason === "refund") return "Refund for a failed request";
   if (e.reason === "adjust") return e.note || "Adjustment";
   if (e.reason === "round") return "Round";
-  if (e.reason === "ask") return e.ref?.startsWith("research:") ? `Research: ${e.ref.slice(9)}` : "Question about a round";
+  if (e.reason === "ask") return e.ref?.startsWith("research:") ? `Research: ${e.ref.slice(9)}`
+    : e.ref?.startsWith("buyers:") ? `Buyers from your data: ${e.ref.slice(7)}` : "Question about a round";
   return e.reason;
 }
 

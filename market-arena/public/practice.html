@@ -90,6 +90,11 @@
       <div class="wrap">
         <h2>Your buyers</h2>
         <p class="sub" id="personasSub">Segments come from whatever you type here — rename, add or remove freely.</p>
+        <div class="data-cta" id="dataCta">
+          <span class="dc-ic" id="dataCtaIcon"></span>
+          <span class="dc-t"><b>Have interviews, reviews or survey answers?</b><span>Draft buyers from your own data instead. Optional, and you review every one.</span></span>
+          <button class="btn" type="button" id="openDataSheet">Build from your data</button>
+        </div>
         <div class="panel-size" id="panelSize">
           <span id="panelSizeLab">Panel size</span>
           <div class="seg-ctl" role="group" aria-labelledby="panelSizeLab">
@@ -338,8 +343,9 @@
 
 <script type="module">
 import { LOGO_MARK, caseMark, caseTint, buyerFace, segmentTint, objectionIcon } from "./icons.js";
-import { createResultsView, exportCsv, esc } from "./app-shared.js";
+import { createResultsView, exportCsv, esc, workOf } from "./app-shared.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
+import { initDataSheet, DOC_ICON } from "./buyers-data.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
 import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn } from "./account.js";
@@ -722,10 +728,11 @@ function renderPersonas() {
   const segOrder = [...new Set(state.personas.map((p) => p.segment || ""))];
   const cardFor = (p, i) => `
     <div class="pcard" data-i="${i}" style="--seg:${segmentTint(segOrder.indexOf(p.segment || ""))}">
-      <div class="pcard-head">${buyerFace(p, segOrder.indexOf(p.segment || ""), 44)}<input class="pname" data-f="name" data-i="${i}" maxlength="${L.name}" value="${esc(p.name)}" placeholder="Name"></div>
+      <div class="pcard-head">${buyerFace(p, segOrder.indexOf(p.segment || ""), 44)}<input class="pname" data-f="name" data-i="${i}" maxlength="${L.name}" value="${esc(p.name)}" placeholder="Name">${p.source === "data" ? `<span class="pfrom">From your data</span>` : ""}</div>
       <label>Segment</label><input data-f="segment" data-i="${i}" maxlength="${L.segment}" value="${esc(p.segment)}" placeholder="e.g. Price-sensitive SMB buyers">
       <label>Profile <span class="count" data-for="profile-${i}"></span></label>
       <textarea data-f="profile" data-i="${i}" id="profile-${i}" placeholder="Age, role or life stage, what they care about, what they're skeptical of.">${esc(p.profile)}</textarea>
+      ${p.source === "data" && p.quotes?.length ? `<details class="pquotes"><summary>Based on ${p.quotes.length} line${p.quotes.length === 1 ? "" : "s"} of your data</summary>${p.quotes.map((q) => `<blockquote>${esc(q)}</blockquote>`).join("")}</details>` : ""}
       ${state.personas.length > L.minPersonas ? `<button class="premove" data-rm="${i}">Remove ${esc(p.name || "this buyer")}</button>` : ""}
     </div>`;
 
@@ -738,6 +745,18 @@ function renderPersonas() {
   }).join("") + (state.personas.length < L.maxPersonas ? `<button class="padd" id="addPersona">+ Add a buyer</button>` : "");
   document.querySelectorAll("#personas [data-f=profile]").forEach(updatePersonaCount);
 }
+// Buyers from your own data: an optional panel beside the Buyers step.
+const dataSheet = initDataSheet({
+  getState: () => state,
+  market: () => [state.scenario.title, state.scenario.brief].filter(Boolean).join("\n"),
+  apply: (buyers, mode) => {
+    if (mode === "replace") { state.personas = buyers; state.personaPool = buyers.map((p) => ({ ...p })); }
+    else { state.personas.push(...buyers); state.personaPool = [...(state.personaPool || []), ...buyers.map((p) => ({ ...p }))]; }
+    save(); renderPersonas(); renderDirectory();
+  },
+});
+$("#dataCtaIcon").innerHTML = DOC_ICON;
+$("#openDataSheet").addEventListener("click", () => dataSheet.open());
 function updatePersonaCount(el) {
   const n = el.value.trim().length, max = PERSONA_LIMITS.profile;
   const c = document.querySelector(`.count[data-for="profile-${el.dataset.i}"]`);
@@ -807,6 +826,30 @@ $("#extraPick").addEventListener("click", (e) => {
   state.extras = EXTRA_FIELDS.map((f) => f.key).filter((x) => on.has(x));
   save(); renderExtraPick(); renderBrands();
 });
+// What last round said about a field, shown beside its label while the words it was
+// about are still there: the part that convinced buyers most, or the one that put
+// them off. Once the words change, the tag goes, because it no longer describes them.
+function fieldTag(t, field) {
+  const r = state.rounds[state.rounds.length - 1];
+  const b = r?.brands?.[r.slots?.indexOf(t.slot)];
+  const w = b && workOf(b);
+  if (!w) return "";
+  const value = field.startsWith("x:") ? t.extras?.[field.slice(2)] : t[field];
+  const partKeys = field === "valueProp" ? /^body\d+$/ : new RegExp(`^${field.startsWith("x:") ? field.slice(2) : field}$`);
+  const n = state.rounds.length;
+  const tag = (part, kind) => part && partKeys.test(part.key) && value && value.includes(part.text)
+    ? `<span class="ftag" title="In round ${n}, ${Math.round(part.v * 100)}% of buyers named “${esc(part.text)}” as what most ${kind === "hl" ? "made them want it" : "put them off"}."><i class="k-${kind === "hl" ? "hl" : "wave"}"></i>${part.key.startsWith("body") && sentencesOf(value) > 1 ? `Line ${part.key.slice(4)} ` : ""}${kind === "hl" ? "convinced" : "put off"} ${Math.round(part.v * 100)}%</span>` : "";
+  return tag(w.push, "wave") + (w.top?.key === w.push?.key ? "" : tag(w.top, "hl"));
+}
+// Keeps a field's tags true while the user types: they go the moment the words go.
+function refreshTag(el) {
+  const label = document.querySelector(`label[for="${el.id}"]`);
+  if (!label) return;
+  const t = state.teams[+el.dataset.i];
+  label.querySelectorAll(".ftag").forEach((x) => x.remove());
+  label.querySelector(".count")?.insertAdjacentHTML("beforebegin", fieldTag(t, el.dataset.x ? `x:${el.dataset.x}` : el.dataset.f));
+}
+const sentencesOf = (v) => String(v || "").split(/(?<=[.!?])\s+(?=\S)/).filter(Boolean).length;
 function renderBrands() {
   const L = LIMITS;
   $("#brands").innerHTML = state.teams.map((t, i) => `
@@ -814,14 +857,14 @@ function renderBrands() {
       <label for="brand-${i}">Version name <span class="count" data-for="brand-${i}"></span></label>
       <div class="brand-name"><span class="sw" style="background:var(--c)" aria-hidden="true"></span><input id="brand-${i}" class="name" data-i="${i}" data-f="brand" maxlength="${L.brand + 20}" value="${esc(t.brand)}"></div>
       ${FIELDS.map(([f, lab, tag]) => `
-        <label for="${f}-${i}">${lab} <span class="count" data-for="${f}-${i}"></span></label>
+        <label for="${f}-${i}">${lab} ${fieldTag(t, f)}<span class="count" data-for="${f}-${i}"></span></label>
         ${tag === "input"
           ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
           : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
       ${extrasOn().map((k) => {
         const f = EXTRA_BY_KEY[k];
         return `
-        <label for="x-${k}-${i}">${esc(f.label)} <span class="count" data-for="x-${k}-${i}"></span></label>
+        <label for="x-${k}-${i}">${esc(f.label)} ${fieldTag(t, `x:${k}`)}<span class="count" data-for="x-${k}-${i}"></span></label>
         ${f.tag === "textarea"
           ? `<textarea id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}">${esc(t.extras?.[k] || "")}</textarea>`
           : `<input id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}" value="${esc(t.extras?.[k] || "")}">`}`;
@@ -877,11 +920,11 @@ $("#brands").addEventListener("input", (e) => {
     const t = state.teams[+el.dataset.i];
     t.extras = t.extras || {};
     t.extras[el.dataset.x] = el.value;
-    updateBrandCount(el); save(); renderPreview();
+    updateBrandCount(el); refreshTag(el); save(); renderPreview();
     return;
   }
   if (!el.dataset.f) return;
-  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateBrandCount(el); save(); renderPreview();
+  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateBrandCount(el); refreshTag(el); save(); renderPreview();
 });
 $("#brands").addEventListener("click", (e) => {
   if (e.target.dataset.rm !== undefined) { state.teams.splice(+e.target.dataset.rm, 1); save(); renderBrands(); }
