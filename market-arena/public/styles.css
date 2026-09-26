@@ -485,10 +485,35 @@ body > header:not(.topbar){padding:18px 0 16px;border-bottom:1px solid var(--lin
 .segments{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px}
 .seg h3{font:600 var(--t-ui) var(--body);color:var(--muted);margin:0 0 10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
 .people{display:flex;flex-direction:column;gap:6px}
-.person{display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:center;background:none;border:1px solid transparent;padding:6px;
-  text-align:left;cursor:pointer;border-radius:var(--r-panel);color:inherit;font:inherit}
-.person{transition:background-color .15s ease,box-shadow .15s ease}
-.person:hover,.person[aria-expanded="true"]{background:var(--paper);box-shadow:var(--e1)}
+/* Each buyer is a card: the decision on the front, the person on the back. It turns
+   over in place and grows to fit whichever side is showing. */
+.person{position:relative;perspective:900px;transition:height .45s cubic-bezier(.3,.7,.2,1)}
+.pc-face{border-radius:var(--r-panel);backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  transition:transform .5s cubic-bezier(.3,.7,.2,1),background-color .15s ease,box-shadow .15s ease}
+.pc-front{position:relative;width:100%;display:grid;grid-template-columns:44px 1fr;gap:12px;align-items:center;background:none;border:1px solid transparent;padding:6px 30px 6px 6px;
+  text-align:left;cursor:pointer;color:inherit;font:inherit}
+.pc-front:hover{background:var(--paper);box-shadow:var(--e1)}
+.pc-turn{position:absolute;top:8px;right:8px;color:var(--faint);opacity:0;transition:opacity .15s ease}
+.pc-front:hover .pc-turn,.pc-front:focus-visible .pc-turn{opacity:1}
+.pc-back{position:absolute;inset:0 0 auto 0;padding:12px 12px 10px;background:var(--paper);box-shadow:var(--e2);transform:rotateY(-180deg)}
+.person.flipped .pc-front{transform:rotateY(180deg)}
+.person.flipped .pc-back{transform:rotateY(0)}
+.pc-prof{margin:0 0 10px;font-size:var(--t-small);line-height:1.5;color:#3A3A40}
+.pc-prof b{color:var(--ink);font-weight:600}
+.pc-acts{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pc-go{display:inline-flex;align-items:center;gap:6px;padding:0;background:none;border:0;font:600 var(--t-small) var(--body);color:var(--ink);cursor:pointer;text-align:left}
+.pc-go:hover{text-decoration:underline;text-underline-offset:3px}
+.pc-go svg{flex:none;transition:transform .15s ease}
+.pc-go:hover svg{transform:translateX(2px)}
+.pc-flip{display:grid;place-items:center;width:28px;height:28px;flex:none;border-radius:50%;background:none;border:0;color:var(--muted);cursor:pointer}
+.pc-flip:hover{background:var(--well);color:var(--ink)}
+@media (prefers-reduced-motion: reduce){
+  .person{transition:none}
+  .pc-face{transition:opacity .15s ease;transform:none!important}
+  .pc-back{opacity:0}
+  .person.flipped .pc-front{opacity:0}
+  .person.flipped .pc-back{opacity:1}
+}
 /* The face is drawn in currentColor, so the pick colour arrives as one colour change
    per buyer: the reveal is every face filling in with what that buyer chose. */
 .token{display:grid;place-items:center;width:44px;height:44px;color:var(--tc);transition:color .6s ease;transition-delay:var(--d,0ms)}
@@ -829,7 +854,8 @@ footer .credit a{color:var(--ink);font-weight:500;text-decoration:underline;text
   .topbar{position:static;border-bottom:1px solid var(--line);background:#fff;backdrop-filter:none}
   .tb-actions,.round-btn svg,.tb-project svg,.toasts,.menu,
   body > header:not(.topbar) .toolbar,#directory,#pickerSection,#builder,#editor,#builderBar,#ghost,#reportBar,
-  .run-row,.detail,.asksec,.hero-actions,footer .credit,.person .conf,.vw-hint{display:none!important}
+  .run-row,.detail,.asksec,.hero-actions,footer .credit,.person .conf,.vw-hint,.pc-back,.pc-turn{display:none!important}
+  .person{height:auto!important}.pc-front{transform:none!important}
   .tab-off{display:block!important}
   body > header:not(.topbar){border-bottom:none;padding:0 0 14px}
   .hero-res,.rsec{break-inside:avoid-page}

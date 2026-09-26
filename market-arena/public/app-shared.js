@@ -639,8 +639,6 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     if (def) return showDefinition(def.dataset.def);
     const probe = e.target.closest("[data-investigate]");
     if (probe) return investigate(probe.dataset.investigate);
-    const person = e.target.closest(".person[data-p]");
-    if (person && current) return investigateBuyer(current, person.dataset.p);
   });
   // Cells and bars that are not buttons still answer to the keyboard.
   document.addEventListener("keydown", (e) => {
@@ -705,12 +703,25 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
       <div class="seg"><h3>${esc(s)}</h3><div class="people">
         ${r.customers.filter((c) => c.segment === s).map((c, k) => {
           const undecided = isTossup(c);
-          return `<button class="person" data-p="${c.id}" aria-expanded="${open === c.id}">
-            <span class="token" style="--tc:${animate ? "#C9C9C4" : color(c.purchase)};--d:${k * 120 + r.segments.indexOf(s) * 60}ms" data-final="${color(c.purchase)}">${buyerFace(c, r.segments.indexOf(s), 44, { tint: "currentColor", dashed: undecided })}</span>
-            <span><span class="pname">${esc(c.name)}</span>${undecided ? `<span class="tag">Too close to call</span>` : ""}
-            <span class="pchoice" style="display:block">Bought ${esc(nameOf(c.purchase))}</span>
-            <span class="conf" aria-label="Confidence ${pct(c.confidence)}"><i style="width:${pct(c.confidence)}"></i></span></span>
-          </button>`;
+          // A card with the decision on the front and the person on the back: turning
+          // it over is how you get to know who a buyer is, and the back leads on to
+          // how they scored every version.
+          return `<div class="person" data-p="${c.id}">
+            <button class="pc-face pc-front" type="button" aria-expanded="false" aria-label="${esc(c.name)}, bought ${esc(nameOf(c.purchase))}. Turn over to see who they are">
+              <span class="token" style="--tc:${animate ? "#C9C9C4" : color(c.purchase)};--d:${k * 120 + r.segments.indexOf(s) * 60}ms" data-final="${color(c.purchase)}">${buyerFace(c, r.segments.indexOf(s), 44, { tint: "currentColor", dashed: undecided })}</span>
+              <span><span class="pname">${esc(c.name)}</span>${undecided ? `<span class="tag">Too close to call</span>` : ""}
+              <span class="pchoice" style="display:block">Bought ${esc(nameOf(c.purchase))}</span>
+              <span class="conf" aria-label="Confidence ${pct(c.confidence)}"><i style="width:${pct(c.confidence)}"></i></span></span>
+              <span class="pc-turn" aria-hidden="true">${ICON.turn}</span>
+            </button>
+            <div class="pc-face pc-back" inert>
+              <p class="pc-prof"><b>${esc(c.name)}.</b> ${esc(c.profile)}</p>
+              <div class="pc-acts">
+                <button type="button" class="pc-go" data-investigate="buyer:${c.id}">How they scored each version ${ICON.arrow}</button>
+                <button type="button" class="pc-flip" aria-label="Turn ${esc(c.name)}'s card back over">${ICON.turn}</button>
+              </div>
+            </div>
+          </div>`;
         }).join("")}</div></div>`).join("");
     if (animate) requestAnimationFrame(() => requestAnimationFrame(() =>
       document.querySelectorAll(".token").forEach((t) => t.style.setProperty("--tc", t.dataset.final))));
@@ -1102,11 +1113,29 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     getRounds = getRoundsFn;
     $("#detail").addEventListener("click", (e) => { if (e.target.id === "closeDetail") { open = null; showDetail(); } });
     $("#segments").addEventListener("click", (e) => {
-      const btn = e.target.closest(".person"); if (!btn) return;
-      open = open === btn.dataset.p ? null : btn.dataset.p;
-      showDetail();
+      const btn = e.target.closest(".pc-front, .pc-flip"); if (!btn) return;
+      turnCard(btn.closest(".person"));
     });
   }
+  // Turns a buyer's card over, or back. The card grows to fit the side that is
+  // showing, so a long profile never gets cut off, and only one card is over at a
+  // time. The hidden side is inert, so the keyboard only reaches what can be seen.
+  function turnCard(card, to) {
+    if (!card) return;
+    const over = to ?? !card.classList.contains("flipped");
+    if (over) document.querySelectorAll(".person.flipped").forEach((c) => c !== card && turnCard(c, false));
+    const front = card.querySelector(".pc-front"), back = card.querySelector(".pc-back");
+    card.style.height = `${card.offsetHeight}px`;
+    card.classList.toggle("flipped", over);
+    front.inert = over; back.inert = !over;
+    front.setAttribute("aria-expanded", String(over));
+    const h = (over ? back : front).scrollHeight;
+    requestAnimationFrame(() => { card.style.height = `${h}px`; });
+    clearTimeout(card._t);
+    card._t = setTimeout(() => { if (!over) card.style.height = ""; }, 520);
+    if (card.contains(document.activeElement) || document.activeElement === document.body) (over ? back.querySelector(".pc-go") : front).focus({ preventScroll: true });
+  }
+
   function resetOpen() { open = null; viewIndex = null; }
 
   // Which round is on screen, for pages that offer their own way to switch.

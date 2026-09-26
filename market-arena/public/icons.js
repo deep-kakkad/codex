@@ -154,6 +154,32 @@ const EYES = [
 const MOUTH = ['M20 34c2 2 6 2 8 0', 'M21 34h6', 'M20 33c2 3 6 3 8 0 M20 33h8'];
 const BROW = ['M17 22c2-1 4-1 5 0 M26 22c1-1 3-1 5 0', 'M17 22h5 M26 22h5'];
 
+// One detail per face, chosen from what the buyer's segment and profile suggest (a
+// student gets headphones or a beanie, a professional glasses or a coffee), so a
+// panel reads as particular people rather than one face in different colours. Each
+// is drawn in the same 48-unit box, after the face, and none of it is a circle
+// sitting directly in the svg, which the live arena relies on to find the ring.
+const INK = "#2B211A";
+const HAT = ["#3A4A5C", "#7A3B2E", "#2F4F3A", "#5A4A6E", "#8A6A2A"];
+const ACCESSORY = {
+  glasses: () => `<g fill="none" stroke="${INK}" stroke-width="1.3"><rect x="15.3" y="22.8" width="7.4" height="5.8" rx="2.4"/><rect x="25.3" y="22.8" width="7.4" height="5.8" rx="2.4"/><path d="M22.7 25.2c.8-.7 1.8-.7 2.6 0M15.3 24.8l-2.2-.9M32.7 24.8l2.2-.9"/></g>`,
+  shades: () => `<g stroke="${INK}" stroke-width="1.2"><path d="M14.8 23.2h8.2v2.4a3.2 3.2 0 0 1-3.2 3.2h-1.8a3.2 3.2 0 0 1-3.2-3.2zM25 23.2h8.2v2.4a3.2 3.2 0 0 1-3.2 3.2h-1.8a3.2 3.2 0 0 1-3.2-3.2z" fill="${INK}" fill-opacity=".82"/><path d="M23 24.2h2M14.8 23.6l-1.8-.7M33.2 23.6l1.8-.7" fill="none"/></g>`,
+  headphones: () => `<g><path d="M11.8 28C11 6.5 37 6.5 36.2 28" fill="none" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/><rect x="9.2" y="23.5" width="5" height="9" rx="2.3" fill="${INK}"/><rect x="33.8" y="23.5" width="5" height="9" rx="2.3" fill="${INK}"/></g>`,
+  cap: (c) => `<g fill="${c}"><path d="M11.6 21.5a12.4 11.5 0 0 1 24.8 0z"/><path d="M23 20.3h15.2a1.6 1.6 0 0 1 0 3.2H23z"/><path d="M24 10.4v2.2" stroke="#fff" stroke-opacity=".5" stroke-width="1.2"/></g>`,
+  beanie: (c) => `<g fill="${c}"><path d="M11.8 21.4a12.2 12.8 0 0 1 24.4 0z"/><rect x="11" y="18.6" width="26" height="4.4" rx="2.2" style="filter:brightness(.8)"/><path d="M24 6.4a2.4 2.4 0 1 1 0 4.8 2.4 2.4 0 0 1 0-4.8z"/></g>`,
+  headband: (c) => `<path d="M13.2 21c6.2-3.6 15.4-3.6 21.6 0" fill="none" stroke="${c}" stroke-width="2.8" stroke-linecap="round"/>`,
+  earrings: () => `<g fill="#D9A441"><path d="M13.4 30a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8zM34.6 30a1.4 1.4 0 1 1 0 2.8 1.4 1.4 0 0 1 0-2.8z"/></g>`,
+  coffee: () => `<g stroke="${INK}" stroke-width="1.1" stroke-linejoin="round"><path d="M30.5 34h8l-.9 7.2h-6.2z" fill="#fff"/><path d="M30.2 34h8.6" stroke-width="1.6" stroke-linecap="round"/><path d="M33 31.6c-.6-.9.6-1.4 0-2.3M36 31.6c-.6-.9.6-1.4 0-2.3" fill="none" stroke="#8E8E95" stroke-linecap="round"/></g>`,
+  leaf: () => `<path d="M16.2 41.5c-.2-3.4 2.2-5.4 5.6-5.2.2 3.4-2.2 5.4-5.6 5.2zM16.2 41.5l3-3" fill="#5E8C4A" stroke="#3F6B30" stroke-width=".8" stroke-linecap="round"/>`,
+};
+// Which details fit which kind of buyer; one is picked by the buyer's id, and some
+// lists include nothing so not every face wears something.
+const WEARS = {
+  briefcase: ["glasses", "coffee", "glasses"], graduate: ["headphones", "beanie", "cap"], heart: ["headband", "none"],
+  home: ["coffee", "earrings", "none"], wrench: ["glasses", "headphones"], piggy: ["cap", "none", "glasses"],
+  leaf: ["beanie", "leaf", "coffee"], star: ["earrings", "shades", "none"], shield: ["glasses", "cap", "none"],
+};
+
 // Small stable string hash. Same buyer, same face, every render and every device.
 function hash(str) {
   let h = 2166136261;
@@ -174,6 +200,12 @@ export function buyerFace(persona, segmentIndex = 0, size = 48, opts = {}) {
   const mouth = MOUTH[(h >> 12) % MOUTH.length];
   const brow = BROW[(h >> 15) % BROW.length];
   const tint = opts.tint || segmentTint(segmentIndex);
+  const wears = WEARS[personaIconId(persona || {})] || ["none"];
+  // A separate hash, so the detail doesn't move in step with the features above
+  // when ids differ only in their last character.
+  const hw = hash(`${persona?.id || persona?.name || "buyer"}|wears`);
+  const acc = ACCESSORY[wears[hw % wears.length]];
+  const extra = acc ? acc(HAT[(hw >> 4) % HAT.length]) : "";
   const label = persona?.name ? `${persona.name}${persona.segment ? `, ${persona.segment}` : ""}` : "Buyer";
   return `
 <svg class="buyerface" width="${size}" height="${size}" viewBox="0 0 48 48" role="img" aria-label="${String(label).replace(/"/g, "&quot;")}">
@@ -186,6 +218,6 @@ export function buyerFace(persona, segmentIndex = 0, size = 48, opts = {}) {
     <path d="${brow}" opacity="0.75"/>
     <path d="${eyes}"/>
     <path d="${mouth}"/>
-  </g>
+  </g>${extra}
 </svg>`;
 }
