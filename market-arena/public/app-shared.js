@@ -6,6 +6,7 @@
 import { objectionIcon, stageIcon, segmentTint, buyerFace } from "./icons.js";
 import { menuButton, ICON } from "./ui.js";
 import { drawArena, liveArena, arenaLegend } from "./arena.js";
+import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { EXTRA_FIELDS } from "./validate.js";
 import { GOAL_BY_KEY } from "./goals.js";
 
@@ -70,8 +71,9 @@ const NONE_COLOR = "#8E8E95";
 const HEAT_MAX = { seg: 50, obj: 40 };
 
 // `readOnly` is for the shared view, which has no editor to send anyone to.
-export function createResultsView({ readOnly = false } = {}) {
+export function createResultsView({ readOnly = false, onFormat = null, getFormat = null } = {}) {
   let open = null;
+  let format = null;    // the format picked in this report; null means the round's own
   let viewIndex = null; // null means "whatever the latest round is"
   let current = null;   // the round on screen, so the drawer investigates what is shown
   let getRounds = () => [];
@@ -803,18 +805,36 @@ export function createResultsView({ readOnly = false } = {}) {
   }
   const topObjection = (b) => Object.entries(b.objections).filter(([k]) => k !== "none").sort((a, c) => c[1] - a[1])[0];
 
-  // The ads themselves, shown as cards, so the report says what produced the numbers.
+  // The ads themselves, so the report says what produced the numbers, shown in the
+  // format the team will ship them in. Switching format here never changes a number.
+  let pitchRound = null;
   function renderPitches(r) {
+    pitchRound = r;
     $("#pitchSec").classList.remove("hidden");
+    // This report's own pick, else the project's, else what the round was run in.
+    const fmt = formatOf(format || getFormat?.() || r.format);
+    let tools = $("#pitchFmt");
+    if (!tools) {
+      $("#pitches").insertAdjacentHTML("beforebegin", `<div class="fmt-tools" id="pitchFmt"></div>`);
+      tools = $("#pitchFmt");
+    }
+    tools.innerHTML = `${formatSwitch(fmt, "report")}<span class="fmt-note">Buyers read the same words in every format.</span>`;
     const maxShare = Math.max(...r.brands.map((b) => b.share));
+    $("#pitches").className = `pitches ads fmt-${fmt}`;
     $("#pitches").innerHTML = r.brands.map((b, i) => `
-      <div class="pitch ${b.share === maxShare ? "lead" : ""}" style="--c:${COLORS[r.slots[i]]}">
-        <div class="pitch-top"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>${b.share === maxShare ? `<span class="pitch-lead">Leading</span>` : ""}</div>
-        <h4>${esc(b.headline)}</h4>
-        <p>${esc(b.valueProp)}</p>
-        <div class="pitch-bottom"><span class="pitch-price num">${esc(b.price)}</span><button class="pitch-share num numlink" type="button" data-investigate="share:${b.id}" aria-label="${esc(b.brand)}, ${pct(b.share)}. See the buyers">${pct(b.share)}</button></div>
-      </div>`).join("");
+      <figure class="adf${b.share === maxShare ? " lead" : ""}" style="--c:${COLORS[r.slots[i]]}">
+        ${adMock(b, fmt)}
+        <figcaption class="adf-meta"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>${b.share === maxShare ? `<span class="pitch-lead">Leading</span>` : ""}
+          <button class="pitch-share num numlink" type="button" data-investigate="share:${b.id}" aria-label="${esc(b.brand)}, ${pct(b.share)}. See the buyers">${pct(b.share)}</button></figcaption>
+      </figure>`).join("");
   }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest('[data-fmt-for="report"]');
+    if (!b || !pitchRound) return;
+    format = b.dataset.fmt;
+    renderPitches(pitchRound);
+    onFormat?.(format);
+  });
 
   function renderSuggestions(r) {
     $("#suggestSec").classList.remove("hidden");

@@ -112,7 +112,8 @@
         <div class="extrapick" id="extraPick"></div>
         <div class="brands" id="brands"></div>
         <div class="adpreview" id="adPreview">
-          <p class="ap-label">What the buyers will see</p>
+          <div class="ap-head"><p class="ap-label">What the buyers will see</p><div id="builderFmt"></div></div>
+          <p class="fmt-note ap-note">Pick the placement you're writing for. Buyers read the same words in every format; this changes how the ads are shown to you.</p>
           <div class="pitches" id="pitchPreview"></div>
         </div>
         <div class="run-row">
@@ -338,6 +339,7 @@
 <script type="module">
 import { LOGO_MARK, caseMark, caseTint, buyerFace, segmentTint, objectionIcon } from "./icons.js";
 import { createResultsView, exportCsv, esc } from "./app-shared.js";
+import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
 import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn } from "./account.js";
@@ -345,7 +347,7 @@ import { menuButton, toast } from "./ui.js";
 import { drawArena } from "./arena.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
-const view = createResultsView();
+const view = createResultsView({ onFormat: (f) => { if (state) setFormat(f); }, getFormat: () => state?.format });
 const $ = (s) => document.querySelector(s);
 const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
 
@@ -414,7 +416,7 @@ function saveProject() {
   const name = prompt("Name this project", state.scenario.title || "My project");
   if (!name) return;
   const saved = loadJSON(SAVED_KEY, []);
-  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })), ...(state.research ? { research: state.research } : {}) });
+  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })), ...(state.research ? { research: state.research } : {}), ...(state.format ? { format: state.format } : {}) });
   saveJSON(SAVED_KEY, saved.slice(0, 20));
   toast(state.rounds.length ? `Saved “${name}” with ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""}.` : `Saved “${name}”.`);
 }
@@ -424,7 +426,7 @@ function openSaved(id) {
   const p = saved.find((x) => x.id === id);
   if (!p) return;
   if (state && inProject() && !confirm(`Open “${p.name}”? It replaces the project you have open. Save that one first if you want to keep it.`)) return;
-  loadScenario({ scenario: { ...p.scenario }, personas: p.personas.map((x) => ({ ...x })), teams: p.teams.map((t) => ({ ...t })), rounds: (p.rounds || []).map((r) => ({ ...r })), research: p.research || null }, 3);
+  loadScenario({ scenario: { ...p.scenario }, personas: p.personas.map((x) => ({ ...x })), teams: p.teams.map((t) => ({ ...t })), rounds: (p.rounds || []).map((r) => ({ ...r })), research: p.research || null, format: p.format || null }, 3);
 }
 
 function startOver() {
@@ -562,8 +564,8 @@ function renderSavedGrid() {
 }
 
 const DEFAULT_PANEL = 8;
-function loadScenario({ scenario, personas, teams, rounds, research }, startStep) {
-  state = { scenario, personas, teams, rounds: rounds || [], ...(research ? { research } : {}) };
+function loadScenario({ scenario, personas, teams, rounds, research, format }, startStep) {
+  state = { scenario, personas, teams, rounds: rounds || [], ...(research ? { research } : {}), ...(format ? { format } : {}) };
   // Keep every buyer the case shipped with. Panels open at 8, and sizing back up
   // should hand back the written profiles rather than empty cards.
   state.personaPool = personas.map((p) => ({ ...p }));
@@ -840,16 +842,28 @@ function renderBrands() {
 // The same cards the report will show, filled from whatever is typed right now —
 // the quickest way to see whether two pitches actually differ before spending a round.
 function renderPreview() {
-  const teams = state.teams;
-  document.getElementById("pitchPreview").innerHTML = teams.map((t) => `
-    <div class="pitch" style="--c:${COLORS[t.slot]}">
-      <div class="pitch-top"><span class="sw" style="background:var(--c)"></span><b>${esc(t.brand) || "<span class='ap-empty'>Unnamed</span>"}</b></div>
-      <h4>${t.headline ? esc(t.headline) : `<span class="ap-empty">No headline yet</span>`}</h4>
-      <p>${t.valueProp ? esc(t.valueProp) : `<span class="ap-empty">No value proposition yet</span>`}</p>
-      ${extrasOn().map((k) => `<p class="pitch-x"><span class="xk">${esc(EXTRA_BY_KEY[k].label)}</span>${t.extras?.[k] ? esc(t.extras[k]) : `<span class="ap-empty">not written yet</span>`}</p>`).join("")}
-      <div class="pitch-bottom"><span class="pitch-price num">${t.price ? esc(t.price) : `<span class="ap-empty">No price</span>`}</span></div>
-    </div>`).join("");
+  const fmt = formatOf(state.format);
+  document.getElementById("builderFmt").innerHTML = formatSwitch(fmt, "builder");
+  const el = document.getElementById("pitchPreview");
+  el.className = `pitches ads fmt-${fmt}`;
+  el.innerHTML = state.teams.map((t) => {
+    // Only the optional fields this project tests are shown, and only once written.
+    const extras = Object.fromEntries(extrasOn().filter((k) => t.extras?.[k]).map((k) => [k, t.extras[k]]));
+    return `<figure class="adf" style="--c:${COLORS[t.slot]}">
+      ${adMock({ ...t, extras }, fmt, { draft: true })}
+      <figcaption class="adf-meta"><span class="sw" style="background:var(--c)"></span><b>${esc(t.brand) || "<span class='ap-empty'>Unnamed</span>"}</b></figcaption>
+    </figure>`;
+  }).join("");
 }
+function setFormat(fmt) {
+  state.format = formatOf(fmt);
+  save();
+  renderPreview();
+}
+document.addEventListener("click", (e) => {
+  const b = e.target.closest('[data-fmt-for="builder"]');
+  if (b && state) setFormat(b.dataset.fmt);
+});
 
 function updateBrandCount(el) {
   const max = el.dataset.x ? EXTRA_BY_KEY[el.dataset.x]?.max : LIMITS[el.dataset.f];
@@ -968,6 +982,7 @@ async function runRound() {
     await view.liveFinish();
     data.slots = state.teams.map((t) => t.slot);
     data.goal = state.goal || null;
+    data.format = formatOf(state.format);
     data.goalNote = state.goalNote || "";
     await view.liveSort(data);
     state.rounds.push(data); save(); renderResearchCard();
@@ -1018,7 +1033,8 @@ async function shareRound() {
   const btn = $("#share");
   btn.disabled = true;
   try {
-    const round = state.rounds[state.rounds.length - 1];
+    // A shared round opens in the format the team is looking at now.
+    const round = { ...state.rounds[state.rounds.length - 1], format: formatOf(state.format) };
     const res = await fetch("/api/share", { method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ round, meta: { title: state.scenario.title, brief: state.scenario.brief, round: state.rounds.length } }) });
     const data = await res.json();
