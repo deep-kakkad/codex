@@ -287,6 +287,11 @@ body > header:not(.topbar){padding:18px 0 16px;border-bottom:1px solid var(--lin
 .goalcard:hover{box-shadow:var(--e2)}
 .goalcard.on{box-shadow:0 0 0 1.5px var(--ink),0 6px 16px -8px rgba(24,24,27,.3)}
 .goalcard .gq{font:600 16px/1.35 var(--display);letter-spacing:-.008em}
+/* The small drawing at the top of each question: ink at rest, fully inked when chosen. */
+.gart{display:block;width:64px;height:40px;color:#5E5E64;margin:0 0 6px -2px;transition:color .15s ease,transform .2s ease}
+.goalcard:hover .gart,.goalcard.on .gart{color:var(--ink)}
+.goalcard:hover .gart{transform:translateY(-1px)}
+.q .gart{margin-bottom:12px}
 .goalcard .gh{font:400 var(--t-ui)/1.45 var(--body);color:var(--muted)}
 .goalcard .gm{font:500 var(--t-small) var(--body);color:var(--muted);padding-top:8px;border-top:1px solid var(--line)}
 .goalnote-lab{display:block;margin-bottom:6px;font:500 var(--t-small) var(--body)}

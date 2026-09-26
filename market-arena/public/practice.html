@@ -346,6 +346,7 @@ import { LOGO_MARK, caseMark, caseTint, buyerFace, segmentTint, objectionIcon } 
 import { createResultsView, exportCsv, esc, workOf } from "./app-shared.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { initDataSheet, DOC_ICON } from "./buyers-data.js";
+import { GOAL_ART } from "./goal-art.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
 import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn } from "./account.js";
@@ -785,6 +786,7 @@ function renderGoals() {
   const on = state.goal;
   $("#goalGrid").innerHTML = GOALS.map((g) => `
     <button class="goalcard ${on === g.key ? "on" : ""}" data-goal="${g.key}" aria-pressed="${on === g.key}">
+      ${GOAL_ART[g.key] || ""}
       <span class="gq">${esc(g.q)}</span>
       <span class="gh">${esc(g.hint)}</span>
       <span class="gm">Leads with: ${esc(g.metric)}</span>

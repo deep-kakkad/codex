@@ -179,6 +179,7 @@ import { LOGO_MARK, buyerFace, segmentTint } from "./icons.js";
 import { ARENA } from "./arena-data.js";
 import { drawArena, liveArena, arenaLegend } from "./arena.js";
 import { GOALS } from "./goals.js";
+import { GOAL_ART } from "./goal-art.js";
 import { initAccount, mountAccountBar } from "./account.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
@@ -328,7 +329,7 @@ $("#evidenceRows").innerHTML = `<p class="dm-lede">${pct(R1.share[LEAD])} is the
       <span class="erow-v">${pct(R1.decisions[b.id].confidence)}</span></div>`).join("")
   + `<p class="dm-note">Bars show how sure each buyer was of their pick.</p>`;
 
-$("#questions").innerHTML = GOALS.map((g) => `<div class="q"><h3>${esc(g.q)}</h3><p>${esc(g.hint)}</p></div>`).join("");
+$("#questions").innerHTML = GOALS.map((g) => `<div class="q">${GOAL_ART[g.key] || ""}<h3>${esc(g.q)}</h3><p>${esc(g.hint)}</p></div>`).join("");
 </script>
 </body>
 </html>
