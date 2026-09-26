@@ -1262,6 +1262,13 @@ button.prow:hover{background:var(--canvas)}
 .stage-ad.lead .sa-n{font:700 18px/1 var(--display);font-stretch:75%}
 .stage-arena{display:flex;flex-direction:column;justify-content:center;padding:26px 24px 22px;min-width:0}
 .stage-arena .arena{max-width:560px}
+/* The hero room in 3D: a canvas with the live count laid over the floor. */
+.stage-arena .arena3d{position:relative;width:100%;max-width:none;height:330px;margin:-10px 0 0}
+.arena3d canvas{display:block;width:100%;height:100%}
+.a3-center{position:absolute;left:50%;bottom:8%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:2px;
+  text-align:center;pointer-events:none;--ac:52px}
+.a3-center .ac-big{text-shadow:0 1px 0 rgba(255,255,255,.8)}
+@media (max-width:720px){.stage-arena .arena3d{height:250px}.a3-center{--ac:40px}}
 .stage-legend .arena-legend{margin-top:16px}
 .demo-cap{display:none;margin:12px 0 0;text-align:center;font-size:var(--t-small);color:var(--muted);min-height:1.5em}
 .stage-feed{position:relative;display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--line);background:#FCFCFB}

@@ -244,7 +244,9 @@ async function play() {
   $("#feedHead").textContent = "Decisions";
   $("#demoCap").textContent = "The buyers are reading the three ads.";
   status("Buyers are reading", true);
-  const arena = liveArena($("#demoArena"), { people, center: { big: "0", sub: `of ${people.length} decided` }, seat: SEAT() });
+  const room3d = await room();
+  if (room3d) { room3d.reset(); room3d.setCenter({ big: "0", sub: `of ${people.length} decided` }); }
+  const arena = room3d || liveArena($("#demoArena"), { people, center: { big: "0", sub: `of ${people.length} decided` }, seat: SEAT() });
   const arrival = [];
   for (let i = 0; i < 3; i++) for (let s = 0; s < segs.length; s++) { const b = people.filter((p) => p.segIndex === s)[i]; if (b) arrival.push(b); }
   await sleep(600);
@@ -271,7 +273,8 @@ async function play() {
 }
 
 function finish() {
-  drawArena($("#demoArena"), { people: finalPeople, center, investigate: false, seat: SEAT() });
+  if (roomReady) roomReady.settle(finalPeople, center);
+  else drawArena($("#demoArena"), { people: finalPeople, center, investigate: false, seat: SEAT() });
   $("#demoLegend").innerHTML = arenaLegend(blocs, counts);
   ads({ done: true });
   if (!$("#demoFeed").children.length) {
@@ -284,6 +287,17 @@ function finish() {
 }
 
 $("#replay").addEventListener("click", play);
+// The hero room in 3D, when the browser can draw it and the visitor hasn't asked for
+// less motion or less data. It loads after the page is on screen; if it can't load,
+// the flat arena plays exactly as before.
+let roomReady = null, roomLoading = null;
+function room() {
+  if (roomReady) return Promise.resolve(roomReady);
+  if (!roomLoading) roomLoading = import("./arena3d.js")
+    .then((m) => (m.canUse3D() ? (roomReady = m.arena3D($("#demoArena"), { people })) : null))
+    .catch((e) => { console.warn("3D arena unavailable", e); return null; });
+  return roomLoading;
+}
 if (reduced()) finish();
 else { ads(); setTimeout(play, 500); }
 
