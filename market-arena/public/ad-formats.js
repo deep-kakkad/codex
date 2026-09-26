@@ -76,58 +76,58 @@ export function adMock(ad, format, { draft = false, marks = null, image = null }
   switch (formatOf(format)) {
     case "social":
       return `<div class="mock m-social">
-        <div class="ms-head"><span class="m-avatar">${initial(ad.brand)}</span><span class="ms-who"><b>${brand}</b><span>Sponsored</span></span><span class="ms-more">${I.more}</span></div>
-        <p class="ms-caption">${body}</p>
-        ${pic ? `<div class="ms-pic">${pic}</div>` : `<div class="ms-media">${audience ? `<span class="m-eyebrow">${audience}</span>` : ""}<span class="ms-hl">${headline}</span>${sub}${visual}</div>`}
-        <div class="ms-cta"><span class="ms-cta-l">${pic ? `<b class="ms-cta-hl">${headline}</b>` : ""}${offer || `<span class="m-price">${price}</span>`}</span><span class="ms-btn">${cta}</span></div>
+        <div class="ms-head"><span class="m-avatar" data-mp="a">${initial(ad.brand)}</span><span class="ms-who"><b data-mp="n">${brand}</b><span>Sponsored</span></span><span class="ms-more">${I.more}</span></div>
+        <p class="ms-caption" data-mp="b">${body}</p>
+        ${pic ? `<div class="ms-pic" data-mp="i">${pic}</div>` : `<div class="ms-media">${audience ? `<span class="m-eyebrow">${audience}</span>` : ""}<span class="ms-hl" data-mp="h">${headline}</span>${sub}${visual}</div>`}
+        <div class="ms-cta"><span class="ms-cta-l">${pic ? `<b class="ms-cta-hl" data-mp="h">${headline}</b>` : ""}${offer || `<span class="m-price" data-mp="p">${price}</span>`}</span><span class="ms-btn" data-mp="c">${cta}</span></div>
         ${proof ? `<p class="ms-proof">${proof}</p>` : ""}
         <div class="ms-actions">${I.heart}${I.chat}${I.send}<span class="ms-sp"></span>${I.save}</div>
       </div>`;
     case "search":
       return `<div class="mock m-search">
         <span class="mse-spon">Sponsored</span>
-        <div class="mse-site"><span class="m-avatar sm">${initial(ad.brand)}</span><span><b>${brand}</b></span></div>
-        <p class="mse-title">${headline}${subTxt ? ` <span class="mse-sep">|</span> ${subTxt}` : ""}</p>
-        <p class="mse-desc">${body}${proof ? ` ${proof}` : ""}</p>
-        <div class="mse-links"><span>${price}</span>${offerTxt ? `<span>${offerTxt}</span>` : ""}<span>${cta}</span></div>
+        <div class="mse-site"><span class="m-avatar sm" data-mp="a">${initial(ad.brand)}</span><span><b data-mp="n">${brand}</b></span></div>
+        <p class="mse-title" data-mp="h">${headline}${subTxt ? ` <span class="mse-sep">|</span> ${subTxt}` : ""}</p>
+        <p class="mse-desc" data-mp="b">${body}${proof ? ` ${proof}` : ""}</p>
+        <div class="mse-links"><span data-mp="p">${price}</span>${offerTxt ? `<span>${offerTxt}</span>` : ""}<span data-mp="c">${cta}</span></div>
       </div>`;
     case "landing":
       return `<div class="mock m-landing">
         <div class="ml-bar"><span class="ml-url">${brand}</span></div>
-        <div class="ml-nav"><b>${brand}</b><i></i><i></i><i></i><span class="ml-nav-btn">${cta}</span></div>
+        <div class="ml-nav"><b data-mp="n">${brand}</b><i></i><i></i><i></i><span class="ml-nav-btn">${cta}</span></div>
         <div class="ml-hero">
           ${audience ? `<span class="m-eyebrow">${audience}</span>` : ""}
-          <p class="ml-hl">${headline}</p>
-          <p class="ml-body">${subTxt || body}</p>
-          <div class="ml-ctas"><span class="ml-btn">${cta}</span><span class="m-price">${price}</span></div>
+          <p class="ml-hl" data-mp="h">${headline}</p>
+          <p class="ml-body" data-mp="b">${subTxt || body}</p>
+          <div class="ml-ctas"><span class="ml-btn" data-mp="c">${cta}</span><span class="m-price" data-mp="p">${price}</span></div>
           ${offerTxt ? `<p class="ml-offer">${offerTxt}</p>` : ""}
           ${proof ? `<p class="ml-proof">${I.check}${proof}</p>` : ""}
         </div>
-        <div class="ml-media${pic ? " has-pic" : ""}">${pic || visual || `<span class="ml-mono" aria-hidden="true">${initial(ad.brand)}</span>`}</div>
+        <div class="ml-media${pic ? " has-pic" : ""}"${pic ? ' data-mp="i"' : ""}>${pic || visual || `<span class="ml-mono" aria-hidden="true">${initial(ad.brand)}</span>`}</div>
       </div>`;
     case "email":
       return `<div class="mock m-email">
         <div class="me-row me-dim"><i></i><i></i></div>
         <div class="me-row me-ad">
-          <span class="m-avatar">${initial(ad.brand)}</span>
+          <span class="m-avatar" data-mp="a">${initial(ad.brand)}</span>
           <div class="me-main">
-            <div class="me-top"><b>${brand}</b><span class="me-tag">Ad</span><span class="me-time">9:41</span></div>
-            <p class="me-subj">${headline}</p>
-            <p class="me-pre">${subTxt ? subTxt + " " : ""}${body}</p>
-            <div class="me-chips"><span>${price}</span>${offerTxt ? `<span>${offerTxt}</span>` : ""}</div>
+            <div class="me-top"><b data-mp="n">${brand}</b><span class="me-tag">Ad</span><span class="me-time">9:41</span></div>
+            <p class="me-subj" data-mp="h">${headline}</p>
+            <p class="me-pre" data-mp="b">${subTxt ? subTxt + " " : ""}${body}</p>
+            <div class="me-chips"><span data-mp="p">${price}</span>${offerTxt ? `<span>${offerTxt}</span>` : ""}</div>
           </div>
-          ${pic ? `<span class="me-pic">${pic}</span>` : `<span class="me-star">${I.star}</span>`}
+          ${pic ? `<span class="me-pic" data-mp="i">${pic}</span>` : `<span class="me-star">${I.star}</span>`}
         </div>
         <div class="me-row me-dim"><i></i><i></i></div>
       </div>`;
     default:
       return `<div class="mock m-card">
-        ${pic ? `<div class="mc-pic">${pic}</div>` : ""}
-        <p class="mc-hl">${headline}</p>
+        ${pic ? `<div class="mc-pic" data-mp="i">${pic}</div>` : ""}
+        <p class="mc-hl" data-mp="h">${headline}</p>
         ${sub}
-        <p class="mc-body">${body}</p>
+        <p class="mc-body" data-mp="b">${body}</p>
         ${[["Call to action", "cta"], ["Offer", "offer"], ["Proof", "proof"], ["For", "audience"], ["Visual", "visual"]].filter(([, k]) => x[k]).map(([label, k]) => `<p class="pitch-x"><span class="xk">${label}</span>${mk(k, esc(x[k]))}</p>`).join("")}
-        <p class="mc-price">${price}</p>
+        <p class="mc-price" data-mp="p">${price}</p>
       </div>`;
   }
 }

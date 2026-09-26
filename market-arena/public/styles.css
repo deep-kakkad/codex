@@ -1545,3 +1545,8 @@ button.prow:hover{background:var(--canvas)}
 .cr-bar-todo{display:block;margin-top:4px;color:var(--ink);font-weight:500}
 .cr-bar .btn{flex:none}
 @media (max-width:640px){.cr-bar{flex-wrap:wrap}.cr-bar .btn{width:100%}.cr-dl div{grid-template-columns:1fr;gap:0}}
+
+/* The particle mark */
+.pmark{display:block}
+.final-arena{height:190px;max-width:420px}
+.ds-pmark{height:110px;margin:4px 0 8px}

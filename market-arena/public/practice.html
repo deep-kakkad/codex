@@ -346,6 +346,7 @@
 import { LOGO_MARK, caseMark, caseTint, buyerFace, segmentTint, objectionIcon } from "./icons.js";
 import { createResultsView, exportCsv, esc, workOf } from "./app-shared.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
+import { morphFormat } from "./morph.js";
 import { initDataSheet, DOC_ICON } from "./buyers-data.js";
 import { GOAL_ART } from "./goal-art.js";
 import { creativeField, creativeBar, prepareImage, readCreatives, IMG_IC } from "./creative-ui.js";
@@ -1084,7 +1085,7 @@ function renderPreview() {
 function setFormat(fmt) {
   state.format = formatOf(fmt);
   save();
-  renderPreview();
+  morphFormat(document.getElementById("pitchPreview"), renderPreview);
 }
 document.addEventListener("click", (e) => {
   const b = e.target.closest('[data-fmt-for="builder"]');

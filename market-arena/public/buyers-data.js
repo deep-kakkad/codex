@@ -83,8 +83,12 @@ export function initDataSheet({ getState, apply, market }) {
     const st = getState();
     const segs = keepSegs ? [...new Set(st.personas.map((p) => p.segment).filter(Boolean))] : [];
     el.innerHTML = `${head("Drafting", `Reading your notes`)}
-      <div class="drawer-body ds"><p class="drawer-lede" role="status">Drafting ${count} buyers and checking every line they quote against your notes, word for word. Usually under ten seconds.</p>
+      <div class="drawer-body ds"><div class="ds-pmark" id="dsPmark" aria-hidden="true"></div>
+        <p class="drawer-lede" role="status">Drafting ${count} buyers and checking every line they quote against your notes, word for word. Usually under ten seconds.</p>
         ${Array.from({ length: 3 }, () => `<div class="dsb dsb-skel"><span class="skel" style="width:44px;height:44px;border-radius:50%"></span><div><span class="skel" style="height:14px;width:40%;margin-bottom:10px"></span><span class="skel" style="height:10px;width:90%;margin-bottom:6px"></span><span class="skel" style="height:10px;width:70%"></span></div></div>`).join("")}</div>`;
+    // While the buyers are drafted, a crowd of dots keeps gathering into the mark.
+    const mark = el.querySelector("#dsPmark");
+    const loader = await import("./particles.js").then((m) => m.particleMark(mark, { size: 84, loop: true, start: "now", density: 0.9 })).catch(() => null);
     try {
       const res = await fetch("/api/buyers", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, count, segments: segs, market: market() }) });
@@ -92,8 +96,9 @@ export function initDataSheet({ getState, apply, market }) {
       refreshAccount?.().catch?.(() => {});
       if (!res.ok) throw new Error(d.error || "Couldn't draft the buyers. Nothing was charged.");
       draft = { ...d, buyers: d.buyers.map((b) => ({ ...b, keep: true })) };
+      loader?.dispose();
       paintReview();
-    } catch (e) { paintPaste(e.message); }
+    } catch (e) { loader?.dispose(); paintPaste(e.message); }
   }
 
   function paintReview() {

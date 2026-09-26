@@ -9,6 +9,7 @@ import { drawArena, liveArena, arenaLegend } from "./arena.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { clearPush } from "./ad-parts.js";
 import { descriptionList } from "./creative-ui.js";
+import { morphFormat } from "./morph.js";
 import { EXTRA_FIELDS } from "./validate.js";
 import { GOAL_BY_KEY } from "./goals.js";
 
@@ -987,7 +988,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     const b = e.target.closest('[data-fmt-for="report"]');
     if (!b || !pitchRound) return;
     format = b.dataset.fmt;
-    renderPitches(pitchRound);
+    morphFormat($("#pitches"), () => renderPitches(pitchRound));
     onFormat?.(format);
   });
 

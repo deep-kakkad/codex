@@ -336,7 +336,9 @@ $("#visBuyers").innerHTML = `<div class="vis-faces">${people.map((b) => buyerFac
 $("#visAds").innerHTML = `<div class="vis-ads">${ARENA.versions.map((v) => `<div class="vis-ad" style="--c:${COLOR[v.id]}"><span class="va-k">${v.id}</span><b>${esc(v.headline)}</b><span>${esc(v.priceR1)}</span></div>`).join("")}</div>`;
 $("#visArena").innerHTML = `<div class="vis-arena" id="visArenaInner"></div>`;
 drawArena($("#visArenaInner"), { people: finalPeople, investigate: false, seat: 24 });
-drawArena($("#finalArena"), { people: finalPeople, investigate: false, seat: 30 });
+// The close: the mark assembling from a crowd of dots as it comes into view.
+import("./particles.js").then((m) => m.particleMark($("#finalArena"), { size: 176, density: 1.35 }))
+  .catch(() => drawArena($("#finalArena"), { people: finalPeople, investigate: false, seat: 30 }));
 
 // The evidence mock: every buyer who chose the leader, how sure they were, from the real round.
 $(".dm-title").textContent = `Version ${LEAD}: ${pct(R1.share[LEAD])}`;
