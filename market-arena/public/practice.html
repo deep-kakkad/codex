@@ -849,24 +849,127 @@ function refreshTag(el) {
   if (!label) return;
   const t = state.teams[+el.dataset.i];
   label.querySelectorAll(".ftag").forEach((x) => x.remove());
-  label.querySelector(".count")?.insertAdjacentHTML("beforebegin", fieldTag(t, el.dataset.x ? `x:${el.dataset.x}` : el.dataset.f));
+  label.querySelector(".count")?.insertAdjacentHTML("beforebegin", pageTag(t, el.dataset.x || el.dataset.f) + fieldTag(t, el.dataset.x ? `x:${el.dataset.x}` : el.dataset.f));
 }
 const sentencesOf = (v) => String(v || "").split(/(?<=[.!?])\s+(?=\S)/).filter(Boolean).length;
+
+/* ---- Start a version from a web page ----------------------------------------
+   Paste a landing page (yours or a competitor's) and the version fills from what
+   the page says. Each filled field is tagged with whether it is the page's exact
+   words or was condensed from it, until the user changes it; Undo puts back what
+   was there. The page is read on the server, once, and not stored. */
+const PAGE_LABEL = { brand: "name", headline: "headline", subheadline: "subheadline", valueProp: "value proposition", price: "price",
+  cta: "call to action", offer: "offer", proof: "proof point", audience: "who it is for" };
+const LINK_IC = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L12 5.6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg>';
+const pageUi = {};   // per card: { open, busy, url, error }
+const listWords = (xs) => xs.length <= 1 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`;
+const valueOf = (t, k) => (k in PAGE_LABEL && !["brand", "headline", "valueProp", "price"].includes(k) ? t.extras?.[k] : t[k]) ?? "";
+
+function pageTag(t, k) {
+  const fp = t.fromPage;
+  if (!fp?.vals || fp.vals[k] == null || String(valueOf(t, k)).trim() !== fp.vals[k]) return "";
+  const exact = fp.exact.includes(k);
+  return `<span class="ftag ftag-page" title="${exact ? `Copied word for word from ${esc(fp.host)}` : `Condensed from what ${esc(fp.host)} says; check it reads right`}">${exact ? "page’s words" : "condensed"}</span>`;
+}
+function pageBox(t, i) {
+  const ui = pageUi[i] || {};
+  const fp = t.fromPage;
+  if (ui.open || ui.busy) {
+    const me = account();
+    return `<form class="fp-form${ui.busy ? " busy" : ""}" data-fp-form="${i}" aria-busy="${!!ui.busy}">
+      <label class="fp-lab" for="fp-url-${i}">${LINK_IC}Fill this version from a web page</label>
+      <div class="fp-row"><input id="fp-url-${i}" class="field" type="text" inputmode="url" autocomplete="url" spellcheck="false" placeholder="yourbrand.com, or a competitor’s page" value="${esc(ui.url || "")}"${ui.busy ? " disabled" : ""}>
+        ${me.signedIn ? `<button class="btn-primary" type="submit"${ui.busy ? " disabled" : ""}>${ui.busy ? "Reading…" : "Read page"}</button>` : `<button class="btn-primary" type="button" data-fp-signin>Sign in to read</button>`}
+        <button class="btn-quiet" type="button" data-fp-cancel="${i}"${ui.busy ? " disabled" : ""}>Cancel</button></div>
+      ${ui.error ? `<p class="fielderr" role="alert">${esc(ui.error)}</p>` : ""}
+      <p class="fp-meta">${me.costs?.round ?? 1} credit, refunded if nothing usable comes back. The page is read once and not stored. Fields it fills replace what is there; Undo puts them back.</p>
+    </form>`;
+  }
+  if (fp?.vals && !fp.dismissed) {
+    const filled = Object.keys(fp.vals);
+    const cond = fp.condensed.filter((k) => filled.includes(k)).map((k) => PAGE_LABEL[k]);
+    const exact = fp.exact.filter((k) => filled.includes(k)).map((k) => PAGE_LABEL[k]);
+    const unused = (fp.unused || []).map((k) => PAGE_LABEL[k]);
+    return `<div class="fp-done" role="status">
+      <p><b>Filled from ${esc(fp.host)}.</b> ${exact.length ? `The ${listWords(exact)} ${exact.length === 1 ? "is" : "are"} the page’s own words` : ""}${exact.length && cond.length ? "; the " : cond.length ? "The " : ""}${cond.length ? `${listWords(cond)} ${cond.length === 1 ? "was" : "were"} condensed from it` : ""}. Check each before you run.</p>
+      ${fp.missing ? `<p class="fp-miss">${esc(fp.missing)}</p>` : ""}
+      ${unused.length ? `<p class="fp-miss">The page also has ${listWords(unused.map((u) => `${/^[aeiou]/.test(u) ? "an" : "a"} ${u}`))}. ${state.rounds.length ? "This project’s fields are set, so they weren’t used." : "Turn those fields on under “What else to test” to use them."}</p>` : ""}
+      <div class="fp-acts"><button class="btn-quiet" type="button" data-fp-undo="${i}">Undo</button><button class="btn-quiet" type="button" data-fp-dismiss="${i}">Done</button></div>
+    </div>`;
+  }
+  return `<button class="fp-open" type="button" data-fp-open="${i}">${LINK_IC}Fill from a web page</button>`;
+}
+async function readPageInto(i) {
+  const t = state.teams[i];
+  const ui = pageUi[i] = { ...(pageUi[i] || {}), busy: true, error: "" };
+  ui.url = document.getElementById(`fp-url-${i}`)?.value.trim() || ui.url || "";
+  if (!ui.url) { ui.busy = false; ui.error = "Paste the address of the page."; renderBrands(); return document.getElementById(`fp-url-${i}`)?.focus(); }
+  renderBrands();
+  try {
+    const res = await fetch("/api/from-page", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: ui.url }) });
+    const d = await res.json().catch(() => ({}));
+    import("./account.js").then((m) => m.refresh?.()).catch(() => {});
+    if (!res.ok) throw new Error(d.error || "Couldn't read that page, so nothing was charged.");
+    const on = new Set(extrasOn());
+    const before = { brand: t.brand, headline: t.headline, valueProp: t.valueProp, price: t.price, extras: { ...(t.extras || {}) } };
+    const vals = {}, unused = [];
+    for (const [k, v] of Object.entries(d.fields || {})) {
+      // The name goes too: a competitor's words under your version's name would
+      // make the report credit the wrong brand.
+      if (["brand", "headline", "valueProp", "price"].includes(k)) { t[k] = v; vals[k] = v; }
+      else if (on.has(k)) { t.extras = t.extras || {}; t.extras[k] = v; vals[k] = v; }
+      else unused.push(k);
+    }
+    t.fromPage = { host: d.host, url: d.url, vals, exact: d.exact || [], condensed: d.condensed || [], missing: d.missing || "", unused, before };
+    pageUi[i] = {};
+    save(); renderBrands();
+    document.querySelector(`#brands .brand:nth-child(${i + 1}) .fp-done`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  } catch (e) {
+    pageUi[i] = { ...ui, busy: false, error: e.message };
+    renderBrands();
+    document.getElementById(`fp-url-${i}`)?.focus();
+  }
+}
+$("#brands").addEventListener("submit", (e) => {
+  const f = e.target.closest("[data-fp-form]");
+  if (!f) return;
+  e.preventDefault();
+  readPageInto(+f.dataset.fpForm);
+});
+$("#brands").addEventListener("click", (e) => {
+  const o = e.target.closest("[data-fp-open]");
+  if (o) { const i = +o.dataset.fpOpen; pageUi[i] = { open: true }; renderBrands(); return document.getElementById(`fp-url-${i}`)?.focus(); }
+  const c = e.target.closest("[data-fp-cancel]");
+  if (c) { const i = +c.dataset.fpCancel; pageUi[i] = {}; renderBrands(); return document.querySelector(`[data-fp-open="${i}"]`)?.focus(); }
+  if (e.target.closest("[data-fp-signin]")) return openSignIn("login");
+  const u = e.target.closest("[data-fp-undo]");
+  if (u) {
+    const t = state.teams[+u.dataset.fpUndo], b = t.fromPage?.before;
+    if (b) { Object.assign(t, { brand: b.brand, headline: b.headline, valueProp: b.valueProp, price: b.price }); if (t.extras) Object.keys(t.extras).forEach((k) => { t.extras[k] = b.extras[k] ?? ""; }); }
+    delete t.fromPage; save(); renderBrands();
+    toast("Put back what was there before.");
+    return;
+  }
+  const d = e.target.closest("[data-fp-dismiss]");
+  if (d) { const t = state.teams[+d.dataset.fpDismiss]; if (t.fromPage) { t.fromPage.dismissed = true; delete t.fromPage.before; } save(); renderBrands(); }
+});
+
 function renderBrands() {
   const L = LIMITS;
   $("#brands").innerHTML = state.teams.map((t, i) => `
     <div class="brand" style="--c:${COLORS[t.slot]}">
-      <label for="brand-${i}">Version name <span class="count" data-for="brand-${i}"></span></label>
+      ${pageBox(t, i)}
+      <label for="brand-${i}">Version name ${pageTag(t, "brand")}<span class="count" data-for="brand-${i}"></span></label>
       <div class="brand-name"><span class="sw" style="background:var(--c)" aria-hidden="true"></span><input id="brand-${i}" class="name" data-i="${i}" data-f="brand" maxlength="${L.brand + 20}" value="${esc(t.brand)}"></div>
       ${FIELDS.map(([f, lab, tag]) => `
-        <label for="${f}-${i}">${lab} ${fieldTag(t, f)}<span class="count" data-for="${f}-${i}"></span></label>
+        <label for="${f}-${i}">${lab} ${pageTag(t, f)}${fieldTag(t, f)}<span class="count" data-for="${f}-${i}"></span></label>
         ${tag === "input"
           ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
           : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
       ${extrasOn().map((k) => {
         const f = EXTRA_BY_KEY[k];
         return `
-        <label for="x-${k}-${i}">${esc(f.label)} ${fieldTag(t, `x:${k}`)}<span class="count" data-for="x-${k}-${i}"></span></label>
+        <label for="x-${k}-${i}">${esc(f.label)} ${pageTag(t, k)}${fieldTag(t, `x:${k}`)}<span class="count" data-for="x-${k}-${i}"></span></label>
         ${f.tag === "textarea"
           ? `<textarea id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}">${esc(t.extras?.[k] || "")}</textarea>`
           : `<input id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}" value="${esc(t.extras?.[k] || "")}">`}`;
