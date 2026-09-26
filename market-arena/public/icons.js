@@ -187,6 +187,13 @@ function hash(str) {
   return Math.abs(h);
 }
 
+// The same traits the face draws, for anything else that shows this buyer (the 3D
+// room on the homepage), so a buyer looks like one person everywhere.
+export function faceTraits(persona) {
+  const h = hash(persona?.id || persona?.name || "buyer");
+  return { skin: SKIN[h % SKIN.length], hairColor: HAIR_COLOR[(h >> 6) % HAIR_COLOR.length], hairStyle: (h >> 3) % HAIR.length };
+}
+
 // `opts.tint` replaces the segment colour. The report passes "currentColor", so the
 // face takes whatever colour its container sets, which is how a buyer's pick colours
 // their face and how that colour can be animated in. `opts.dashed` marks a buyer whose

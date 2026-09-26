@@ -301,7 +301,7 @@ function finish() {
       <span class="fd-who"><b>${esc(b.name)}</b><span>${esc(b.segment)}</span></span><span class="fd-pick"><i class="sw" style="background:${COLOR[choice(b)]}"></i>${choice(b) === "none" ? "None" : choice(b)}</span></li>`).join("");
     $("#feedHead").textContent = `All ${people.length} decided`;
   }
-  $("#demoCap").textContent = `Version ${LEAD} leads. ${counts[LEAD]} of ${people.length} picked it outright.`;
+  $("#demoCap").textContent = `Version ${LEAD} wins. ${counts[LEAD]} of ${people.length} made it their top pick.`;
   status("Round complete");
 }
 
