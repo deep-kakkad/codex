@@ -40,10 +40,12 @@ const I = {
 
 /* ad: { brand, headline, valueProp, price, extras: { subheadline, cta, offer, proof, audience, visual } }
    draft: true in the builder, where empty fields show what is still missing.
+   image: the uploaded creative's picture, when there is one. A round that used a
+   creative but has no picture to hand (a shared link) shows what the buyers read.
    marks: in the report, what did the work: { id, parts: { key: { pull: 1|2|0, push: bool, title } } }.
    A marked part is drawn with a highlighter (it convinced buyers) or a wavy underline
    (it put them off), and opens its evidence when selected. */
-export function adMock(ad, format, { draft = false, marks = null } = {}) {
+export function adMock(ad, format, { draft = false, marks = null, image = null } = {}) {
   const x = ad.extras || {};
   const mk = (key, html) => {
     const m = marks?.parts?.[key];
@@ -63,14 +65,21 @@ export function adMock(ad, format, { draft = false, marks = null } = {}) {
   const proof = x.proof ? mk("proof", esc(x.proof)) : "";
   const audience = x.audience ? mk("audience", esc(x.audience)) : "";
   const visual = x.visual ? `<span class="m-visual">${mk("visual", esc(x.visual))}</span>` : "";
+  // The creative itself, marked like any other part when it did the work.
+  const shows = ad.creative?.description?.shows;
+  const pic = image || ad.creative
+    ? mk("image", image
+      ? `<img class="m-img" src="${esc(image)}" alt="${esc(shows || "The uploaded creative")}">`
+      : `<span class="m-img m-img-none"><b>Image</b>${esc(shows || "An uploaded creative")}</span>`)
+    : "";
 
   switch (formatOf(format)) {
     case "social":
       return `<div class="mock m-social">
         <div class="ms-head"><span class="m-avatar">${initial(ad.brand)}</span><span class="ms-who"><b>${brand}</b><span>Sponsored</span></span><span class="ms-more">${I.more}</span></div>
         <p class="ms-caption">${body}</p>
-        <div class="ms-media">${audience ? `<span class="m-eyebrow">${audience}</span>` : ""}<span class="ms-hl">${headline}</span>${sub}${visual}</div>
-        <div class="ms-cta"><span class="ms-cta-l">${offer || `<span class="m-price">${price}</span>`}</span><span class="ms-btn">${cta}</span></div>
+        ${pic ? `<div class="ms-pic">${pic}</div>` : `<div class="ms-media">${audience ? `<span class="m-eyebrow">${audience}</span>` : ""}<span class="ms-hl">${headline}</span>${sub}${visual}</div>`}
+        <div class="ms-cta"><span class="ms-cta-l">${pic ? `<b class="ms-cta-hl">${headline}</b>` : ""}${offer || `<span class="m-price">${price}</span>`}</span><span class="ms-btn">${cta}</span></div>
         ${proof ? `<p class="ms-proof">${proof}</p>` : ""}
         <div class="ms-actions">${I.heart}${I.chat}${I.send}<span class="ms-sp"></span>${I.save}</div>
       </div>`;
@@ -94,7 +103,7 @@ export function adMock(ad, format, { draft = false, marks = null } = {}) {
           ${offerTxt ? `<p class="ml-offer">${offerTxt}</p>` : ""}
           ${proof ? `<p class="ml-proof">${I.check}${proof}</p>` : ""}
         </div>
-        <div class="ml-media">${visual || `<span class="ml-mono" aria-hidden="true">${initial(ad.brand)}</span>`}</div>
+        <div class="ml-media${pic ? " has-pic" : ""}">${pic || visual || `<span class="ml-mono" aria-hidden="true">${initial(ad.brand)}</span>`}</div>
       </div>`;
     case "email":
       return `<div class="mock m-email">
@@ -107,12 +116,13 @@ export function adMock(ad, format, { draft = false, marks = null } = {}) {
             <p class="me-pre">${subTxt ? subTxt + " " : ""}${body}</p>
             <div class="me-chips"><span>${price}</span>${offerTxt ? `<span>${offerTxt}</span>` : ""}</div>
           </div>
-          <span class="me-star">${I.star}</span>
+          ${pic ? `<span class="me-pic">${pic}</span>` : `<span class="me-star">${I.star}</span>`}
         </div>
         <div class="me-row me-dim"><i></i><i></i></div>
       </div>`;
     default:
       return `<div class="mock m-card">
+        ${pic ? `<div class="mc-pic">${pic}</div>` : ""}
         <p class="mc-hl">${headline}</p>
         ${sub}
         <p class="mc-body">${body}</p>

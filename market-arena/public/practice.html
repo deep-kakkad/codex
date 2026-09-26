@@ -115,6 +115,7 @@
         <h2 id="editorTitle">Write the versions you want to test</h2>
         <p class="sub">Each version needs a name, a headline, a value proposition and a price. Every buyer sees all of them side by side, then picks one. Or walks away.</p>
         <div class="extrapick" id="extraPick"></div>
+        <div id="creativeBar"></div>
         <div class="brands" id="brands"></div>
         <div class="adpreview" id="adPreview">
           <div class="ap-head"><p class="ap-label">What your buyers will see</p><div id="builderFmt"></div></div>
@@ -347,6 +348,7 @@ import { createResultsView, exportCsv, esc, workOf } from "./app-shared.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { initDataSheet, DOC_ICON } from "./buyers-data.js";
 import { GOAL_ART } from "./goal-art.js";
+import { creativeField, creativeBar, prepareImage, readCreatives, IMG_IC } from "./creative-ui.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
 import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn } from "./account.js";
@@ -354,7 +356,7 @@ import { menuButton, toast } from "./ui.js";
 import { drawArena } from "./arena.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
-const view = createResultsView({ onFormat: (f) => { if (state) setFormat(f); }, getFormat: () => state?.format });
+const view = createResultsView({ onFormat: (f) => { if (state) setFormat(f); }, getFormat: () => state?.format, getImage: (id) => state?.creativeThumbs?.[id] || null });
 const $ = (s) => document.querySelector(s);
 const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
 
@@ -423,7 +425,7 @@ function saveProject() {
   const name = prompt("Name this project", state.scenario.title || "My project");
   if (!name) return;
   const saved = loadJSON(SAVED_KEY, []);
-  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })), ...(state.research ? { research: state.research } : {}), ...(state.format ? { format: state.format } : {}) });
+  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })), ...(state.research ? { research: state.research } : {}), ...(state.format ? { format: state.format } : {}), ...projectExtras(state) });
   saveJSON(SAVED_KEY, saved.slice(0, 20));
   toast(state.rounds.length ? `Saved “${name}” with ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""}.` : `Saved “${name}”.`);
 }
@@ -433,7 +435,12 @@ function openSaved(id) {
   const p = saved.find((x) => x.id === id);
   if (!p) return;
   if (state && inProject() && !confirm(`Open “${p.name}”? It replaces the project you have open, so save that one first if you want it back.`)) return;
-  loadScenario({ scenario: { ...p.scenario }, personas: p.personas.map((x) => ({ ...x })), teams: p.teams.map((t) => ({ ...t })), rounds: (p.rounds || []).map((r) => ({ ...r })), research: p.research || null, format: p.format || null }, 3);
+  loadScenario({ scenario: { ...p.scenario }, personas: p.personas.map((x) => ({ ...x })), teams: p.teams.map((t) => ({ ...t })), rounds: (p.rounds || []).map((r) => ({ ...r })), research: p.research || null, format: p.format || null, ...projectExtras(p) }, 3);
+}
+// What else a project carries beyond its buyers and versions: the optional fields it
+// tests, the question it asked, and its creatives.
+function projectExtras(x) {
+  return Object.fromEntries(["extras", "goal", "goalNote", "creativeOn", "creativeThumbs"].filter((k) => x[k] != null).map((k) => [k, x[k]]));
 }
 
 function startOver() {
@@ -571,8 +578,8 @@ function renderSavedGrid() {
 }
 
 const DEFAULT_PANEL = 8;
-function loadScenario({ scenario, personas, teams, rounds, research, format }, startStep) {
-  state = { scenario, personas, teams, rounds: rounds || [], ...(research ? { research } : {}), ...(format ? { format } : {}) };
+function loadScenario({ scenario, personas, teams, rounds, research, format, ...more }, startStep) {
+  state = { scenario, personas, teams, rounds: rounds || [], ...(research ? { research } : {}), ...(format ? { format } : {}), ...projectExtras(more) };
   // Keep every buyer the case shipped with. Panels open at 8, and sizing back up
   // should hand back the written profiles rather than empty cards.
   state.personaPool = personas.map((p) => ({ ...p }));
@@ -807,6 +814,8 @@ function renderExtraPick() {
       ${EXTRA_FIELDS.map((f) => `
         <button class="ep-chip" data-extra="${f.key}" aria-pressed="${on.includes(f.key)}"
           ${locked ? "disabled" : ""} title="${esc(f.hint)}">${esc(f.label)}</button>`).join("")}
+      <button class="ep-chip ep-creative" data-creative-toggle aria-pressed="${Boolean(state.creativeOn)}" ${locked ? "disabled" : ""}
+        title="Upload an image for each version. The buyers judge a description of it.">${IMG_IC}Image creative</button>
     </div>
     <p class="ep-note">${locked
       ? `Locked at round 1, so every round compares like with like. Start a new project to test a different set.`
@@ -954,6 +963,71 @@ $("#brands").addEventListener("click", (e) => {
   if (d) { const t = state.teams[+d.dataset.fpDismiss]; if (t.fromPage) { t.fromPage.dismissed = true; delete t.fromPage.before; } save(); renderBrands(); }
 });
 
+/* ---- Uploaded creatives ------------------------------------------------------
+   Optional, like the other fields, and locked at round 1. The picture lives in this
+   browser (a small preview per image); the buyers get the description, which is read
+   once per image and reused, so the same creative is always judged the same way. */
+let creativeBusy = false;
+function renderCreativeBar() {
+  const el = document.getElementById("creativeBar");
+  if (!el) return;
+  el.innerHTML = state.creativeOn ? creativeBar(state.teams, { signedIn: account().signedIn, cost: account().costs?.ask ?? 10, busy: creativeBusy }) : "";
+}
+// Previews for every creative a round has used, so old reports keep their pictures.
+function rememberCreatives() {
+  state.creativeThumbs = state.creativeThumbs || {};
+  state.teams.forEach((t) => { if (t.creative?.description && t.creative.id) state.creativeThumbs[t.creative.id] = t.creative.thumb; });
+  const used = new Set([...state.teams.map((t) => t.creative?.id), ...state.rounds.flatMap((r) => r.brands.map((b) => b.creative?.id))].filter(Boolean));
+  Object.keys(state.creativeThumbs).forEach((k) => { if (!used.has(k)) delete state.creativeThumbs[k]; });
+}
+async function setCreative(i, file) {
+  try {
+    const img = await prepareImage(file);
+    const t = state.teams[i];
+    if (t.creative?.id === img.id) return toast("That's the same image. Nothing changed.");
+    // An image this project has already had read keeps its description.
+    const known = state.teams.find((x) => x.creative?.id === img.id && x.creative.description)?.creative.description;
+    t.creative = { id: img.id, thumb: img.thumb, name: img.name, description: known || null, ...(known ? {} : { upload: img.upload }) };
+    save(); renderBrands();
+    try { localStorage.setItem("__cr_probe", "1"); localStorage.removeItem("__cr_probe"); } catch { toast("Your browser's storage is full. Read the images now so only small previews are kept.", { tone: "error" }); }
+  } catch (err) { toast(err.message, { tone: "error" }); }
+}
+$("#extraPick").addEventListener("click", (e) => {
+  if (!e.target.closest("[data-creative-toggle]") || extrasLocked()) return;
+  if (state.creativeOn && state.teams.some((t) => t.creative) && !confirm("Turn off image creatives? The images you've added to each version will be removed.")) return;
+  state.creativeOn = !state.creativeOn;
+  if (!state.creativeOn) state.teams.forEach((t) => { delete t.creative; });
+  save(); renderExtraPick(); renderBrands();
+});
+$("#brands").addEventListener("change", (e) => {
+  const f = e.target.closest("[data-cr-file]");
+  if (f?.files?.[0]) setCreative(+f.dataset.crFile, f.files[0]);
+});
+$("#brands").addEventListener("dragover", (e) => { const z = e.target.closest("[data-cr-drop]"); if (!z) return; e.preventDefault(); z.classList.add("over"); });
+$("#brands").addEventListener("dragleave", (e) => { e.target.closest("[data-cr-drop]")?.classList.remove("over"); });
+$("#brands").addEventListener("drop", (e) => {
+  const z = e.target.closest("[data-cr-drop]"); if (!z) return;
+  e.preventDefault(); z.classList.remove("over");
+  const file = e.dataTransfer?.files?.[0];
+  if (file) setCreative(+z.dataset.crDrop, file);
+});
+$("#brands").addEventListener("click", (e) => {
+  const r = e.target.closest("[data-cr-remove]");
+  if (r) { delete state.teams[+r.dataset.crRemove].creative; save(); renderBrands(); }
+});
+document.getElementById("creativeBar").addEventListener("click", async (e) => {
+  if (e.target.closest("[data-cr-signin]")) return openSignIn("login");
+  if (!e.target.closest("[data-cr-read]") || creativeBusy) return;
+  creativeBusy = true; renderCreativeBar();
+  try {
+    const r = await readCreatives(state.teams);
+    rememberCreatives(); save();
+    toast(r.charged ? `Read ${r.read} image${r.read === 1 ? "" : "s"}. ${r.charged} credits used.` : "Those images were read before, so nothing was charged.");
+  } catch (err) { toast(err.message, { tone: "error" }); if (err.status === 401) openSignIn("login"); }
+  creativeBusy = false; renderBrands();
+  import("./account.js").then((m) => m.refresh?.()).catch(() => {});
+});
+
 function renderBrands() {
   const L = LIMITS;
   $("#brands").innerHTML = state.teams.map((t, i) => `
@@ -974,9 +1048,11 @@ function renderBrands() {
           ? `<textarea id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}">${esc(t.extras?.[k] || "")}</textarea>`
           : `<input id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}" value="${esc(t.extras?.[k] || "")}">`}`;
       }).join("")}
+      ${state.creativeOn ? creativeField(t, i, { cost: account().costs?.ask ?? 10 }) : ""}
       ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this version")}</button>` : ""}
     </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a version</button>` : "");
   document.querySelectorAll("#brands [data-f]").forEach(updateBrandCount);
+  renderCreativeBar();
   renderExtraPick();
   renderGoals();
   $("#goalNote").value = state.goalNote || "";
@@ -997,8 +1073,10 @@ function renderPreview() {
   el.innerHTML = state.teams.map((t) => {
     // Only the optional fields this project tests are shown, and only once written.
     const extras = Object.fromEntries(extrasOn().filter((k) => t.extras?.[k]).map((k) => [k, t.extras[k]]));
+    const img = state.creativeOn ? (t.creative?.thumb || null) : null;
+    const creative = state.creativeOn && !img ? { description: { shows: "No image yet" } } : t.creative?.description ? { description: t.creative.description } : null;
     return `<figure class="adf" style="--c:${COLORS[t.slot]}">
-      ${adMock({ ...t, extras }, fmt, { draft: true })}
+      ${adMock({ ...t, extras, creative }, fmt, { draft: true, image: img })}
       <figcaption class="adf-meta"><span class="sw" style="background:var(--c)"></span><b>${esc(t.brand) || "<span class='ap-empty'>Unnamed</span>"}</b></figcaption>
     </figure>`;
   }).join("");
@@ -1099,8 +1177,21 @@ async function runRound() {
   // Validate before anything announces work. The old order set the status line and
   // the skeleton first, so an invalid round showed "Showing your ads to 12 buyers…"
   // for a round that had not started and could not start.
-  const teams = state.teams.map(({ brand, headline, valueProp, price, extras }) => ({
+  // Creatives come first: every version needs an image, and any new one is read
+  // (once, and charged once) before the round goes out.
+  if (state.creativeOn) {
+    const gap = state.teams.findIndex((t) => !t.creative);
+    if (gap >= 0) return showFieldProblem({ index: gap, field: "creative", message: `${state.teams[gap].brand || `Version ${gap + 1}`} needs an image. Every version needs one, so it's a fair fight.` }, "team");
+    if (state.teams.some((t) => !t.creative.description)) {
+      if (!account().signedIn) { setStatus("Sign in to test creatives. Reading images costs credits.", true); openSignIn("login"); return; }
+      setStatus("Reading your images…", false);
+      try { const r = await readCreatives(state.teams); rememberCreatives(); save(); renderBrands(); if (r.charged) toast(`Read ${r.read} image${r.read === 1 ? "" : "s"}. ${r.charged} credits used.`); }
+      catch (err) { setStatus(err.message, true); toast(err.message, { tone: "error" }); return; }
+    }
+  }
+  const teams = state.teams.map(({ brand, headline, valueProp, price, extras, creative }) => ({
     brand, headline, valueProp, price,
+    ...(state.creativeOn && creative ? { creative: { id: creative.id, description: creative.description } } : {}),
     ...(extrasOn().length ? { extras: Object.fromEntries(extrasOn().map((k) => [k, extras?.[k] ?? ""])) } : {}),
   }));
   const personas = state.personas.map(({ id, name, segment, profile }) => ({ id, name, segment, profile }));
@@ -1133,7 +1224,7 @@ async function runRound() {
     data.format = formatOf(state.format);
     data.goalNote = state.goalNote || "";
     await view.liveSort(data);
-    state.rounds.push(data); save(); renderResearchCard();
+    state.rounds.push(data); rememberCreatives(); save(); renderResearchCard();
     setStatus("", false); view.resetOpen();
     // "live": the faces are already filled in, so they are not greyed and replayed.
     renderBrands(); view.renderResults(state.rounds, "live");
@@ -1267,7 +1358,7 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-onAccountChange(() => { renderAsk(); renderResearchCard(); });
+onAccountChange(() => { renderAsk(); renderResearchCard(); if (state) renderCreativeBar(); });
 </script>
 </body>
 </html>

@@ -24,7 +24,7 @@ http.createServer(async (req, res) => {
   if (req.method === "GET" && url === "/api/templates") return send(res, templates());
   if (req.method === "POST" && url === "/api/round") {
     let body = "";
-    for await (const c of req) { body += c; if (body.length > 20000) return send(res, [413, { error: "Request too large." }]); }
+    for await (const c of req) { body += c; if (body.length > 32000) return send(res, [413, { error: "Request too large." }]); }
     if ((req.headers.accept || "").includes("application/x-ndjson")) {
       const prep = prepareRound(body, req.headers["x-arena-code"], req.socket.remoteAddress);
       if (prep.error) return send(res, prep.error);

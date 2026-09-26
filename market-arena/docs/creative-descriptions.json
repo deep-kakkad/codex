@@ -1,0 +1,107 @@
+{
+ "a": {
+  "id": "dbf890fc9595bfcebfbc356631fce660",
+  "runs": [
+   {
+    "words_on_image": "Wake up to better coffee. / ☀ 7:00 am / Your cold brew, already in the fridge. / ₹699/mo / BrewCo / COLD BREW",
+    "shows": "A brown bottle of cold brew coffee with a black cap and a label that says BrewCo and COLD BREW. A white message card shows a sun icon, 7:00 am, and a note about cold brew already in the fridge.",
+    "setting": "Plain beige background.",
+    "product_visible": "yes, prominently",
+    "text_amount": "mostly text",
+    "main_colours": "beige, brown, white, black",
+    "layout": "Headline at the top left, message card lower left, coffee bottle on the right, price at the bottom left.",
+    "ms": 3384
+   },
+   {
+    "words_on_image": "Wake up to better coffee. / ☀ 7:00 am / Your cold brew, already in the fridge. / ₹699/mo / BrewCo / COLD BREW",
+    "shows": "A brown bottle of cold brew coffee with a black cap and a label reading BrewCo COLD BREW. A white card shows a sun icon, 7:00 am, and a short message about cold brew being in the fridge.",
+    "setting": "plain beige gradient background",
+    "product_visible": "yes, prominently",
+    "text_amount": "about half",
+    "main_colours": "beige, brown, black, white",
+    "layout": "headline at top left, message card lower left, price bottom left, bottle on right",
+    "ms": 1640
+   },
+   {
+    "words_on_image": "Wake up to better coffee. / ☀ 7:00 am / Your cold brew, already in the fridge. / ₹699/mo / BrewCo / COLD BREW",
+    "shows": "A brown bottle with a black cap is shown on the right. A white card on the left contains a sun icon, the time, and a message about cold brew in the fridge.",
+    "setting": "plain beige background",
+    "product_visible": "yes, prominently",
+    "text_amount": "about half",
+    "main_colours": "beige, brown, white, black",
+    "layout": "headline at top left, message card bottom left, bottle on right, price bottom left",
+    "ms": 2253
+   }
+  ]
+ },
+ "b": {
+  "id": "6cd21cfe453fc404645dd489786c9e8c",
+  "runs": [
+   {
+    "words_on_image": "Café-quality coffee. / ₹23 a cup / ✓ 30 cups a month / ✓ Delivered weekly / ✓ Cancel anytime / Start for ₹699/mo / BrewCo / COLD BREW",
+    "shows": "A dark bottle of cold brew coffee with a label reading BrewCo COLD BREW is shown on the right. No people are shown.",
+    "setting": "plain purple background",
+    "product_visible": "yes, prominently",
+    "text_amount": "mostly text",
+    "main_colours": "purple, white, yellow, dark brown",
+    "layout": "headline top left, price and bullet points left center, call-to-action button bottom left, bottle on the right",
+    "ms": 1931
+   },
+   {
+    "words_on_image": "Café-quality coffee. / ₹23 a cup / ✓ 30 cups a month / ✓ Delivered weekly / ✓ Cancel anytime / Start for ₹699/mo / BrewCo / COLD BREW",
+    "shows": "A dark bottle with a label reading BrewCo COLD BREW is shown on the right. No people are shown.",
+    "setting": "Plain purple background.",
+    "product_visible": "yes, prominently",
+    "text_amount": "mostly text",
+    "main_colours": "purple, white, yellow, dark brown",
+    "layout": "Headline at top left, price and bullet points below it on the left, call-to-action button at bottom left, bottle on the right.",
+    "ms": 1818
+   },
+   {
+    "words_on_image": "Café-quality coffee. / ₹23 a cup / ✓ 30 cups a month / ✓ Delivered weekly / ✓ Cancel anytime / Start for ₹699/mo / BrewCo / COLD BREW",
+    "shows": "A dark bottle with a label reading BrewCo COLD BREW is shown on the right. Text on the left lists a coffee subscription price and delivery details.",
+    "setting": "solid purple background",
+    "product_visible": "yes, prominently",
+    "text_amount": "mostly text",
+    "main_colours": "purple, white, yellow, dark brown",
+    "layout": "headline at top left, price centered left, bullet points below, call-to-action button bottom left, bottle on right",
+    "ms": 1941
+   }
+  ]
+ },
+ "c": {
+  "id": "06af19e921bf17c53c13426f4b210df9",
+  "runs": [
+   {
+    "words_on_image": "Never drink stale coffee again. / Roasted this week / BrewCo / COLD BREW / Brewed to order · ₹749/mo",
+    "shows": "A bottle of cold brew coffee is shown in the center with a label that says BrewCo and COLD BREW. A dark circle on the left says Roasted this week.",
+    "setting": "Plain light mint background.",
+    "product_visible": "yes, prominently",
+    "text_amount": "mostly text",
+    "main_colours": "mint green, dark green, teal, cream",
+    "layout": "Headline across the top, bottle centered, circular badge left of the bottle, price line along the bottom",
+    "ms": 1905
+   },
+   {
+    "words_on_image": "Never drink stale coffee again. / Roasted this week / BrewCo / COLD BREW / Brewed to order · ₹749/mo",
+    "shows": "A bottle of cold brew coffee is shown in the center. A dark circle on the left contains the text “Roasted this week.”",
+    "setting": "Plain light mint background.",
+    "product_visible": "yes, prominently",
+    "text_amount": "mostly text",
+    "main_colours": "mint green, dark teal, black, cream",
+    "layout": "Headline across the top, bottle centered, round text badge on the left, price line at the bottom",
+    "ms": 1973
+   },
+   {
+    "words_on_image": "Never drink stale coffee again. / Roasted this week / BrewCo / COLD BREW / Brewed to order · ₹749/mo",
+    "shows": "A bottle of cold brew coffee is shown in the center with a label that says BrewCo and COLD BREW. A dark circle on the left contains the words Roasted this week.",
+    "setting": "plain light blue-green studio background",
+    "product_visible": "yes, prominently",
+    "text_amount": "about half",
+    "main_colours": "light blue-green, dark green, teal, black",
+    "layout": "headline across the top, bottle centered, circular text badge left of the bottle, price line along the bottom",
+    "ms": 1659
+   }
+  ]
+ }
+}

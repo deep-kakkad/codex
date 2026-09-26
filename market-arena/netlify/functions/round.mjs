@@ -6,7 +6,7 @@ import { round, prepareRound, roundStream } from "../../lib/handlers.js";
 export default async (req, context) => {
   if (req.method !== "POST") return Response.json({ error: "Use POST." }, { status: 405 });
   const text = await req.text();
-  if (text.length > 20000) return Response.json({ error: "Request too large." }, { status: 413 });
+  if (text.length > 32000) return Response.json({ error: "Request too large." }, { status: 413 });
   const code = req.headers.get("x-arena-code");
 
   if ((req.headers.get("accept") || "").includes("application/x-ndjson")) {

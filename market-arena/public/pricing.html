@@ -41,6 +41,7 @@
       <div class="cost-row"><span><b>Fill a version from a web page</b><span>Paste a link. The headline, promise and price fill in.</span></span><span class="cost-v" id="pageCostV">1 credit</span></div>
       <div class="cost-row"><span><b>Ask a question about a round</b><span>Answered from that round's numbers, and nothing else.</span></span><span class="cost-v" id="askCostV">10 credits</span></div>
       <div class="cost-row"><span><b>Research a market</b><span>A live search of research, news, trade press and social chatter, handed to your buyers.</span></span><span class="cost-v" id="resCostV">10 credits</span></div>
+      <div class="cost-row"><span><b>Test image creatives</b><span>Each new or changed image is read once into words the buyers judge. Unchanged images are reused free.</span></span><span class="cost-v" id="crCostV">10 credits a round</span></div>
       <div class="cost-row"><span><b>Draft buyers from your own data</b><span>Paste reviews or interview notes. Every buyer shows the lines it came from.</span></span><span class="cost-v" id="dataCostV">10 credits</span></div>
       <div class="cost-row"><span><b>Share a round, download a CSV or PDF</b><span>Anyone with the link can see it.</span></span><span class="cost-v">Free</span></div>
     </div>
@@ -71,6 +72,7 @@ onAccountChange((m) => {
   document.getElementById("askCostV").textContent = `${ask} credits`;
   document.getElementById("resCostV").textContent = `${ask} credits`;
   document.getElementById("dataCostV").textContent = `${ask} credits`;
+  document.getElementById("crCostV").textContent = `${ask} credits a round`;
   const page = m.costs?.round ?? 1;
   document.getElementById("pageCostV").textContent = `${page} credit${page === 1 ? "" : "s"}`;
   document.getElementById("packsNote").textContent = m.billing?.enabled

@@ -1492,3 +1492,56 @@ button.prow:hover{background:var(--canvas)}
 .fp-acts{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}
 .fp-acts .btn-quiet{height:30px}
 .ftag-page{background:var(--paper);box-shadow:var(--ctl-ring);color:var(--muted)}
+
+/* ============ Uploaded creatives in the ad mocks ============ */
+.m-img{display:block;width:100%;height:100%;object-fit:cover;background:#EFEFEC}
+.m-img-none{display:grid;align-content:center;gap:4px;padding:14px 16px;color:var(--muted);font-size:12.5px;line-height:1.45;
+  background:repeating-linear-gradient(135deg,#F2F2EF 0 10px,#ECECE8 10px 20px)}
+.m-img-none b{font:600 11px var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+.ms-pic{aspect-ratio:1/1;overflow:hidden;background:#EFEFEC}
+.ms-pic .mk,.mc-pic .mk,.me-pic .mk,.ml-media .mk{display:block;height:100%;padding:0;border-radius:0;background:none}
+.ms-cta-hl{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc-pic{margin:-20px -20px 14px;aspect-ratio:16/10;overflow:hidden;background:#EFEFEC}
+.ml-media.has-pic{padding:0;min-height:150px;aspect-ratio:16/9;flex:none}
+.me-pic{flex:none;width:64px;height:64px;border-radius:8px;overflow:hidden}
+.me-pic .m-img-none{padding:6px;font-size:0}.me-pic .m-img-none b{font-size:9px}
+/* A marked creative: an outline in the mark's colour, since a picture can't be underlined. */
+.mk.mk-pull1 > .m-img,.mk.mk-pull2 > .m-img{outline:4px solid rgba(var(--hl),.95);outline-offset:-4px}
+.mk.mk-push > .m-img{outline:3px dashed var(--bad);outline-offset:-4px}
+
+/* ============ Uploaded creatives in the builder ============ */
+.ep-creative{display:inline-flex;align-items:center;gap:6px}
+.cr-field{margin-top:14px}
+.cr-lab{display:block;font:500 var(--t-small) var(--body);color:var(--ink);margin:0 0 6px}
+.cr-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.cr-drop{position:relative;display:grid;justify-items:center;gap:4px;padding:20px 14px;border-radius:var(--r-panel);cursor:pointer;text-align:center;
+  background:var(--canvas);box-shadow:inset 0 0 0 1.5px var(--line-strong);transition:box-shadow .15s ease,background-color .15s ease}
+.cr-drop b{font:600 var(--t-small) var(--body)}
+.cr-drop span:not(.cr-drop-ic){font-size:12px;color:var(--muted)}
+.cr-drop:hover,.cr-drop.over,.cr-drop:focus-within{background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.cr-drop-ic{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--paper);box-shadow:var(--e1);color:var(--ink);margin-bottom:4px}
+.cr-field.over .cr-has{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.cr-has{display:grid;grid-template-columns:88px 1fr;gap:12px;align-items:start;padding:8px;border-radius:var(--r-panel);background:var(--canvas)}
+.cr-thumb{width:88px;height:88px;object-fit:cover;border-radius:8px;background:#EFEFEC;box-shadow:0 0 0 1px rgba(24,24,27,.06)}
+.cr-meta{display:grid;gap:4px;min-width:0}
+.cr-meta b{font:600 var(--t-small) var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-status{font-size:12px;line-height:1.45;color:var(--muted)}
+.cr-ok{color:var(--good);font-weight:600}
+.cr-acts{display:flex;align-items:center;gap:2px;margin-left:-10px}
+.cr-acts .btn-quiet{height:28px;font-size:12.5px}
+.cr-replace{position:relative;cursor:pointer}
+.cr-read{margin-top:8px;font-size:12.5px}
+.cr-read summary{cursor:pointer;color:var(--muted);font-weight:500}
+.cr-read summary:hover{color:var(--ink)}
+.cr-dl{display:grid;gap:6px;margin:8px 0 0;padding:10px 12px;border-radius:10px;background:var(--canvas)}
+.cr-dl div{display:grid;grid-template-columns:120px 1fr;gap:10px}
+.cr-dl dt{color:var(--muted)}
+.cr-dl dd{margin:0;color:var(--ink);line-height:1.45}
+.adf .cr-read{padding:0 2px}
+.cr-bar{display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:14px 16px;border-radius:var(--r-panel);background:var(--paper);box-shadow:var(--e1)}
+.cr-bar-ic{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--canvas);color:var(--ink)}
+.cr-bar-t{flex:1;font-size:13px;line-height:1.5;color:var(--muted)}
+.cr-bar-t b{color:var(--ink);font-weight:600}
+.cr-bar-todo{display:block;margin-top:4px;color:var(--ink);font-weight:500}
+.cr-bar .btn{flex:none}
+@media (max-width:640px){.cr-bar{flex-wrap:wrap}.cr-bar .btn{width:100%}.cr-dl div{grid-template-columns:1fr;gap:0}}

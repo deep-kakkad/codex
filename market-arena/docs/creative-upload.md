@@ -1,4 +1,4 @@
-# Creative upload (planned, not built)
+# Creative upload (built)
 
 Let a team upload the real creative for a version (an image ad, a banner, a social
 post) and have the buyers judge it, instead of typing the copy in by hand.
@@ -32,8 +32,25 @@ buyers never see pixels. They judge a description of the creative.
 - If the description or the round fails, the credits go back, the same as Ask and
   research today.
 
-Open question: when several versions in one round have creatives and more than one
-changes, is it 10 credits for the round, or 10 per changed creative?
+Decided: it is 10 credits for the round, however many of its images are new or
+changed. The server keeps each image's description per account, keyed by a hash of
+the image, so an image that has been read before comes back free, even in a new
+project.
+
+## Measured before launch
+
+Three coffee-subscription creatives, the 12-buyer coffee panel, the same copy with
+and without the images.
+
+- Reading: each image read three times. The words on the image came back identical
+  every time, currency symbols included. The wording of "what it shows" varied.
+- Images matter: with the images, one version fell from 22.1% to 12.6% and the
+  price-led one rose from 23.5% to 28.7%. Walkaways rose from 30.9% to 38.0%.
+- Re-running with the same descriptions moved share by at most 1.5 points, the
+  usual re-run noise.
+- Swapping in a different reading of the same image moved share by up to 2.4
+  points. That is why an image is read once and its description reused: a fresh
+  reading every round would add noise that looks like a result.
 
 ## Rules to keep it fair and honest
 

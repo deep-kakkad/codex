@@ -8,6 +8,7 @@
 export const PART_LABEL = {
   headline: "The headline", subheadline: "The subheadline", price: "The price", offer: "The offer",
   proof: "The proof point", audience: "Who it is for", cta: "The call to action", visual: "The visual",
+  image: "The image",
 };
 const MAX_BODY = 4;
 
@@ -37,6 +38,9 @@ export function adParts(ad) {
   add("audience", PART_LABEL.audience, x.audience);
   add("cta", PART_LABEL.cta, x.cta);
   add("visual", PART_LABEL.visual, x.visual);
+  // An uploaded creative is one part: what the picture shows, as the buyers read it.
+  const img = ad.creative?.description;
+  if (img?.shows) add("image", PART_LABEL.image, img.shows.length > 160 ? img.shows.slice(0, 159).replace(/\s+\S*$/, "") + "…" : img.shows);
   return out;
 }
 

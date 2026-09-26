@@ -25,6 +25,23 @@ export const EXTRA_FIELDS = [
   { key: "visual",      label: "What the visual shows", ad: "visual_description", max: 200, tag: "textarea", hint: "Describe the picture in words. Buyers read text and can't see images, so this tests your description, not your artwork." },
 ];
 export const EXTRA_BY_KEY = Object.fromEntries(EXTRA_FIELDS.map((f) => [f.key, f]));
+
+// An uploaded creative reaches the buyers as a description with this fixed shape
+// (see lib/creatives.js). The same limits are checked here, on whatever the browser
+// sends with a round, so a description can't grow or change shape on the way.
+export const CREATIVE_FIELDS = [
+  { key: "words_on_image", label: "Words on the image", max: 400 },
+  { key: "shows", label: "What it shows", max: 300 },
+  { key: "setting", label: "Setting", max: 120 },
+  { key: "product_visible", label: "Product shown", options: ["yes, prominently", "yes, but small", "no"] },
+  { key: "text_amount", label: "How much is text", options: ["none", "a little", "about half", "mostly text"] },
+  { key: "main_colours", label: "Main colours", max: 80 },
+  { key: "layout", label: "Layout", max: 200 },
+];
+const creativeOk = (d) => d && typeof d === "object" && CREATIVE_FIELDS.every((f) => {
+  const v = d[f.key];
+  return typeof v === "string" && (f.options ? f.options.includes(v) : v.length <= f.max);
+});
 export const extraKeysOf = (teams) =>
   EXTRA_FIELDS.map((f) => f.key).filter((k) => teams.some((t) => t?.extras && t.extras[k] != null));
 
@@ -52,6 +69,15 @@ export function findTeamProblem(teams) {
     if (seen.has(key))
       return { index: i, field: "brand", message: `Two versions are both called "${txt(t.brand)}". Give each its own name so the report can tell them apart.` };
     seen.set(key, i);
+  }
+
+  // A creative is all or nothing too: an ad with a picture has more to go on.
+  const withCreative = teams.filter((t) => t?.creative);
+  if (withCreative.length) {
+    for (const [i, t] of teams.entries()) {
+      if (!t?.creative) return { index: i, field: "creative", message: `${who(t, i, "Version")} has no creative. Every version needs one, or none do, so it's a fair fight.` };
+      if (!creativeOk(t.creative.description)) return { index: i, field: "creative", message: `${who(t, i, "Version")}'s creative hasn't been read yet.` };
+    }
   }
 
   // Every version has to carry the same fields, or the round is comparing ads with

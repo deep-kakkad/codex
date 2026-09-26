@@ -84,7 +84,7 @@
           <div class="h-vis" id="visAds"></div>
           <p class="h-stepn">Step 2</p>
           <h3>Write your versions</h3>
-          <p>A headline, a promise and a price for each. Add a button, an offer or a proof point if you want to test those too. Or paste a web page, yours or a rival's, and we'll fill it in.</p>
+          <p>A headline, a promise and a price for each. Test a button, an offer or your actual image ad too. Or paste a web page, yours or a rival's, and we'll fill it in.</p>
         </article>
         <article class="h-step">
           <div class="h-vis" id="visArena"></div>
@@ -109,7 +109,7 @@
     <div class="wrap h-feats">
       <article class="h-feat"><span class="hf-ic" id="icData"></span><h3>Buyers from your own data</h3><p>Paste reviews, interview notes or survey answers. We draft buyers from them and show the exact lines each one is based on. Optional, never required.</p></article>
       <article class="h-feat"><span class="hf-ic" id="icPage"></span><h3>Start from any web page</h3><p>Paste a link, yours or the rival who keeps beating you. The headline, promise and price fill in, each marked as the page's own words or a summary.</p></article>
-      <article class="h-feat"><span class="hf-ic" id="icFmt"></span><h3>See it where it'll run</h3><p>Flip every version between a social post, a search ad, a landing page and an email. Buyers read the same words either way. The view is for you.</p></article>
+      <article class="h-feat"><span class="hf-ic" id="icFmt"></span><h3>Test the real image ad</h3><p>Upload the creative itself. Buyers read its exact words, what it shows and how it's laid out, and you see it in a social post, landing page or email.</p></article>
     </div>
   </section>
 
@@ -197,7 +197,8 @@ import { ARENA } from "./arena-data.js";
 import { drawArena, liveArena, arenaLegend } from "./arena.js";
 import { GOALS } from "./goals.js";
 import { GOAL_ART } from "./goal-art.js";
-import { adMock, FORMATS } from "./ad-formats.js";
+import { adMock } from "./ad-formats.js";
+import { IMG_IC } from "./creative-ui.js";
 import { initAccount, mountAccountBar } from "./account.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
@@ -367,7 +368,7 @@ $("#xrayDemo").innerHTML = `<div class="adf" style="--c:var(--b2)">${adMock(XRAY
   <figcaption>From one of our test rounds: 12 simulated buyers, three cold brew ads. The bad line was ours, on purpose.</figcaption>`;
 $("#icData").innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
 $("#icPage").innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L12 5.6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg>';
-$("#icFmt").innerHTML = FORMATS.find((f) => f.key === "social").icon;
+$("#icFmt").innerHTML = IMG_IC;
 
 $("#questions").innerHTML = GOALS.map((g) => `<div class="q">${GOAL_ART[g.key] || ""}<h3>${esc(g.q)}</h3><p>${esc(g.hint)}</p></div>`).join("");
 </script>

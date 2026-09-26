@@ -8,6 +8,7 @@ import { menuButton, ICON } from "./ui.js";
 import { drawArena, liveArena, arenaLegend } from "./arena.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { clearPush } from "./ad-parts.js";
+import { descriptionList } from "./creative-ui.js";
 import { EXTRA_FIELDS } from "./validate.js";
 import { GOAL_BY_KEY } from "./goals.js";
 
@@ -86,9 +87,12 @@ export function workOf(b) {
   return { top, second, push };
 }
 const quoteOf = (t, n = 64) => `“${t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t}”`;
+// A part as the report names it: its words in quotes, or "the image" for a creative.
+const partName = (p, n) => (p.key === "image" ? "the image" : quoteOf(p.text, n));
 
 // `readOnly` is for the shared view, which has no editor to send anyone to.
-export function createResultsView({ readOnly = false, onFormat = null, getFormat = null } = {}) {
+// `getImage(id)`: the picture for an uploaded creative, when this page has it.
+export function createResultsView({ readOnly = false, onFormat = null, getFormat = null, getImage = null } = {}) {
   let open = null;
   let format = null;    // the format picked in this report; null means the round's own
   let viewIndex = null; // null means "whatever the latest round is"
@@ -330,12 +334,12 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
         <div class="hero-next">
           <h3>Your next move</h3>
           <p>${workOf(win)?.push
-            ? `${pct(workOf(win).push.v)} of buyers named ${esc(quoteOf(workOf(win).push.text, 60))} as the part of <b>${esc(win.brand)}</b>'s ad that put them off most. Rewrite it, change nothing else, and round ${total + 1} will tell you exactly what that was worth.`
+            ? `${pct(workOf(win).push.v)} of buyers named ${esc(partName(workOf(win).push, 60))} as the part of <b>${esc(win.brand)}</b>'s ad that put them off most. ${workOf(win).push.key === "image" ? "Try a different image" : "Rewrite it"}, change nothing else, and round ${total + 1} will tell you exactly what that was worth.`
             : `Change <b>${esc(win.brand)}</b>'s ${esc(OBJ_LEVER[objKey] || "pitch")}, change nothing else, and round ${total + 1} will tell you exactly what that was worth.`}</p>
           ${(() => { const w = workOf(win); if (!w || (!w.top && !w.push)) return "";
             return `<div class="keepfix">
-              ${w.top ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.top.key}"><span class="kf-k">Keep</span><i class="k-hl"></i><span class="kf-t">${esc(quoteOf(w.top.text, 70))}</span><span class="kf-v">convinced ${pct(w.top.v)}</span></button>` : ""}
-              ${w.push ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.push.key}"><span class="kf-k">Fix</span><i class="k-wave"></i><span class="kf-t">${esc(quoteOf(w.push.text, 70))}</span><span class="kf-v">put off ${pct(w.push.v)}</span></button>` : ""}
+              ${w.top ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.top.key}"><span class="kf-k">Keep</span><i class="k-hl"></i><span class="kf-t">${esc(partName(w.top, 70))}</span><span class="kf-v">convinced ${pct(w.top.v)}</span></button>` : ""}
+              ${w.push ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.push.key}"><span class="kf-k">Fix</span><i class="k-wave"></i><span class="kf-t">${esc(partName(w.push, 70))}</span><span class="kf-v">put off ${pct(w.push.v)}</span></button>` : ""}
             </div>`; })()}
           <div class="hero-actions">
             ${readOnly ? "" : `<button class="btn" data-prepare-round>Write round ${total + 1}</button>`}
@@ -960,15 +964,16 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
       if (w?.push) marks.parts[w.push.key] = { ...(marks.parts[w.push.key] || {}), push: true, title: `Put off ${pct(w.push.v)} of buyers` };
       return `
       <figure class="adf${b.share === maxShare ? " lead" : ""}" style="--c:${COLORS[r.slots[i]]}">
-        ${adMock(b, fmt, { marks })}
+        ${adMock(b, fmt, { marks, image: b.creative ? getImage?.(b.creative.id) || null : null })}
         <figcaption class="adf-meta"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>${b.share === maxShare ? `<span class="pitch-lead">Leading</span>` : ""}
           <button class="pitch-share num numlink" type="button" data-investigate="share:${b.id}" aria-label="${esc(b.brand)}, ${pct(b.share)}. See the buyers">${pct(b.share)}</button></figcaption>
         ${w ? `<div class="adf-why">
-          ${w.top ? `<button type="button" class="why" data-investigate="part:${b.id}:${w.top.key}"><i class="k-hl"></i><span class="why-t">${esc(quoteOf(w.top.text))}</span><b>${pct(w.top.v)}</b></button>`
+          ${w.top ? `<button type="button" class="why" data-investigate="part:${b.id}:${w.top.key}"><i class="k-hl"></i><span class="why-t">${esc(partName(w.top))}</span><b>${pct(w.top.v)}</b></button>`
                   : `<span class="why why-none">No one line did the selling</span>`}
           ${w.push ? `<button type="button" class="why" data-investigate="part:${b.id}:${w.push.key}"><i class="k-wave"></i><span class="why-t">${esc(w.push.label.toLowerCase().startsWith("line") ? quoteOf(w.push.text) : w.push.label.replace(/^The /, "the "))}</span><b>${pct(w.push.v)}</b></button>`
                    : `<span class="why why-none">Nothing clearly put people off</span>`}
         </div>` : ""}
+        ${b.creative ? `<details class="cr-read"><summary>What the buyers read about the image</summary>${descriptionList(b.creative.description)}</details>` : ""}
       </figure>`;
     }).join("");
   }

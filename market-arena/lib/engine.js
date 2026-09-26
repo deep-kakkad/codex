@@ -1,7 +1,7 @@
 // Runs one market round against TypeSafe's Jev model.
 // One request per customer: every brand's ad is judged in parallel inside it.
 import { PERSONAS, OBJECTIONS } from "./scenario.js";
-import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS } from "../public/validate.js";
+import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, CREATIVE_FIELDS } from "../public/validate.js";
 import { adParts } from "../public/ad-parts.js";
 
 const API = "https://api.typesafe.ai/v1/systemone";
@@ -117,9 +117,14 @@ export async function runRound(teams, customPersonas, context = null, onBuyer = 
   const extrasOf = (t) => Object.fromEntries(
     EXTRA_FIELDS.filter((f) => typeof t?.extras?.[f.key] === "string" && t.extras[f.key].trim())
       .map((f) => [f.ad, t.extras[f.key].trim()]));
+  // An uploaded creative goes in as its description, under `image`, in the fixed
+  // field order, so the buyers read every picture the same way.
+  const imageOf = (t) => (t?.creative?.description
+    ? { image: Object.fromEntries(CREATIVE_FIELDS.map((f) => [f.key, String(t.creative.description[f.key])])) } : {});
   const adOf = Object.fromEntries(ids.map((id, i) => [id, {
     brand: teams[i].brand.trim(), headline: teams[i].headline.trim(), value_proposition: teams[i].valueProp.trim(), price: teams[i].price.trim(),
     ...extrasOf(teams[i]),
+    ...imageOf(teams[i]),
   }]));
   const brandOf = Object.fromEntries(ids.map((id) => [id, adOf[id].brand]));
   const partsOf = parts ? Object.fromEntries(ids.map((id, i) => [id, adParts({ ...teams[i], extras: teams[i].extras || {} })])) : null;
@@ -206,6 +211,7 @@ export async function runRound(teams, customPersonas, context = null, onBuyer = 
   const brands = ids.map((id, i) => ({
     id, brand: ads[id].brand, headline: ads[id].headline, valueProp: ads[id].value_proposition, price: ads[id].price,
     extras: Object.fromEntries(EXTRA_FIELDS.filter((f) => ads[id][f.ad] != null).map((f) => [f.key, ads[id][f.ad]])),
+    ...(ads[id].image ? { creative: { id: String(teams[i].creative.id || "").replace(/[^a-f0-9]/g, "").slice(0, 32), description: ads[id].image } } : {}),
     share: shareOf(customers, id),
     picks: picksOf(customers, id),
     pickRate: r3(picksOf(customers, id) / customers.length),

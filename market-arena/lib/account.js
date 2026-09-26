@@ -95,7 +95,8 @@ function describe(e) {
   if (e.reason === "adjust") return e.note || "Adjustment";
   if (e.reason === "round") return e.ref?.startsWith("page:") ? `Version from a page: ${e.ref.slice(5)}` : "Round";
   if (e.reason === "ask") return e.ref?.startsWith("research:") ? `Research: ${e.ref.slice(9)}`
-    : e.ref?.startsWith("buyers:") ? `Buyers from your data: ${e.ref.slice(7)}` : "Question about a round";
+    : e.ref?.startsWith("buyers:") ? `Buyers from your data: ${e.ref.slice(7)}`
+    : e.ref?.startsWith("creative:") ? `Creatives read: ${e.ref.slice(9)}` : "Question about a round";
   return e.reason;
 }
 
