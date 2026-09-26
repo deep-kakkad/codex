@@ -17,7 +17,7 @@ export const TEMPLATES = [
     scenario: {
       id: "saas-projectflow",
       title: "A project tool enters a crowded market",
-      brief: "Every team already has three project tools they don't fully use. Twelve buyers across four segments will see every pitch side by side and decide what, if anything, they'd adopt.",
+      brief: "Every team already has three project tools it barely uses. Can a fourth get a look in? Twelve buyers in four groups see every pitch side by side and decide.",
     },
     personas: [
       { id: "s1", name: "Jordan", segment: "Startup operators", profile: "29, ops lead at a 15-person startup in Austin, juggles six tools daily, wants one thing that replaces three, decides fast without procurement" },
@@ -44,7 +44,7 @@ export const TEMPLATES = [
     scenario: {
       id: "retail-dtc",
       title: "A new label launches into a saturated feed",
-      brief: "Everyone's timeline is already full of new clothing brands. Twelve shoppers across four segments will see every ad side by side and decide what, if anything, they'd buy.",
+      brief: "Everyone's feed is already stuffed with new clothing labels. Twelve shoppers in four groups see every ad side by side. Which one stops the scroll?",
     },
     personas: [
       { id: "r1", name: "Zoe", segment: "Trend-forward Gen Z", profile: "19, college student in LA, discovers brands on TikTok, buys on impulse if it looks good on camera, returns anything that doesn't" },
@@ -71,7 +71,7 @@ export const TEMPLATES = [
     scenario: {
       id: "fintech-app",
       title: "A finance app tries to earn trust with money",
-      brief: "Money is the one category people don't experiment with casually. Twelve users across four segments will see every pitch side by side and decide what, if anything, they'd trust with their finances.",
+      brief: "Nobody experiments with their money for fun. Twelve people in four groups decide which app, if any, they'd trust with theirs.",
     },
     personas: [
       { id: "f1", name: "Ethan", segment: "First-time investors", profile: "23, junior analyst in New York, has never invested before, intimidated by jargon, wants something that explains itself" },
@@ -95,7 +95,7 @@ export const TEMPLATES = [
   {
     id: "blank",
     industry: "Start from scratch",
-    scenario: { id: "blank", title: "Describe your own market", brief: "Rename the segments, rewrite the customers, and describe the product you're actually testing." },
+    scenario: { id: "blank", title: "Build your own market", brief: "Your buyers, your product, your ads. Start with a blank page and fill in the real thing." },
     personas: [
       { id: "b1", name: "Customer 1", segment: "Segment A", profile: "Describe who this is: age, role or life stage, what they care about, what they're skeptical of." },
       { id: "b2", name: "Customer 2", segment: "Segment B", profile: "Describe who this is: age, role or life stage, what they care about, what they're skeptical of." },

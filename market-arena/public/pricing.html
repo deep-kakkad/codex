@@ -24,8 +24,8 @@
 
 <main class="wrap page page-narrow">
   <div class="price-head">
-    <h1>Simple, pay-as-you-go pricing</h1>
-    <p class="sub">Start with 100 free credits, no card needed. You only spend credits on the things that cost money to run: questions and market research. Rounds are free while Market Arena is in beta.</p>
+    <h1>Pay for answers, not seats</h1>
+    <p class="sub">No subscription. No per-user fee. You get 100 free credits to start, no card, and you only spend them on the things that cost us money to run. Rounds are free while we're in beta.</p>
   </div>
 
   <section class="price-sec" aria-labelledby="packsH">
@@ -37,25 +37,27 @@
   <section class="price-sec" aria-labelledby="costsH">
     <h2 class="group-h" id="costsH">What uses credits</h2>
     <div class="costs">
-      <div class="cost-row"><span><b>Run a round</b><span>Every buyer judges every version. Up to 20 rounds an hour.</span></span><span class="cost-v">Free in beta</span></div>
-      <div class="cost-row"><span><b>Ask a question about a round</b><span>Answered from that round's numbers only.</span></span><span class="cost-v" id="askCostV">10 credits</span></div>
-      <div class="cost-row"><span><b>Research a market</b><span>Live search of research, news, industry writing and social discussion.</span></span><span class="cost-v" id="resCostV">10 credits</span></div>
-      <div class="cost-row"><span><b>Share a round, download CSV or PDF</b><span>Anyone with the link can view it.</span></span><span class="cost-v">Free</span></div>
+      <div class="cost-row"><span><b>Run a round</b><span>Every buyer reads every version and picks one. Up to 20 rounds an hour.</span></span><span class="cost-v">Free in beta</span></div>
+      <div class="cost-row"><span><b>Fill a version from a web page</b><span>Paste a link. The headline, promise and price fill in.</span></span><span class="cost-v" id="pageCostV">1 credit</span></div>
+      <div class="cost-row"><span><b>Ask a question about a round</b><span>Answered from that round's numbers, and nothing else.</span></span><span class="cost-v" id="askCostV">10 credits</span></div>
+      <div class="cost-row"><span><b>Research a market</b><span>A live search of research, news, trade press and social chatter, handed to your buyers.</span></span><span class="cost-v" id="resCostV">10 credits</span></div>
+      <div class="cost-row"><span><b>Draft buyers from your own data</b><span>Paste reviews or interview notes. Every buyer shows the lines it came from.</span></span><span class="cost-v" id="dataCostV">10 credits</span></div>
+      <div class="cost-row"><span><b>Share a round, download a CSV or PDF</b><span>Anyone with the link can see it.</span></span><span class="cost-v">Free</span></div>
     </div>
   </section>
 
   <section class="price-sec" aria-labelledby="faqH">
     <h2 class="group-h" id="faqH">Questions</h2>
     <div class="faq">
-      <details><summary>What happens if a question or research run fails?</summary><p>Nothing is charged. Credits are taken when you ask, and given straight back if the answer doesn't arrive.</p></details>
-      <details><summary>Why are rounds free?</summary><p>A round costs a fraction of a cent to run. They are free during the beta, up to 20 an hour from one connection, so a public link can't be used to run up a bill.</p></details>
-      <details><summary>Do I need a card to start?</summary><p>No. Every new account gets 100 credits, which is ten questions or research runs.</p></details>
-      <details><summary>How do I pay for more?</summary><p>By card through Stripe, once top-ups open. Credits appear in your account as soon as Stripe confirms the payment.</p></details>
+      <details><summary>What if something fails halfway?</summary><p>You get your credits back. We take them when you ask and return them automatically if the answer doesn't arrive.</p></details>
+      <details><summary>Why are rounds free?</summary><p>Because a round costs us a fraction of a cent. They're free during the beta, up to 20 an hour from one connection, so nobody can run up a bill on a public link.</p></details>
+      <details><summary>Do I need a card to start?</summary><p>No. Every new account gets 100 credits. That's ten questions or research runs, or a hundred pages read.</p></details>
+      <details><summary>How do I buy more?</summary><p>By card, through Stripe, once top-ups open. Credits land in your account the moment Stripe confirms the payment.</p></details>
     </div>
   </section>
 </main>
 
-<footer><div class="wrap row"><span>Buyers are simulated by TypeSafe's Jev model. Treat the results as a way to decide what deserves a real test, not as market research.</span></div></footer>
+<footer><div class="wrap row"><span>Buyers are simulated by TypeSafe's Jev model. Use the results to pick what deserves a real test. They are not market research.</span></div></footer>
 
 <script type="module">
 import { LOGO_MARK } from "./icons.js";
@@ -68,8 +70,11 @@ onAccountChange((m) => {
   const ask = m.costs?.ask ?? 10;
   document.getElementById("askCostV").textContent = `${ask} credits`;
   document.getElementById("resCostV").textContent = `${ask} credits`;
+  document.getElementById("dataCostV").textContent = `${ask} credits`;
+  const page = m.costs?.round ?? 1;
+  document.getElementById("pageCostV").textContent = `${page} credit${page === 1 ? "" : "s"}`;
   document.getElementById("packsNote").textContent = m.billing?.enabled
-    ? "Pay once, use the credits whenever you like."
+    ? "Pay once, spend them whenever you like."
     : "Top-ups open soon. Until then, every account starts with 100 free credits.";
   document.getElementById("packs").innerHTML = packs.map((p, i) => packCard(p, { featured: i === 1, ask })).join("");
 });

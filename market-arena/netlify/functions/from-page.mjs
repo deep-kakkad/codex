@@ -30,7 +30,7 @@ export default async (req) => {
     return Response.json({ error: "Couldn't read that page." }, { status: 502 });
   }
   if (page.text.length < TEXT_MIN && !page.description) {
-    return Response.json({ error: "That page has almost no text for us to read; it may build itself in the browser. Paste its copy into the fields instead. Nothing was charged." }, { status: 422 });
+    return Response.json({ error: "That page has almost no text we can read. It probably builds itself in the browser. Paste its words into the fields instead. Nothing was charged." }, { status: 422 });
   }
 
   const host = new URL(url).hostname.replace(/^www\./, "");
@@ -48,7 +48,7 @@ export default async (req) => {
     console.error("page extract failed", e?.message);
     const back = await refund(user.id, "round", ref, `Page read failed: ${String(e.message).slice(0, 120)}`).catch(() => after);
     return Response.json({
-      error: e.empty ? "Couldn't find a headline or value proposition on that page, so nothing was charged. Try the page's main address, or paste its copy."
+      error: e.empty ? "Couldn't find a headline or a pitch on that page, so nothing was charged. Try the page's main address, or paste its words."
         : "Couldn't read the message on that page, so nothing was charged. Try again in a moment.",
       balance: back,
     }, { status: 502 });

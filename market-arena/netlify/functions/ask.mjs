@@ -27,7 +27,7 @@ export default async (req) => {
   const after = await spend(user.id, "ask", body.roundId || null);
   if (after === null)
     return Response.json({
-      error: `That costs ${COST.ask} credits and you have ${await balanceOf(user.id)}.`,
+      error: `A question costs ${COST.ask} credits and you have ${await balanceOf(user.id)}.`,
       balance: await balanceOf(user.id), needed: COST.ask,
     }, { status: 402 });
 

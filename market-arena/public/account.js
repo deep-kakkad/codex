@@ -68,8 +68,8 @@ function panel() {
     $("#authTitle").textContent = m === "login" ? "Sign in" : "Create an account";
     $("#authGo").textContent = m === "login" ? "Sign in" : "Create account";
     $("#authSub").textContent = m === "login"
-      ? "Your projects, rounds and credits are kept to your account."
-      : "You get 100 credits to start. Asking a question or running research costs 10.";
+      ? "Welcome back. Your credits are right where you left them."
+      : "100 free credits to start, no card. Rounds are free; a question or a research run costs 10.";
     $("#authPass").autocomplete = m === "login" ? "current-password" : "new-password";
     $("#authSwapText").textContent = m === "login" ? "New here?" : "Already have an account?";
     $("#authSwap").textContent = m === "login" ? "Create an account" : "Sign in";
@@ -87,8 +87,8 @@ function panel() {
   $("#authForm").addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = $("#authEmail").value.trim(), pass = $("#authPass").value;
-    if (!email || !pass) return msg("Enter an email and a password.", true);
-    if (mode === "signup" && pass.length < 8) return msg("Use at least 8 characters.", true);
+    if (!email || !pass) return msg("Pop in an email and a password.", true);
+    if (mode === "signup" && pass.length < 8) return msg("Make the password at least 8 characters.", true);
     $("#authGo").disabled = true;
     msg(mode === "login" ? "Signing in…" : "Creating your account…");
     try {
@@ -112,9 +112,9 @@ function panel() {
 function friendly(err) {
   const m = String(err?.message || err || "");
   if (/already.*registered|already exists/i.test(m)) return "That email already has an account. Try signing in.";
-  if (/confirm/i.test(m)) return "Confirm your email address first — check your inbox.";
-  if (/invalid.*grant|invalid login|bad credentials|401/i.test(m)) return "That email and password don't match.";
-  if (/password/i.test(m) && /short|least/i.test(m)) return "Use at least 8 characters.";
+  if (/confirm/i.test(m)) return "Confirm your email first. The link is in your inbox.";
+  if (/invalid.*grant|invalid login|bad credentials|401/i.test(m)) return "That email and password don't match. Try again?";
+  if (/password/i.test(m) && /short|least/i.test(m)) return "Make the password at least 8 characters.";
   if (/network|fetch/i.test(m)) return "Couldn't reach the sign-in service. Check your connection.";
   return m.slice(0, 160) || "That didn't work. Try again.";
 }
@@ -155,7 +155,7 @@ export function mountAccountBar(host) {
     const btn = host.querySelector(".acct-btn");
     if (btn) menuButton(btn, () => [
       { heading: m.email },
-      { note: `${m.balance} credits left. Asking a question or running research costs ${m.costs?.ask ?? 10}.` },
+      { note: `${m.balance} credits left. Rounds are free; a question or research run costs ${m.costs?.ask ?? 10}.` },
       ...((m.recent || []).length ? [{ heading: "Recent" },
         ...m.recent.map((e) => ({ note: `${e.delta > 0 ? "+" : "−"}${Math.abs(e.delta)}  ${e.what}, ${ago(e.at)}` }))] : []),
       { separator: true },

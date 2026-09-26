@@ -4,7 +4,7 @@ export const SCENARIO = {
   id: "cold-brew-india",
   title: "Cold brew comes to India",
   brief:
-    "Ready-to-drink cold coffee is new to most Indian shoppers. Twelve customers across four segments will see every brand's ad side by side and decide what, if anything, to buy.",
+    "Most Indian shoppers have never tried ready-to-drink cold coffee. Twelve buyers in four groups see three brands side by side. Who gets picked, and who gets ignored?",
 };
 
 export const PERSONAS = [

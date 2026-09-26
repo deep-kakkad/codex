@@ -66,7 +66,7 @@ export function prepareRound(rawBody, code, ip) {
 
   if (mode === "practice") {
     if (!process.env.TYPESAFE_API_KEY) return noKey;
-    if (practiceRateLimited(ip)) return { error: [429, { error: "Too many practice rounds from this connection in the last hour. Try again later." }] };
+    if (practiceRateLimited(ip)) return { error: [429, { error: "That's 20 rounds in an hour from this connection, the beta limit. Take a breather and try again shortly." }] };
     const teamProblem = validateTeams(teams);
     if (teamProblem) return { error: [400, { error: teamProblem }] };
     const personaProblem = validatePersonas(personas);
@@ -81,7 +81,7 @@ export function prepareRound(rawBody, code, ip) {
   if (problem) return { error: [400, { error: problem }] };
   return { run: (onBuyer) => runRound(teams, undefined, null, onBuyer) };
 }
-export const ROUND_FAILED = "The market simulation couldn't reach TypeSafe. Run the round again in a moment.";
+export const ROUND_FAILED = "The buyers couldn't be reached just now. Run the round again in a moment.";
 
 export async function round(rawBody, code, ip) {
   const prep = prepareRound(rawBody, code, ip);
@@ -133,7 +133,7 @@ export async function share(rawBody) {
 export async function getShare(id) {
   try {
     const data = await getShareById(String(id || ""));
-    if (!data) return [404, { error: "This share link doesn't exist, or has expired." }];
+    if (!data) return [404, { error: "This link doesn't lead to a round any more. Ask whoever sent it for a fresh one." }];
     return [200, data];
   } catch (e) { console.error(e); return [502, { error: "Couldn't load that share link. Try again in a moment." }]; }
 }
@@ -155,7 +155,7 @@ export async function askRound(rawBody) {
   const { round, question } = body;
   const q = typeof question === "string" ? question.trim() : "";
   if (!q) return [400, { error: "Ask a question first." }];
-  if (q.length > 500) return [400, { error: "That question is too long — keep it under 500 characters." }];
+  if (q.length > 500) return [400, { error: "Keep the question under 500 characters." }];
   if (!round?.brands?.length || !round?.customers?.length) return [400, { error: "That doesn't look like a round result." }];
 
   try {
@@ -163,6 +163,6 @@ export async function askRound(rawBody) {
     return [200, { ...out, credits: ASK_COST_CREDITS }];
   } catch (e) {
     console.error(e);
-    return [502, { error: "Couldn't reach the model. Try the question again in a moment." }];
+    return [502, { error: "Couldn't reach the model. Try again in a moment." }];
   }
 }

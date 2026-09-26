@@ -16,7 +16,7 @@ export default async (req) => {
   try { body = JSON.parse(raw); } catch { return Response.json({ error: "The request wasn't valid JSON." }, { status: 400 }); }
 
   const text = typeof body.text === "string" ? body.text.trim() : "";
-  if (text.length < TEXT_MIN) return Response.json({ error: "Paste a bit more first. A few reviews or a page of notes is the least there is to build buyers from." }, { status: 400 });
+  if (text.length < TEXT_MIN) return Response.json({ error: "Paste a bit more first. A few reviews or a page of notes is the minimum to build buyers from." }, { status: 400 });
   if (text.length > TEXT_MAX) return Response.json({ error: `Paste up to ${TEXT_MAX.toLocaleString()} characters at a time.` }, { status: 413 });
   const L = PERSONA_LIMITS;
   const count = Math.max(L.minPersonas, Math.min(L.maxPersonas, Number.parseInt(body.count, 10) || 8));
@@ -46,7 +46,7 @@ export default async (req) => {
     const back = await refund(user.id, "ask", ref, `Buyer draft failed: ${String(e.message).slice(0, 120)}`).catch(() => after);
     const timeout = /abort|timeout/i.test(String(e.name) + String(e.message));
     return Response.json({
-      error: e.empty ? "Couldn't find distinct buyers in that text, so nothing was charged. Paste more, or material with more detail about the people."
+      error: e.empty ? "Couldn't find distinct people in that text, so nothing was charged. Paste more, or notes with more detail about the customers."
         : timeout ? "Drafting took too long, so nothing was charged. Try again with less text."
         : "Couldn't draft the buyers, so nothing was charged. Try again in a moment.",
       balance: back,

@@ -17,14 +17,14 @@ export const INK_ON = [false, false, false, true]; // text colour on each versio
 export const HEX = ["#2F4BD1", "#9A3F7A", "#1E7F72", "#D9A21B"];
 export const STAGES = [["attention", "Noticed"], ["interest", "Interested"], ["belief", "Believed"], ["purchase", "Bought"]];
 // The same four stages said out loud, for the written summary.
-const STAGE_PLAIN = { attention: "getting noticed", interest: "sounding appealing", belief: "being believed", purchase: "closing the choice" };
-export const OBJ_LABEL = { price: "price feels too high", trust: "doesn't believe the claims", relevance: "doesn't fit their needs or habits", unclear: "doesn't understand the offer", none: "no real objection" };
+const STAGE_PLAIN = { attention: "getting noticed", interest: "sounding appealing", belief: "being believed", purchase: "getting picked" };
+export const OBJ_LABEL = { price: "price feels too high", trust: "doesn't buy the claims", relevance: "not for someone like them", unclear: "doesn't get the offer", none: "nothing stopping them" };
 export const OBJ_ORDER = ["price", "trust", "relevance", "unclear"];
 // OBJ_LABEL stands alone in a table cell; it is not a noun phrase, so it cannot be
 // dropped into a sentence. These two are the forms prose actually needs: a noun after
 // "cite" or "held back by", and a full clause after "was that".
-export const OBJ_NOUN = { price: "the price", trust: "doubt about the claims", relevance: "poor fit with their needs", unclear: "an unclear offer", none: "no real objection" };
-export const OBJ_CLAUSE = { price: "the price feels too high", trust: "buyers don't believe the claims", relevance: "it doesn't fit their needs or habits", unclear: "buyers don't understand the offer", none: "buyers had no real objection" };
+export const OBJ_NOUN = { price: "the price", trust: "doubt about the claims", relevance: "a poor fit with their life", unclear: "a confusing offer", none: "nothing in particular" };
+export const OBJ_CLAUSE = { price: "the price feels too high", trust: "buyers don't buy the claims", relevance: "it isn't for someone like them", unclear: "buyers don't get the offer", none: "nothing was stopping them" };
 // OBJ_FIX reads after "Try testing …". The possessive slot in the hero needs a bare
 // noun instead, or it renders "C's the price or how it's framed".
 export const OBJ_LEVER = { price: "price", trust: "proof behind the claim", relevance: "sense of who it is speaking to", unclear: "explanation of the offer", none: "pitch" };
@@ -133,7 +133,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     if (has("#hero")) {
       $("#hero").classList.remove("hidden");
       $("#hero").innerHTML = `<div class="hero-body" aria-busy="true">
-        <p class="hero-running">The buyers are reading your ads…</p>
+        <p class="hero-running">Your buyers are reading the ads…</p>
         <i class="skel" style="height:40px;width:52%;margin:0 0 14px"></i>
         <i class="skel" style="height:16px;width:78%;margin:0 0 26px"></i>
         <div class="votewall">${Array.from({ length: 4 }).map(() => `<div class="vw-seg"><div class="vw-faces">
@@ -182,8 +182,8 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
       <div class="hero-grid">
         <div class="hero-main">
           <p class="live-status"><span class="live-dot" aria-hidden="true"></span><span id="liveCount" aria-live="polite">0 of ${personas.length} buyers have decided</span></p>
-          <h2 class="hero-verdict">The buyers are reading your ads</h2>
-          <p class="hero-sub" id="liveLast">Each buyer takes a seat as they decide, in the order they decided, coloured by the version they chose.</p>
+          <h2 class="hero-verdict">Your buyers are reading the ads</h2>
+          <p class="hero-sub" id="liveLast">As each buyer decides, they take a seat in the colour of their pick, in the order they decided.</p>
           <div class="vw-key">${versions.map((v) => `<span><i class="sw" style="background:${v.color}"></i>${esc(v.name)}</span>`).join("")}
             <span><i class="sw" style="background:${NONE_COLOR}"></i>Bought nothing</span></div>
         </div>
@@ -222,7 +222,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
   async function liveSort(r) {
     if (!live?.arena) return;
     const last = $("#liveLast");
-    if (last) last.textContent = "Everyone has decided. Sorting the room by choice.";
+    if (last) last.textContent = "Everyone's in. Sorting the room by pick.";
     await live.arena.sort(seatOrder(r).map((c) => c.id));
     live = null;
   }
@@ -263,11 +263,11 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
       .filter(([k]) => k !== "none").sort((a, b) => b[1] - a[1])[0] || ["none", 0];
 
     const verdict = tied
-      ? `${esc(win.brand)} and ${esc(second.brand)} are tied`
-      : `${esc(win.brand)} leads this round`;
+      ? `${esc(win.brand)} and ${esc(second.brand)} are neck and neck`
+      : `${esc(win.brand)} wins this round`;
     const sub = tied
-      ? `${pct(win.share)} against ${pct(second.share)}, inside the noise of a re-run, so this round does not separate them. ${cap(OBJ_NOUN[objKey])} is the objection to attack first.`
-      : `${pct(win.share)} average choice probability, ${gap} points clear. ${cap(OBJ_NOUN[objKey])} is the objection holding it back.`;
+      ? `${pct(win.share)} against ${pct(second.share)}. That's close enough that a re-run could flip it, so call it a tie. Go after ${OBJ_NOUN[objKey]} first.`
+      : `A ${pct(win.share)} average chance of being picked, ${gap} points clear of the next. What's holding it back: ${OBJ_NOUN[objKey]}.`;
 
     const bars = [...ranked.map((b) => ({ id: b.id, nm: b.brand, v: b.share, c: COLORS[slotOf(b)], none: false })),
                   { id: "none", nm: "Bought nothing", v: r.noPurchase.share, none: true }];
@@ -296,29 +296,29 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
 
         <div class="hero-tiles">
           <button class="hero-tile probe-tile" type="button" data-investigate="share:${win.id}" style="--tc:${COLORS[slotOf(win)]}">
-            <span class="k">Leading version</span>
+            <span class="k">${tied ? "Just ahead" : "The winner"}</span>
             <span class="v">${pct(win.share)}</span>
-            <span class="n">${esc(win.brand)}, picked outright by ${picksFor(r, win.id)} of ${n} buyers</span>
+            <span class="n">${esc(win.brand)}, top pick for ${picksFor(r, win.id)} of ${n} buyers</span>
           </button>
           <button class="hero-tile probe-tile" type="button" data-investigate="obj:${objKey}:${win.id}">
-            <span class="k">Top objection</span>
+            <span class="k">Why people pass</span>
             <span class="v">${pct(objVal)}</span>
             <span class="n">${cap(OBJ_NOUN[objKey])}, against ${esc(win.brand)}</span>
           </button>
           <button class="hero-tile probe-tile" type="button" data-investigate="share:none">
             <span class="k">Bought nothing</span>
             <span class="v">${pct(r.noPurchase.share)}</span>
-            <span class="n">${picksFor(r, "none")} of ${n} walked away outright</span>
+            <span class="n">${picksFor(r, "none")} of ${n} walked away</span>
           </button>
         </div>
         <div class="hero-arena">
           <div id="heroArena" role="group" aria-label="The ${n} buyers, seated by the version they chose"></div>
           ${arenaLegend(blocs, counts)}
-          <p class="arena-hint">Each seat is a buyer. Select one to see how they decided.${r.customers.some(isTossup) ? ` <span class="ah-dash"><i aria-hidden="true"></i>Dashed: too close to call.</span>` : ""}</p>
+          <p class="arena-hint">Every seat is a buyer. Click one to see how they decided.${r.customers.some(isTossup) ? ` <span class="ah-dash"><i aria-hidden="true"></i>Dashed: could have gone either way.</span>` : ""}</p>
         </div>
         </div>
 
-        <p class="hero-barlab">Average choice probability <button class="whatis" data-def="share" aria-label="What does average choice probability mean?">?</button></p>
+        <p class="hero-barlab">Average chance of being picked <button class="whatis" data-def="share" aria-label="What does average chance of being picked mean?">?</button></p>
         <div class="hero-bars">
           ${bars.map((b) => `
             <button class="hero-bar ${b.none ? "none" : ""}" type="button" data-investigate="share:${b.id}" ${b.c ? `style="--c:${b.c}"` : ""}>
@@ -328,18 +328,18 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
         </div>
 
         <div class="hero-next">
-          <h3>Next test</h3>
+          <h3>Your next move</h3>
           <p>${workOf(win)?.push
-            ? `Rewrite <b>${esc(win.brand)}</b>'s ${esc(workOf(win).push.label.replace(/^The /, "").toLowerCase())}, ${esc(quoteOf(workOf(win).push.text, 60))}, which put off ${pct(workOf(win).push.v)} of buyers, and hold everything else, so the next round measures that one change and nothing else.`
-            : `Change <b>${esc(win.brand)}</b>'s ${esc(OBJ_LEVER[objKey] || "pitch")} and hold everything else, so the next round measures that one change and nothing else.`}</p>
+            ? `${pct(workOf(win).push.v)} of buyers named ${esc(quoteOf(workOf(win).push.text, 60))} as the part of <b>${esc(win.brand)}</b>'s ad that put them off most. Rewrite it, change nothing else, and round ${total + 1} will tell you exactly what that was worth.`
+            : `Change <b>${esc(win.brand)}</b>'s ${esc(OBJ_LEVER[objKey] || "pitch")}, change nothing else, and round ${total + 1} will tell you exactly what that was worth.`}</p>
           ${(() => { const w = workOf(win); if (!w || (!w.top && !w.push)) return "";
             return `<div class="keepfix">
               ${w.top ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.top.key}"><span class="kf-k">Keep</span><i class="k-hl"></i><span class="kf-t">${esc(quoteOf(w.top.text, 70))}</span><span class="kf-v">convinced ${pct(w.top.v)}</span></button>` : ""}
               ${w.push ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.push.key}"><span class="kf-k">Fix</span><i class="k-wave"></i><span class="kf-t">${esc(quoteOf(w.push.text, 70))}</span><span class="kf-v">put off ${pct(w.push.v)}</span></button>` : ""}
             </div>`; })()}
           <div class="hero-actions">
-            ${readOnly ? "" : `<button class="btn" data-prepare-round>Edit versions for round ${total + 1}</button>`}
-            <button class="hero-explore" type="button" data-tab-go="market">See how the market split</button>
+            ${readOnly ? "" : `<button class="btn" data-prepare-round>Write round ${total + 1}</button>`}
+            <button class="hero-explore" type="button" data-tab-go="market">See how the room split</button>
           </div>
         </div>
       </div>`;
@@ -349,7 +349,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
         ...c, segIndex: segIdx(c), color: colorOf(c.purchase), dashed: isTossup(c),
         label: `${c.name}, ${c.segment}, ${c.purchase === "none" ? "bought nothing" : `chose ${nameOf(c.purchase)}`}${isTossup(c) ? ", too close to call" : ""}`,
       })),
-      center: { name: `<i class="sw" style="background:${COLORS[slotOf(win)]}"></i>${esc(win.brand)}`, big: pct(win.share), sub: tied ? `tied with ${esc(second.brand)}` : "average choice probability" },
+      center: { name: `<i class="sw" style="background:${COLORS[slotOf(win)]}"></i>${esc(win.brand)}`, big: pct(win.share), sub: tied ? `tied with ${esc(second.brand)}` : "average chance of being picked" },
     });
   }
 
@@ -365,12 +365,12 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
      We do NOT have free-text reasoning, and this panel never invents any. */
 
   const DEFS = {
-    share: ["Average choice probability", "Across all buyers, the mean likelihood each one would pick this version. A buyer leaning 40/35/25 contributes to all three, which is why these add up to 100% and why they differ from outright picks."],
-    picks: ["Outright picks", "How many buyers had this version as their single top choice. Reconciles with the buyer cards, but throws away everything except the winner, so one undecided buyer moves it by a whole buyer."],
-    attention: ["Noticed", "Would this buyer stop scrolling to read the ad at all."],
-    interest: ["Interested", "How appealing the offer is to this buyer, given their needs, habits and budget."],
-    belief: ["Believed", "Would this buyer find the claims credible."],
-    purchase: ["Would buy", "This buyer's probability of choosing this version over the others and over buying nothing."],
+    share: ["Average chance of being picked", "Every buyer has a chance of picking each version. This is the average of those chances. A buyer who leans 40/35/25 counts towards all three, which is why the numbers add up to 100% and don't match the top-pick counts."],
+    picks: ["Top picks", "How many buyers put this version first. Easy to read, but it ignores everything except each buyer's favourite, so one undecided buyer can swing it by a whole person."],
+    attention: ["Noticed", "Would this buyer stop scrolling long enough to read the ad?"],
+    interest: ["Interested", "How much this buyer wants what's on offer, given their needs, habits and budget."],
+    belief: ["Believed", "Does this buyer believe what the ad claims?"],
+    purchase: ["Would buy", "This buyer's chance of picking this version over the others, and over buying nothing."],
   };
 
   let drawerEl = null, scrimEl = null, lastFocus = null;
@@ -498,11 +498,11 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     const [field, fieldLabel] = FIELD_FOR[key] || ["headline", "Headline"];
 
     const body = `
-      <p class="drawer-lede">${pct(b.objections[key])} of the panel's objection weight against <b>${esc(b.brand)}</b> sits on ${OBJ_NOUN[key]}. ${cited.length
-        ? `${cited.length} of ${panelOf(r)} buyers named it as their single biggest reason not to buy.`
-        : `No single buyer named it as their biggest reason, so it is spread thinly rather than concentrated.`}</p>
+      <p class="drawer-lede">Of everything stopping people from picking <b>${esc(b.brand)}</b>, ${pct(b.objections[key])} is ${OBJ_NOUN[key]}. ${cited.length
+        ? `${cited.length} of ${panelOf(r)} buyers named it as their single biggest reason to say no.`
+        : `No buyer named it as their biggest reason, so it's a mild worry spread across the room, not a deal-breaker for anyone.`}</p>
 
-      <h4>The buyers behind the number</h4>
+      <h4>Who said it</h4>
       ${cited.length ? cited.map((c) => `
         <div class="dbuyer" style="--seg:${segmentTint(segs.indexOf(c.segment))}">
           <div class="dbuyer-top">${buyerFace(c, segs.indexOf(c.segment), 32)}<b>${esc(c.name)}</b><span class="dbuyer-seg">${esc(c.segment)}</span>
@@ -510,17 +510,17 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
           <p class="dbuyer-prof">${esc(c.profile)}</p>
           ${alternatives(r, c)}
         </div>`).join("")
-        : `<div class="nodata">No buyer ranked this as their top objection to ${esc(b.brand)}. The ${pct(b.objections[key])} is the average weight across the panel, so it is a broad unease rather than a blocker for anyone in particular. Attack a concentrated objection first.</div>`}
+        : `<div class="nodata">Nobody put this first for ${esc(b.brand)}. The ${pct(b.objections[key])} is a mild worry spread across the room, not a deal-breaker for anyone. Fix a reason that someone actually put first.</div>`}
 
       <div class="hypo">
-        <h4>Test this hypothesis</h4>
-        <p>If ${OBJ_NOUN[key]} is what is costing <b>${esc(b.brand)}</b> the round, changing its ${fieldLabel.toLowerCase()} and holding everything else should move its share. If it does not, the objection is not the binding constraint.</p>
-        <p class="hypo-was">Currently: <s>${esc(b[field] || "—")}</s></p>
+        <h4>Put it to the test</h4>
+        <p>If ${OBJ_NOUN[key]} is what's costing <b>${esc(b.brand)}</b>, a new ${fieldLabel.toLowerCase()} (and nothing else changed) should move its numbers. If they don't move, this was never the real problem.</p>
+        <p class="hypo-was">Now: <s>${esc(b[field] || "(empty)")}</s></p>
         <span class="fieldname">New ${fieldLabel.toLowerCase()} for ${esc(b.brand)}</span>
         <textarea id="hypoText" spellcheck="true">${esc(b[field] || "")}</textarea>
         ${readOnly ? "" : `<button class="btn-primary hypo-go" data-apply-hypo data-slot="${r.slots[r.brands.findIndex((x) => x.id === b.id)]}" data-field="${field}">Use this in the next round</button>`}
       </div>`;
-    openDrawer(shell(`${b.brand}: ${OBJ_LABEL[key]}`, `Why ${esc(b.brand)} loses people`, body));
+    openDrawer(shell(`${b.brand}: ${OBJ_LABEL[key]}`, `Why people pass on ${esc(b.brand)}`, body));
   }
 
   function investigateBuyer(r, id, src) {
@@ -530,20 +530,20 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     const nameOfId = (pid) => pid === "none" ? "nothing" : r.brands.find((b) => b.id === pid)?.brand || pid;
     const body = `
       <p class="drawer-lede">${esc(c.profile)}</p>
-      <h4>Their decision</h4>
-      <p>Chose <b>${esc(nameOfId(c.purchase))}</b>${isTossup(c)
-        ? ` — but only just. Their top two were ${Math.round(marginOf(c) * 100)} points apart, close enough that an identical re-run could land differently.`
-        : `, ahead of their second choice by ${Math.round(marginOf(c) * 100)} points.`}</p>
+      <h4>What they picked</h4>
+      <p>${c.purchase === "none" ? "Walked away" : `Picked <b>${esc(nameOfId(c.purchase))}</b>`}${isTossup(c)
+        ? `, but only just. Their top two were ${Math.round(marginOf(c) * 100)} points apart, so a re-run could easily go the other way.`
+        : `, ${Math.round(marginOf(c) * 100)} points ahead of their second choice.`}</p>
       ${alternatives(r, c)}
       <h4>How they scored each version</h4>
       <div class="tablewrap"><table><thead><tr><th>Version</th>
         ${STAGES.map(([k, lab]) => `<th class="n">${lab} <span class="whatis" title="${esc(DEFS[k][1])}">?</span></th>`).join("")}
-        <th>Objection</th></tr></thead><tbody>
+        <th>Main reason for “no”</th></tr></thead><tbody>
         ${r.brands.map((b) => { const x = c.byBrand[b.id]; return `<tr><td>${esc(b.brand)}</td>
           <td class="num">${pct(x.attention)}</td><td class="num">${pct(x.appeal)}</td><td class="num">${pct(x.belief)}</td>
           <td class="num">${pct(c.purchaseProbs[b.id] || 0)}</td><td>${cap(OBJ_NOUN[x.objection])}</td></tr>`; }).join("")}
       </tbody></table></div>
-      <p class="drawer-lede" style="margin-top:16px;font-size:var(--t-small)">These are the model's answers to five typed questions about this buyer. It returns choices and scores, not written reasoning, so nothing here is a quote or an explanation the buyer gave.</p>`;
+      <p class="drawer-lede" style="margin-top:16px;font-size:var(--t-small)">These are this buyer's answers to multiple-choice questions. The model gives choices and scores, not written reasons, so nothing here is a quote. We don't put words in anyone's mouth.</p>`;
     const face = `<span class="dh-face" data-buyer="${esc(c.id)}" style="color:${colorFor(r, c.purchase)}">${buyerFace(c, segs.indexOf(c.segment), 52, { tint: "currentColor", dashed: isTossup(c) })}</span>`;
     openDrawer(shell(`${c.segment}`, esc(c.name), body, face));
     if (src) flyIntoDrawer(src, c.id);
@@ -576,16 +576,16 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     const n = panelOf(r), picks = picksFor(r, id);
     const rows = r.customers.map((c) => ({ c, v: c.purchaseProbs[id] ?? 0 })).sort((x, y) => y.v - x.v);
     const body = `
-      <p class="drawer-lede">${pct(share)} is the average of all ${n} buyers' chance of ${none ? "buying nothing" : `picking ${esc(name)}`}.
-        ${picks} of ${n} ${none ? "walked away outright" : "picked it outright"}. A buyer counts towards the average even when it was not their top choice.</p>
+      <p class="drawer-lede">${pct(share)} is the average chance, across all ${n} buyers, of ${none ? "buying nothing" : `picking ${esc(name)}`}.
+        ${picks} of ${n} ${none ? "walked away" : "made it their top pick"}. Everyone counts towards the average, even buyers who picked something else.</p>
       <h4>Every buyer's chance</h4>
       ${buyerRows(r, rows, { color: colorFor(r, id), note: (c) => c.purchase === id ? `<em>${none ? "walked away" : "picked it"}</em>` : `picked ${esc(choiceName(r, c.purchase))}` })}
-      <h4>By segment</h4>
+      <h4>By group</h4>
       <div class="dalt">${r.segments.map((s) => `
         <button class="dalt-row" type="button" data-investigate="seg:${r.segments.indexOf(s)}:${id}" style="--c:${colorFor(r, id)}">
           <span>${esc(s)}</span><span class="t"><i style="width:${pct(bySeg[s] ?? 0)}"></i></span><span class="p">${pct(bySeg[s] ?? 0)}</span>
         </button>`).join("")}</div>`;
-    openDrawer(shell(none ? "Walk-aways" : "Average choice probability", `${esc(name)}: ${pct(share)}`, body));
+    openDrawer(shell(none ? "Walkaways" : "Average chance of being picked", `${esc(name)}: ${pct(share)}`, body));
   }
 
   // A funnel figure: the average of one stage's score across buyers.
@@ -599,7 +599,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     const low = rows.filter((x) => x.v < .4).length;
     const body = `
       <p class="drawer-lede">${def} ${pct(b.funnel[stage])} is the average across ${panelOf(r)} buyers for ${esc(b.brand)}.
-        ${low ? `${low} buyer${low === 1 ? " scores" : "s score"} it under 40% here, which is where it loses them.` : "No buyer scores it under 40% here."}</p>
+        ${low ? `${low} buyer${low === 1 ? " scores" : "s score"} it under 40% here. That's where it loses them.` : "Nobody scores it under 40% here, so it isn't losing anyone at this step."}</p>
       <h4>Every buyer's score</h4>
       ${buyerRows(r, rows, { color: colorFor(r, id), note: (c) => `picked ${esc(choiceName(r, c.purchase))}` })}`;
     openDrawer(shell(`${b.brand}: ${label.toLowerCase()}`, `${esc(label)}: ${pct(b.funnel[stage])}`, body));
@@ -616,8 +616,8 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     const name = none ? "buying nothing" : `picking ${esc(b?.brand)}`;
     const body = `
       <p class="drawer-lede">${pct(v ?? 0)} is the average chance of ${name} among the ${members.length} ${esc(seg)} buyers.
-        With ${members.length} buyers, treat this as a direction rather than a measurement.</p>
-      <h4>The buyers in this segment</h4>
+        With only ${members.length} buyers, read it as a direction, not a measurement.</p>
+      <h4>The buyers in this group</h4>
       ${members.map((c) => `
         <div class="dbuyer">
           <div class="dbuyer-top">${buyerFace(c, si, 32)}<b>${esc(c.name)}</b><span class="dbuyer-seg">Picked ${esc(choiceName(r, c.purchase))}</span>
@@ -647,11 +647,11 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
         <span class="prow-v"><i class="k-wave"></i>${pct(b.push[p.key] ?? 0)}</span>
       </button>`;
     const body = `
-      <p class="drawer-lede">Each buyer named the one part of ${esc(b.brand)}'s ad that most made them want it, and the one that most put them off.
+      <p class="drawer-lede">We asked every buyer which part of ${esc(b.brand)}'s ad most made them want it, and which part most put them off.
         ${(b.push[key] ?? 0) > (b.pull[key] ?? 0)
           ? `${pushers.length} of ${n} named this part as what most put them off (${pct(b.push[key] ?? 0)} on average); ${pullers.length} named it as what most made them want it (${pct(b.pull[key] ?? 0)}).`
           : `${pullers.length} of ${n} named this part as what most made them want it (${pct(b.pull[key] ?? 0)} on average); ${pushers.length} named it as what most put them off (${pct(b.push[key] ?? 0)}).`}
-        ${pushClear ? "That is a clear finding: fix this before anything else." : (b.push[key] ?? 0) >= 0.15 ? "No single part clearly stands out as off-putting in this ad, so treat that as a hint rather than a finding." : ""}</p>
+        ${pushClear ? "That's a clear signal. Fix this before anything else." : (b.push[key] ?? 0) >= 0.15 ? "Nothing in this ad clearly stands out as off-putting, so treat this as a hint, not a verdict." : ""}</p>
       <h4>Every part of this ad</h4>
       <div class="prows"><div class="prow prow-h"><span></span><span>Convinced</span><span>Put off</span></div>${b.parts.map(partRow).join("")}
         <div class="prow prow-none"><span class="prow-t">Nothing put them off</span><span></span><span class="prow-v">${pct(b.push.none ?? 0)}</span></div></div>
@@ -659,10 +659,10 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
          [pushClear || (b.push[key] ?? 0) > (b.pull[key] ?? 0) ? pullers : pushers, pushClear || (b.push[key] ?? 0) > (b.pull[key] ?? 0) ? "Buyers it convinced most" : "Buyers it put off most"]]
         .filter(([list]) => list.length).map(([list, h]) => `<h4>${h}</h4>${buyerRows(r, list.map((c) => ({ c, v: c.purchaseProbs[id] ?? 0 })), { color, note: (c) => `picked ${esc(choiceName(r, c.purchase))}` })}`).join("")}
       ${pullers.length || pushers.length ? `<p class="drawer-note">Bars show each buyer's chance of picking ${esc(b.brand)}.</p>` : ""}
-      ${b.pullBySegment ? `<h4>Convinced, by segment</h4>
+      ${b.pullBySegment ? `<h4>Convinced, by group</h4>
         <div class="dalt">${r.segments.map((s) => `
           <div class="dalt-row" style="--c:#E9B949"><span>${esc(s)}</span><span class="t"><i style="width:${pct(b.pullBySegment[s]?.[key] ?? 0)}"></i></span><span class="p">${pct(b.pullBySegment[s]?.[key] ?? 0)}</span></div>`).join("")}</div>` : ""}
-      <p class="drawer-note">The buyers read the ad's exact words. They can't see layout, type size or images, so this says which words did the work, not what caught the eye.</p>`;
+      <p class="drawer-note">Buyers read the ad's exact words. They can't see layout, fonts or pictures, so this tells you which words did the work, not what caught the eye.</p>`;
     openDrawer(shell(`${b.brand}: what did the work`, esc(quoteOf(part.text, 90)), body));
   }
 
@@ -716,8 +716,8 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     if (has("#ghost")) $("#ghost").classList.add("hidden");
     if (has("#reportBar")) $("#reportBar").classList.remove("hidden");
     ["#csv", "#pdf", "#share"].forEach((id) => { if (has(id)) $(id).disabled = false; });
-    $("#marketTitle").textContent = `Round ${idx + 1}: the market decided`;
-    $("#roundNote").textContent = latest ? "" : `Viewing an earlier round. Round ${rounds.length} is the latest.`;
+    $("#marketTitle").textContent = `Round ${idx + 1}: the market has spoken`;
+    $("#roundNote").textContent = latest ? "" : `You're looking at an earlier round. Round ${rounds.length} is the latest.`;
 
     const col = (id) => r.slots[r.brands.findIndex((b) => b.id === id)];
     const color = (id) => id === "none" ? NONE_COLOR : COLORS[col(id)];
@@ -726,7 +726,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     renderRoundTabs(rounds, idx);
 
     $("#flags").innerHTML = r.brands.filter((b) => b.flagged).map((b) =>
-      `<p class="flag"><b>${esc(b.brand)}</b>'s ad reads like it's talking to the judges, not to buyers. Rewrite it as real marketing copy.</p>`).join("");
+      `<p class="flag"><b>${esc(b.brand)}</b>'s ad talks about the test instead of to the buyer. Write it the way you'd actually run it.</p>`).join("");
 
     const parts = [...r.brands.map((b, i) => ({ id: b.id, share: b.share, c: COLORS[r.slots[i]], ink: INK_ON[r.slots[i]] })),
                    { id: "none", share: r.noPurchase.share }];
@@ -746,7 +746,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
 
     // Both numbers above are real and they disagree on purpose. Saying so here is
     // cheaper than letting a reader decide the report is broken.
-    $("#numNote").innerHTML = `The percentage is <b>average choice probability</b> — across all ${panelOf(r)} buyers, how likely each was to pick that version. The count is <b>outright picks</b>: buyers whose top choice it was. They differ because a buyer leaning 40/35/25 contributes to all three percentages but is counted only once.`;
+    $("#numNote").innerHTML = `Two numbers, two jobs. The <b>percentage</b> is the average chance, across all ${panelOf(r)} buyers, of picking that version. The <b>count</b> is how many made it their top pick. They differ because a buyer leaning 40/35/25 adds to all three percentages but is only counted once.`;
 
     renderHero(r, prev, idx, rounds.length, animate);
     renderExplain(r, prev);
@@ -783,14 +783,14 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
       const { worst, gap } = biggestDrop(b);
       return `<div class="funnel" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3>
         ${STAGES.map(([k, lab]) => `<div class="frow probe" data-investigate="stage:${k}:${b.id}" role="button" tabindex="0"><span class="flab">${stageIcon(k)}${lab}</span><span class="track"><i style="width:${pct(b.funnel[k])}"></i></span><span class="num">${pct(b.funnel[k])}</span></div>`).join("")}
-        <p class="drop">Biggest drop is from ${STAGES[worst - 1][1].toLowerCase()} to ${STAGES[worst][1].toLowerCase()}, ${Math.round(gap * 100)} points.</p></div>`;
+        <p class="drop">Biggest drop: ${STAGES[worst - 1][1].toLowerCase()} to ${STAGES[worst][1].toLowerCase()}, ${Math.round(gap * 100)} points.</p></div>`;
     }).join("");
 
     // Fill is capped at 50% so ink text stays readable on every version colour; white
     // text on a half-strength fill was the old failure (2-3:1 on teal).
     const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * HEAT_MAX.seg)}%, var(--paper))`;
     $("#heatKey").innerHTML = heatKey("share", "share of that segment");
-    $("#heat").innerHTML = `<thead><tr><th scope="col">Segment</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}<th scope="col">Bought nothing</th></tr></thead><tbody>` +
+    $("#heat").innerHTML = `<thead><tr><th scope="col">Group</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}<th scope="col">Bought nothing</th></tr></thead><tbody>` +
       r.segments.map((s, si) => `<tr><th scope="row">${esc(s)}</th>${r.brands.map((b, i) => `<td class="cell num probe" data-investigate="seg:${si}:${b.id}" role="button" tabindex="0" title="See these buyers" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell num probe" data-investigate="seg:${si}:none" role="button" tabindex="0" title="See these buyers" style="${heat(r.noPurchase.bySegment[s], "#8E8E95")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
 
     const brandIds = r.brands.map((b) => b.id);
@@ -799,16 +799,16 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
       const counts = {};
       segCustomers.forEach((c) => brandIds.forEach((id) => { const o = c.byBrand[id].objection; if (o !== "none") counts[o] = (counts[o] || 0) + 1; }));
       const top = Object.entries(counts).sort((a, b2) => b2[1] - a[1])[0];
-      return top ? `<li><b>${esc(s)}</b> buyers are mostly held back by ${objectionIcon(top[0])} ${OBJ_NOUN[top[0]]}.</li>` : "";
+      return top ? `<li><b>${esc(s)}</b>: what stops them most is ${objectionIcon(top[0])} ${OBJ_NOUN[top[0]]}.</li>` : "";
     }).join("") + `</ul>`;
 
     const objHeat = (v) => `background:color-mix(in srgb, var(--ink) ${Math.round(v * HEAT_MAX.obj)}%, var(--paper))`;
-    $("#objections").innerHTML = `<div class="tablewrap"><table class="heat"><thead><tr><th scope="col">Objection</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}</tr></thead><tbody>` +
+    $("#objections").innerHTML = `<div class="tablewrap"><table class="heat"><thead><tr><th scope="col">Reason for “no”</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}</tr></thead><tbody>` +
       OBJ_ORDER.map((k) => `<tr><th scope="row">${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</th>${r.brands.map((b) => `<td class="cell num probe" style="${objHeat(b.objections[k])}" data-investigate="obj:${k}:${b.id}" role="button" tabindex="0" title="See the buyers behind this number">${pct(b.objections[k])}</td>`).join("")}</tr>`).join("") +
-      `</tbody></table></div>` + heatKey("obj", "share of buyers citing it") +
+      `</tbody></table></div>` + heatKey("obj", "share of buyers giving that reason") +
       r.brands.map((b) => {
         const [topK, topV] = topObjection(b);
-        return `<p class="objsum"><b>${esc(b.brand)}</b>'s top blocker: ${objectionIcon(topK)} <button class="numlink" type="button" data-investigate="obj:${topK}:${b.id}">${pct(topV)}</button> cite ${OBJ_NOUN[topK]}.</p>`;
+        return `<p class="objsum"><b>${esc(b.brand)}</b>'s biggest problem: ${objectionIcon(topK)} <button class="numlink" type="button" data-investigate="obj:${topK}:${b.id}">${pct(topV)}</button> say ${OBJ_NOUN[topK]}.</p>`;
       }).join("");
 
     renderContext(r);
@@ -841,19 +841,19 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     const when = r.context.researchedAt ? new Date(r.context.researchedAt) : null;
     const line = (i) => `<li>${i.objection !== "none" ? objectionIcon(i.objection) : `<span class="ctx-pull" aria-hidden="true">+</span>`}<span>${esc(i.text)}</span></li>`;
     $("#context").innerHTML = `
-      <p class="ctx-meta">Researched ${when && !isNaN(when) ? when.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : ""}${r.context.topic ? ` for “${esc(r.context.topic)}”` : ""}. Every buyer read these lines before seeing the ads, and every round in this project uses the same ones.</p>
+      <p class="ctx-meta">Researched ${when && !isNaN(when) ? when.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : ""}${r.context.topic ? ` for “${esc(r.context.topic)}”` : ""}. Every buyer read these before seeing an ad, and every round in this project uses the same ones.</p>
       <div class="ctx-cols">
-        <div><h3 class="ctx-h">What holds buyers back</h3><ul class="ctx-list">${barriers.map(line).join("") || `<li class="muted">The research found no clear barriers.</li>`}</ul></div>
-        <div><h3 class="ctx-h">What pulls them in</h3><ul class="ctx-list">${pulls.map(line).join("") || `<li class="muted">The research found no clear pull.</li>`}</ul></div>
+        <div><h3 class="ctx-h">What makes people hesitate</h3><ul class="ctx-list">${barriers.map(line).join("") || `<li class="muted">The research found nothing clear holding people back.</li>`}</ul></div>
+        <div><h3 class="ctx-h">What draws people in</h3><ul class="ctx-list">${pulls.map(line).join("") || `<li class="muted">The research found nothing clear drawing people in.</li>`}</ul></div>
       </div>
-      ${barriers.length ? `<h3 class="ctx-h" style="margin-top:22px">Research against your buyers</h3>
+      ${barriers.length ? `<h3 class="ctx-h" style="margin-top:22px">The real world vs. your buyers</h3>
       <div class="ctx-compare" role="table" aria-label="Objection mix: research versus buyers">
-        <div class="ctx-row ctx-headrow" role="row"><span role="columnheader">Objection</span><span role="columnheader">In the research</span><span role="columnheader">Your buyers' main reason</span></div>
+        <div class="ctx-row ctx-headrow" role="row"><span role="columnheader">Reason for “no”</span><span role="columnheader">In the research</span><span role="columnheader">Your buyers' main reason</span></div>
         ${OBJ_ORDER.map((k) => `<div class="ctx-row" role="row"><span role="cell">${objectionIcon(k)} ${cap(OBJ_LABEL[k])}</span>
           <span role="cell" class="ctx-bar"><i style="width:${pct(research[k])}"></i><b class="num">${pct(research[k])}</b></span>
           <span role="cell" class="ctx-bar panel"><i style="width:${pct(panel[k])}"></i><b class="num">${pct(panel[k])}</b></span></div>`).join("")}
       </div>
-      <p class="ctx-note">Both columns are shares of the four objections, so each sums to 100%. They measure different things — how strongly a concern shows up in public sources, and how often it was a buyer's main reason not to buy — so read a big gap as something to check, not as an error.</p>` : ""}`;
+      <p class="ctx-note">Each column adds up to 100%. The left is how loudly a worry shows up in public sources; the right is how often it was a buyer's main reason to say no. A big gap is worth a look, not a sign something broke.</p>` : ""}`;
   }
 
   const listWords = (xs) => xs.length < 2 ? (xs[0] || "") : xs.slice(0, -1).join(", ") + " and " + xs[xs.length - 1];
@@ -870,9 +870,9 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
 
     const winPicks = picksFor(r, win.id), secondPicks = picksFor(r, second.id);
     if (gapPts < 5)
-      lines.push(`<b>${esc(win.brand)}</b> and <b>${esc(second.brand)}</b> finished level — ${pct(win.share)} against ${pct(second.share)}, picked outright by ${winPicks} and ${secondPicks} of ${n} buyers. A gap that small isn't a result you can act on; treat it as a tie.`);
+      lines.push(`<b>${esc(win.brand)}</b> and <b>${esc(second.brand)}</b> finished level: ${pct(win.share)} and ${pct(second.share)}, top pick for ${winPicks} and ${secondPicks} of ${n} buyers. A gap that small isn't something to act on. Call it a tie.`);
     else
-      lines.push(`<b>${esc(win.brand)}</b> won this round on ${pct(win.share)} average choice probability, ${gapPts} points clear of ${esc(second.brand)} on ${pct(second.share)}. ${winPicks} of ${n} buyers picked it outright.`);
+      lines.push(`<b>${esc(win.brand)}</b> won with a ${pct(win.share)} average chance of being picked, ${gapPts} points clear of ${esc(second.brand)} at ${pct(second.share)}. ${winPicks} of ${n} buyers made it their top pick.`);
 
     // The two statistics can disagree sharply here — a panel can carry real probability
     // of walking away while nobody actually walks — so say which one is being quoted.
@@ -880,27 +880,27 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     if (nonePicks > 0)
       lines.push(`${nonePicks} of ${n} buyers bought nothing at all.`);
     else if (r.noPurchase.share >= .05)
-      lines.push(`No buyer walked away outright, but the panel still carried ${pct(r.noPurchase.share)} average probability of buying nothing — the doubt is there even where it didn't decide anyone.`);
+      lines.push(`Nobody walked away, but there was still a ${pct(r.noPurchase.share)} average chance of buying nothing. The doubt is there, even if it didn't decide anyone.`);
 
     const tossups = r.customers.filter(isTossup).length;
     if (tossups)
-      lines.push(`${tossups} of ${n} buyer${tossups === 1 ? " was" : "s were"} close to a coin flip between their top two choices. Those are the picks most likely to land differently on an identical re-run.`);
+      lines.push(`${tossups} of ${n} buyer${tossups === 1 ? " was" : "s were"} close to a coin flip between their top two. Those are the picks most likely to change on a re-run.`);
 
     // The final stage is the share itself, so comparing it would just restate the
     // first line; the useful question is where upstream the two separated.
     const edge = STAGES.filter(([k]) => k !== "purchase").map(([k]) => [k, win.funnel[k] - second.funnel[k]]).sort((a, b) => b[1] - a[1])[0];
     if (edge[1] > .03)
-      lines.push(`<b>${esc(win.brand)}</b>'s clearest advantage was in ${STAGE_PLAIN[edge[0]]}: ${pct(win.funnel[edge[0]])} against ${esc(second.brand)}'s ${pct(second.funnel[edge[0]])}.`);
+      lines.push(`Where <b>${esc(win.brand)}</b> pulled ahead: ${STAGE_PLAIN[edge[0]]}, ${pct(win.funnel[edge[0]])} against ${pct(second.funnel[edge[0]])} for ${esc(second.brand)}.`);
 
     const worstObj = OBJ_ORDER.map((k) => [k, r.brands.reduce((s, b) => s + b.objections[k], 0) / r.brands.length]).sort((a, b) => b[1] - a[1])[0];
-    lines.push(`The most common objection across every version was that ${OBJ_CLAUSE[worstObj[0]]} (${pct(worstObj[1])} on average).`);
+    lines.push(`The most common reason for “no”, across every version: ${OBJ_CLAUSE[worstObj[0]]} (${pct(worstObj[1])} on average).`);
 
     const dissent = r.segments.map((s) => {
       const best = [...r.brands].sort((a, b) => b.bySegment[s] - a.bySegment[s])[0];
       return best.id === win.id ? null : { s, best };
     }).filter(Boolean)[0];
     if (dissent)
-      lines.push(`Not everyone agreed: <b>${esc(dissent.s)}</b> buyers went for ${esc(dissent.best.brand)} instead, on ${pct(dissent.best.bySegment[dissent.s])} of that segment.`);
+      lines.push(`Not everyone agreed. <b>${esc(dissent.s)}</b> buyers preferred ${esc(dissent.best.brand)}, at ${pct(dissent.best.bySegment[dissent.s])} in that group.`);
 
     if (prev) {
       const move = r.brands.map((b, i) => {
@@ -914,7 +914,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
         lines.push(`<b>${esc(move.b.brand)}</b> ${move.d > 0 ? "gained" : "lost"} ${Math.abs(move.d)} points since the last round, ${move.changed.length ? `after you changed its ${listWords(move.changed)}` : "with no change to its own copy"}.`);
     }
 
-    $("#explain").innerHTML = `<p class="explain-label">What happened</p>` + lines.map((l) => `<p>${l}</p>`).join("");
+    $("#explain").innerHTML = `<p class="explain-label">What happened, in plain words</p>` + lines.map((l) => `<p>${l}</p>`).join("");
   }
 
   // One shared key for both heatmaps, built with the same colour-mix the cells use.
@@ -965,9 +965,9 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
           <button class="pitch-share num numlink" type="button" data-investigate="share:${b.id}" aria-label="${esc(b.brand)}, ${pct(b.share)}. See the buyers">${pct(b.share)}</button></figcaption>
         ${w ? `<div class="adf-why">
           ${w.top ? `<button type="button" class="why" data-investigate="part:${b.id}:${w.top.key}"><i class="k-hl"></i><span class="why-t">${esc(quoteOf(w.top.text))}</span><b>${pct(w.top.v)}</b></button>`
-                  : `<span class="why why-none">No single part stood out as the reason to buy</span>`}
+                  : `<span class="why why-none">No one line did the selling</span>`}
           ${w.push ? `<button type="button" class="why" data-investigate="part:${b.id}:${w.push.key}"><i class="k-wave"></i><span class="why-t">${esc(w.push.label.toLowerCase().startsWith("line") ? quoteOf(w.push.text) : w.push.label.replace(/^The /, "the "))}</span><b>${pct(w.push.v)}</b></button>`
-                   : `<span class="why why-none">Nothing stood out as off-putting</span>`}
+                   : `<span class="why why-none">Nothing clearly put people off</span>`}
         </div>` : ""}
       </figure>`;
     }).join("");
@@ -994,8 +994,8 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
       const dropFrom = STAGES[worst - 1][1].toLowerCase(), dropTo = STAGES[worst][1].toLowerCase();
       const [topK, topV] = topObjection(b);
       const body = b.share === maxShare
-        ? `Leading the round at ${pct(b.share)}, but ${pct(topV)} of buyers still cite ${OBJ_NOUN[topK]}. Worth testing a fix before it costs share.`
-        : `It loses the most people between ${dropFrom} and ${dropTo} (${Math.round(gap * 100)} points), and the top objection is ${OBJ_NOUN[topK]} (${pct(topV)}). Try testing ${OBJ_FIX[topK]} next round.`;
+        ? `In front at ${pct(b.share)}, but ${pct(topV)} of buyers still name ${OBJ_NOUN[topK]}. Fix it while you're ahead.`
+        : `It loses the most people between ${dropFrom} and ${dropTo} (${Math.round(gap * 100)} points), and the top reason for “no” is ${OBJ_NOUN[topK]} (${pct(topV)}). Next round, test ${OBJ_FIX[topK]}.`;
       return `<div class="suggest" style="--c:${COLORS[r.slots[i]]}"><h3><span class="sw" style="background:var(--c)"></span>${esc(b.brand)}</h3><p>${body}</p></div>`;
     }).join("");
   }
@@ -1035,7 +1035,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     $("#deltas").innerHTML = switched.map(({ c, from, to, appeal }) => `
       <div class="deltarow probe" data-investigate="buyer:${c.id}" role="button" tabindex="0">${buyerFace(c, curr.segments.indexOf(c.segment), 32)}<span class="dname">${esc(c.name)}</span>
         <span class="dmove"><span class="dfrom">${esc(from)}</span><span class="darrow">→</span><span class="dto">${esc(to)}</span></span>
-        ${appeal != null ? `<span class="dappeal num">${pct(appeal)} appeal</span>` : ""}
+        ${appeal != null ? `<span class="dappeal num">liked it ${pct(appeal)}</span>` : ""}
       </div>`).join("");
   }
 
@@ -1092,7 +1092,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     { key: "buyers", label: "Buyers", ids: ["secBuyers", "deltaSec"] },
     { key: "versions", label: "Versions", ids: ["pitchSec", "secFunnels", "suggestSec"] },
     { key: "segments", label: "Segments", ids: ["secSegments"] },
-    { key: "objections", label: "Objections", ids: ["secObjections"] },
+    { key: "objections", label: "Why not", ids: ["secObjections"] },
     { key: "research", label: "Research", ids: ["contextSec"] },
     { key: "history", label: "History", ids: ["changesSec", "historySec"] },
   ];

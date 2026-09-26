@@ -17,12 +17,12 @@ export const PERSONA_LIMITS = { minPersonas: 4, maxPersonas: 16, name: 30, segme
 // is locked, so every round in a project describes its ads the same way and any
 // comparison between rounds is like for like by construction.
 export const EXTRA_FIELDS = [
-  { key: "subheadline", label: "Subheadline",           ad: "subheadline",        max: 120, tag: "input",    hint: "The supporting line under the headline." },
-  { key: "cta",         label: "Call to action",        ad: "call_to_action",     max: 40,  tag: "input",    hint: "What the button or link says." },
-  { key: "offer",       label: "Offer or promotion",    ad: "offer",              max: 120, tag: "input",    hint: "A trial, discount or bundle attached to the deal." },
-  { key: "proof",       label: "Proof point",           ad: "proof_point",        max: 160, tag: "input",    hint: "A statistic, guarantee or review that backs the claim." },
-  { key: "audience",    label: "Who it is for",         ad: "audience",           max: 100, tag: "input",    hint: "The buyer the ad names out loud." },
-  { key: "visual",      label: "What the visual shows", ad: "visual_description", max: 200, tag: "textarea", hint: "Describe the image in words. The model reads text and cannot see pictures, so this tests your description, not your artwork." },
+  { key: "subheadline", label: "Subheadline",           ad: "subheadline",        max: 120, tag: "input",    hint: "The line right under the headline." },
+  { key: "cta",         label: "Call to action",        ad: "call_to_action",     max: 40,  tag: "input",    hint: "What the button says, like \"Start free\"." },
+  { key: "offer",       label: "Offer or promotion",    ad: "offer",              max: 120, tag: "input",    hint: "A trial, discount or bundle that sweetens the deal." },
+  { key: "proof",       label: "Proof point",           ad: "proof_point",        max: 160, tag: "input",    hint: "A number, guarantee or review that backs you up." },
+  { key: "audience",    label: "Who it is for",         ad: "audience",           max: 100, tag: "input",    hint: "Who the ad says it's for, out loud." },
+  { key: "visual",      label: "What the visual shows", ad: "visual_description", max: 200, tag: "textarea", hint: "Describe the picture in words. Buyers read text and can't see images, so this tests your description, not your artwork." },
 ];
 export const EXTRA_BY_KEY = Object.fromEntries(EXTRA_FIELDS.map((f) => [f.key, f]));
 export const extraKeysOf = (teams) =>
@@ -38,7 +38,7 @@ const who = (obj, i, fallback) => txt(obj?.brand) || txt(obj?.name) || `${fallba
 
 export function findTeamProblem(teams) {
   if (!Array.isArray(teams) || teams.length < LIMITS.minTeams || teams.length > LIMITS.maxTeams)
-    return { index: null, field: null, message: `Enter between ${LIMITS.minTeams} and ${LIMITS.maxTeams} versions.` };
+    return { index: null, field: null, message: `A round needs ${LIMITS.minTeams} to ${LIMITS.maxTeams} versions.` };
 
   const seen = new Map();
   for (const [i, t] of teams.entries()) {
@@ -46,11 +46,11 @@ export function findTeamProblem(teams) {
       const v = txt(t?.[f]);
       if (!v) return { index: i, field: f, message: `${who(t, i, "Version")} is missing its ${TEAM_FIELD[f]}.` };
       if (v.length > LIMITS[f])
-        return { index: i, field: f, message: `${who(t, i, "Version")}'s ${TEAM_FIELD[f]} is ${v.length} characters — the limit is ${LIMITS[f]}.` };
+        return { index: i, field: f, message: `${who(t, i, "Version")}'s ${TEAM_FIELD[f]} is ${v.length} characters. The limit is ${LIMITS[f]}, so trim ${v.length - LIMITS[f]}.` };
     }
     const key = txt(t.brand).toLowerCase();
     if (seen.has(key))
-      return { index: i, field: "brand", message: `Two versions are called "${txt(t.brand)}". Give each one its own name so the report can tell them apart.` };
+      return { index: i, field: "brand", message: `Two versions are both called "${txt(t.brand)}". Give each its own name so the report can tell them apart.` };
     seen.set(key, i);
   }
 
@@ -60,9 +60,9 @@ export function findTeamProblem(teams) {
     const f = EXTRA_BY_KEY[key];
     for (const [i, t] of teams.entries()) {
       const v = txt(t?.extras?.[key]);
-      if (!v) return { index: i, field: `extra:${key}`, message: `${who(t, i, "Version")} is missing its ${f.label.toLowerCase()}. Every version needs it, or the comparison is not like for like.` };
+      if (!v) return { index: i, field: `extra:${key}`, message: `${who(t, i, "Version")} is missing its ${f.label.toLowerCase()}. Every version needs one, or it's not a fair fight.` };
       if (v.length > f.max)
-        return { index: i, field: `extra:${key}`, message: `${who(t, i, "Version")}'s ${f.label.toLowerCase()} is ${v.length} characters — the limit is ${f.max}.` };
+        return { index: i, field: `extra:${key}`, message: `${who(t, i, "Version")}'s ${f.label.toLowerCase()} is ${v.length} characters. The limit is ${f.max}, so trim ${v.length - f.max}.` };
     }
   }
   return null;
@@ -72,7 +72,7 @@ export function findPersonaProblem(personas) {
   if (personas == null) return null;
   const L = PERSONA_LIMITS;
   if (!Array.isArray(personas) || personas.length < L.minPersonas || personas.length > L.maxPersonas)
-    return { index: null, field: null, message: `Enter between ${L.minPersonas} and ${L.maxPersonas} buyers.` };
+    return { index: null, field: null, message: `A round needs ${L.minPersonas} to ${L.maxPersonas} buyers.` };
 
   const seen = new Set();
   for (const [i, p] of personas.entries()) {
@@ -80,7 +80,7 @@ export function findPersonaProblem(personas) {
       const v = txt(p?.[f]);
       if (!v) return { index: i, field: f, message: `${who(p, i, "Buyer")} is missing a ${PERSONA_FIELD[f]}.` };
       if (v.length > L[f])
-        return { index: i, field: f, message: `${who(p, i, "Buyer")}'s ${PERSONA_FIELD[f]} is ${v.length} characters — the limit is ${L[f]}.` };
+        return { index: i, field: f, message: `${who(p, i, "Buyer")}'s ${PERSONA_FIELD[f]} is ${v.length} characters. The limit is ${L[f]}, so trim ${v.length - L[f]}.` };
     }
     const key = String(p.id ?? i);
     if (seen.has(key)) return { index: i, field: "name", message: `Two buyers share the same id.` };

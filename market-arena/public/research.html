@@ -65,30 +65,27 @@
 <main class="rs-main">
   <div class="wrap">
     <h1 style="margin:0 0 6px">Research your market</h1>
-    <p class="sub">Market Arena searches the public web — research papers, established news, industry
-      publications and blogs, and real social and forum discussion — and summarises what buyers in
-      this market care about and what holds them back. Every finding links to the page it came from.</p>
+    <p class="sub">We search the public web (research papers, real news, trade press, blogs, forums and social chatter) and boil it down to what people in this market want and what stops them buying. Every finding links to the page it came from, so you can check our homework.</p>
 
     <div class="rs-form">
-      <label for="topic">What market is this?</label>
+      <label for="topic">What market are you in?</label>
       <input id="topic" class="field" maxlength="160" placeholder="e.g. ready-to-drink cold brew coffee in India">
       <label for="brief">Anything that narrows it down? <span class="opt">Optional</span></label>
-      <textarea id="brief" class="field" maxlength="600" placeholder="Who you sell to, the price point, the channel."></textarea>
+      <textarea id="brief" class="field" maxlength="600" placeholder="Who you sell to, your price point, where you sell."></textarea>
       <div class="rs-go">
         <button class="run" id="go">Research this market</button>
         <span class="rs-note" id="cost"></span>
       </div>
-      <p class="rs-note">Usually takes 15–30 seconds. Results are fetched fresh each time and are not
-        saved — only the short findings you choose to give your buyers are kept, with your project.</p>
+      <p class="rs-note">Takes 15 to 30 seconds. We fetch it fresh every time and don't save it. Only the short findings you hand to your buyers stay, with your project.</p>
       <p class="rs-err" id="err" role="alert"></p>
     </div>
 
     <div class="rs-progress hidden" id="progress" aria-live="polite">
       <b id="elapsed">Searching…</b>
       <ol class="rs-steps" id="steps">
-        <li>Searching research, news, industry writing and social discussion</li>
+        <li>Searching research, news, trade press and social chatter</li>
         <li>Reading what the sources say about buyers</li>
-        <li>Checking every finding against a page that was actually opened</li>
+        <li>Checking every finding against a page we actually opened</li>
         <li>Screening the findings before any buyer sees them</li>
       </ol>
     </div>
@@ -99,7 +96,7 @@
 
 <footer>
   <div class="wrap row">
-    <span>Findings come from public sources found by live web search. They describe the market in general, not your customers, and can be wrong or out of date — follow the links before relying on one.</span>
+    <span>Findings come from public pages found by live web search. They describe the market in general, not your customers, and they can be wrong or stale. Click through before you lean on one.</span>
   </div>
 </footer>
 
@@ -113,7 +110,7 @@ const $ = (s) => document.querySelector(s);
 const SESSION_KEY = "market-arena-practice-session";
 const loadSession = () => { try { return JSON.parse(localStorage.getItem(SESSION_KEY)); } catch { return null; } };
 
-const TYPE_LABEL = { paper: "Research", report: "Reports", news: "News", blog: "Industry & blogs", social: "Social & forums" };
+const TYPE_LABEL = { paper: "Research", report: "Reports", news: "News", blog: "Trade press & blogs", social: "Social & forums" };
 const TYPE_ORDER = ["paper", "report", "news", "blog", "social"];
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -164,7 +161,7 @@ function renderResult(d) {
     <p class="rs-meta">${d.sources.length} source${d.sources.length === 1 ? "" : "s"} from ${d.searches} search${d.searches === 1 ? "" : "es"}, in ${(d.ms / 1000).toFixed(0)} seconds. ${d.charged} credits used, ${d.balance} left.${d.dropped > 0 ? ` ${d.dropped} link${d.dropped > 1 ? "s were" : " was"} left out because the search never opened ${d.dropped > 1 ? "them" : "it"}.` : ""}</p>
     <section class="rs-sec"><h2>What buyers think</h2>
       <p class="sub">Strongest first. Each finding is kept only if at least one page the search actually opened supports it.</p>
-      <div class="rs-themes">${themes || `<p class="sub">The sources didn't support any clear findings. Try describing the market more specifically.</p>`}</div>
+      <div class="rs-themes">${themes || `<p class="sub">The sources didn't add up to anything clear. Try describing the market more specifically.</p>`}</div>
     </section>
     <section class="rs-sec"><h2>Sources</h2><div class="rs-srcs">${groups}</div></section>
     <div class="rs-use" id="use"></div>`;
@@ -179,29 +176,29 @@ function renderUse() {
   const s = loadSession();
   const items = result.context.items;
   if (!s?.personas?.length) {
-    box.innerHTML = `<h2>Use this in a simulation</h2><p>Start a project first, then come back here to give its buyers these findings.</p><a class="ghost" href="practice.html">Start a project</a>`;
+    box.innerHTML = `<h2>Hand this to your buyers</h2><p>Start a project first, then come back to give its buyers these findings.</p><a class="ghost" href="practice.html">Start a project</a>`;
     return;
   }
   if (s.rounds?.length) {
-    box.innerHTML = `<h2>Your project has already run</h2><p>Buyers' market knowledge is fixed at round 1, so every round is judged against the same information and the rounds stay comparable. ${s.rounds[0].context ? "This project's buyers already have research from before round 1." : "This project ran without research."} Start a new project to test with these findings.</p>`;
+    box.innerHTML = `<h2>Your project has already run</h2><p>What buyers know is locked at round 1, so every round is judged on the same information. ${s.rounds[0].context ? "This project's buyers already have research from before round 1." : "This project ran without research."} Start a new project to test with these findings.</p>`;
     return;
   }
   if (!result.screened) {
-    box.innerHTML = `<h2>Use this in a simulation</h2><p>These findings couldn't be screened for hidden instructions just now, so they can't be given to buyers. The research above is still yours to read.</p>`;
+    box.innerHTML = `<h2>Hand this to your buyers</h2><p>We couldn't safety-check these findings just now, so they can't go to your buyers. The research above is still yours to read.</p>`;
     return;
   }
   if (!items.length) {
-    box.innerHTML = `<h2>Use this in a simulation</h2><p>No findings passed the screen, so there's nothing to give the buyers.</p>`;
+    box.innerHTML = `<h2>Hand this to your buyers</h2><p>None of the findings passed our safety check, so there's nothing to hand over this time.</p>`;
     return;
   }
   const attached = s.research?.researchedAt === result.context.researchedAt;
-  box.innerHTML = `<h2>${attached ? "Your buyers will read these" : "Give these findings to your buyers?"}</h2>
+  box.innerHTML = `<h2>${attached ? "Your buyers will read these" : "Hand these to your buyers?"}</h2>
     <p>Before judging the ads in <b>${esc(s.scenario?.title || "your project")}</b>, every buyer will read the ${items.length} strongest findings below.
       This is fixed at round 1, so every later round uses exactly the same lines.${result.withheld ? ` ${result.withheld} finding${result.withheld > 1 ? "s were" : " was"} held back by the screen.` : ""}</p>
     <ul class="ctx-list" style="margin:0 0 14px">${items.map((i) => `<li>${i.objection !== "none" ? objectionIcon(i.objection) : `<span class="ctx-pull" aria-hidden="true">+</span>`}<span>${esc(i.text)}</span></li>`).join("")}</ul>
     <div class="rs-go" style="margin-top:0">${attached
       ? `<a class="run" href="practice.html">Back to your project</a>`
-      : `<button class="run" id="useIt">Use in my simulation</button><a class="btn" href="practice.html">Not now</a>`}</div>`;
+      : `<button class="run" id="useIt">Give these to my buyers</button><a class="btn" href="practice.html">Not now</a>`}</div>`;
 }
 
 document.addEventListener("click", (e) => {
@@ -217,7 +214,7 @@ $("#go").addEventListener("click", async () => {
   const m = account();
   if (!m.signedIn) return openSignIn("login");
   const topic = $("#topic").value.trim();
-  if (topic.length < 3) { $("#err").textContent = "Say what market to research first."; return $("#topic").focus(); }
+  if (topic.length < 3) { $("#err").textContent = "Tell us which market first."; return $("#topic").focus(); }
   $("#err").textContent = "";
   $("#go").disabled = true;
   $("#out").classList.add("hidden");
@@ -241,7 +238,7 @@ $("#go").addEventListener("click", async () => {
       body: JSON.stringify({ topic, brief: $("#brief").value.trim(), segments: [...new Set((s?.personas || []).map((p) => p.segment))] }),
     });
     const d = await res.json().catch(() => ({ error: "The research service didn't answer. Nothing was charged." }));
-    if (!res.ok) throw new Error(d.error || "That didn't work.");
+    if (!res.ok) throw new Error(d.error || "That didn't go through. Nothing was charged.");
     result = d;
     renderResult(d);
     $("#out").classList.remove("hidden");

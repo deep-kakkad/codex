@@ -53,20 +53,20 @@ export function initDataSheet({ getState, apply, market }) {
     const segs = [...new Set(st.personas.map((p) => p.segment).filter(Boolean))];
     const me = account();
     const cost = me.costs?.ask ?? 10;
-    el.innerHTML = `${head("Optional", "Build buyers from your data")}
+    el.innerHTML = `${head("Optional", "Turn your customer notes into buyers")}
       <div class="drawer-body ds">
-        <p class="drawer-lede">Paste what you already know about your customers: interview notes, reviews, survey answers, sales-call notes. We draft a panel from it, and you review every buyer before they join.</p>
-        <label class="ds-lab" for="dsText"><span>Your material</span><span class="count" id="dsCount"></span></label>
-        <textarea id="dsText" class="field ds-text" maxlength="${TEXT_MAX}" placeholder="Paste reviews, interview notes or survey answers here…">${esc(text)}</textarea>
-        <div class="ds-under"><label class="ds-file">Or add a .txt or .csv file<input type="file" id="dsFile" accept=".txt,.csv,.md,text/plain,text/csv"></label><span class="ds-hint" id="dsHint"></span></div>
+        <p class="drawer-lede">Paste what you already know about your customers: interview notes, reviews, survey answers, sales-call notes. We draft buyers from it. You check every one before they join.</p>
+        <label class="ds-lab" for="dsText"><span>Your notes</span><span class="count" id="dsCount"></span></label>
+        <textarea id="dsText" class="field ds-text" maxlength="${TEXT_MAX}" placeholder="Paste reviews, interview notes or survey answers here. The messier, the better.">${esc(text)}</textarea>
+        <div class="ds-under"><label class="ds-file">Or drop in a .txt or .csv file<input type="file" id="dsFile" accept=".txt,.csv,.md,text/plain,text/csv"></label><span class="ds-hint" id="dsHint"></span></div>
         <div class="ds-row"><span>How many buyers</span><div class="seg-ctl" role="group" aria-label="How many buyers">${[4, 8, 12, 16].map((n) =>
           `<button type="button" class="psize${n === count ? " active" : ""}" data-dsn="${n}">${n}</button>`).join("")}</div></div>
         ${segs.length ? `<label class="ds-check"><input type="checkbox" id="dsSegs"${keepSegs ? " checked" : ""}> Keep my current segments <span>${esc(segs.slice(0, 4).join(", "))}${segs.length > 4 ? "…" : ""}</span></label>` : ""}
-        <p class="ds-private">${LOCK}<span>Emails, phone numbers and links are removed before your text is sent to the model that drafts the buyers. Your text isn't stored; only the buyers you keep are.</span></p>
-        ${st.rounds.length ? `<p class="caveat">This project already has ${st.rounds.length === 1 ? "a round" : "rounds"}. Changing the panel means the next round can't be compared with the earlier ones.</p>` : ""}
+        <p class="ds-private">${LOCK}<span>We strip out emails, phone numbers and links before anything is sent. Your notes aren't stored. Only the buyers you keep are.</span></p>
+        ${st.rounds.length ? `<p class="caveat">Heads up: this project already has ${st.rounds.length === 1 ? "a round" : "rounds"}. Change the buyers now and the next round won't compare cleanly with the earlier ones.</p>` : ""}
         ${error ? `<p class="fielderr" role="alert">${esc(error)}</p>` : ""}
       </div>
-      <div class="ds-foot"><span class="ds-cost">${cost} credits · refunded if it fails</span>
+      <div class="ds-foot"><span class="ds-cost">${cost} credits, back if it fails</span>
         ${me.signedIn ? `<button class="btn-primary" type="button" id="dsDraft">Draft ${count} buyers</button>` : `<button class="btn-primary" type="button" data-ds-signin>Sign in to draft buyers</button>`}</div>`;
     updateCount();
   }
@@ -74,23 +74,23 @@ export function initDataSheet({ getState, apply, market }) {
     const w = words(text);
     const c = el.querySelector("#dsCount"); if (c) c.textContent = `${w.toLocaleString()} words`;
     const h = el.querySelector("#dsHint");
-    if (h) h.textContent = text.trim().length < TEXT_MIN ? "Paste a few reviews or a page of notes to start."
-      : w < WORDS_GOOD ? "More text makes better buyers. With this little, they lean on guesses." : "";
+    if (h) h.textContent = text.trim().length < TEXT_MIN ? "A few reviews or a page of notes is enough to start."
+      : w < WORDS_GOOD ? "More text, better buyers. With this little, they'll be part guesswork." : "";
     const b = el.querySelector("#dsDraft"); if (b) b.disabled = text.trim().length < TEXT_MIN;
   }
 
   async function runDraft() {
     const st = getState();
     const segs = keepSegs ? [...new Set(st.personas.map((p) => p.segment).filter(Boolean))] : [];
-    el.innerHTML = `${head("Drafting", `Reading your material`)}
-      <div class="drawer-body ds"><p class="drawer-lede" role="status">Drafting ${count} buyers and checking every line they quote against your text. This usually takes under ten seconds.</p>
+    el.innerHTML = `${head("Drafting", `Reading your notes`)}
+      <div class="drawer-body ds"><p class="drawer-lede" role="status">Drafting ${count} buyers and checking every line they quote against your notes, word for word. Usually under ten seconds.</p>
         ${Array.from({ length: 3 }, () => `<div class="dsb dsb-skel"><span class="skel" style="width:44px;height:44px;border-radius:50%"></span><div><span class="skel" style="height:14px;width:40%;margin-bottom:10px"></span><span class="skel" style="height:10px;width:90%;margin-bottom:6px"></span><span class="skel" style="height:10px;width:70%"></span></div></div>`).join("")}</div>`;
     try {
       const res = await fetch("/api/buyers", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text, count, segments: segs, market: market() }) });
       const d = await res.json().catch(() => ({}));
       refreshAccount?.().catch?.(() => {});
-      if (!res.ok) throw new Error(d.error || "Couldn't draft the buyers, so nothing was charged.");
+      if (!res.ok) throw new Error(d.error || "Couldn't draft the buyers. Nothing was charged.");
       draft = { ...d, buyers: d.buyers.map((b) => ({ ...b, keep: true })) };
       paintReview();
     } catch (e) { paintPaste(e.message); }
@@ -105,9 +105,9 @@ export function initDataSheet({ getState, apply, market }) {
     const canReplace = kept >= L.minPersonas;
     el.innerHTML = `${head("Review", `${draft.buyers.length} buyers drafted`)}
       <div class="drawer-body ds">
-        <p class="drawer-lede">${esc(draft.summary || "Drafted from your material.")} Every line under a buyer is copied from your text. Edit anything, and untick buyers you don't want.</p>
-        ${draft.gaps ? `<p class="ds-gaps"><b>Not in your data:</b> ${esc(draft.gaps)}</p>` : ""}
-        ${draft.buyers.length < count ? `<p class="ds-note">You asked for ${count}; your material supported ${draft.buyers.length} distinct buyers.</p>` : ""}
+        <p class="drawer-lede">${esc(draft.summary || "Drafted from your notes.")} Every line under a buyer is copied straight from your text. Edit anything, and untick anyone you don't want.</p>
+        ${draft.gaps ? `<p class="ds-gaps"><b>What your notes don't cover:</b> ${esc(draft.gaps)}</p>` : ""}
+        ${draft.buyers.length < count ? `<p class="ds-note">You asked for ${count}. Your notes had ${draft.buyers.length} genuinely different people in them.</p>` : ""}
         ${draft.droppedQuotes || draft.sharedQuotes || draft.droppedBuyers || draft.renamed ? `<p class="ds-note">${[
           draft.droppedQuotes ? `${draft.droppedQuotes} quoted line${draft.droppedQuotes === 1 ? " wasn't an exact excerpt" : "s weren't exact excerpts"} of your text and ${draft.droppedQuotes === 1 ? "was" : "were"} removed` : "",
           draft.sharedQuotes ? `${draft.sharedQuotes} line${draft.sharedQuotes === 1 ? " was" : "s were"} kept with the first buyer ${draft.sharedQuotes === 1 ? "it" : "they"} described rather than repeated` : "",
@@ -122,10 +122,10 @@ export function initDataSheet({ getState, apply, market }) {
               <div class="dsb-top"><input class="dsb-name" data-bf="name" data-i="${i}" maxlength="${L.name}" value="${esc(b.name)}" aria-label="Name">
                 <input class="dsb-seg" data-bf="segment" data-i="${i}" maxlength="${L.segment}" value="${esc(b.segment)}" aria-label="Segment"></div>
               <textarea class="field dsb-prof" data-bf="profile" data-i="${i}" maxlength="${L.profile}" aria-label="Profile">${esc(b.profile)}</textarea>
-              <div class="dsb-src"><span>From your data</span>${b.quotes.map((q) => `<blockquote>${esc(q)}</blockquote>`).join("")}</div>
+              <div class="dsb-src"><span>Straight from your notes</span>${b.quotes.map((q) => `<blockquote>${esc(q)}</blockquote>`).join("")}</div>
             </div>
           </div>`).join("")}</div>
-        <button class="btn-quiet ds-again" type="button" data-ds-again>Start again with different material</button>
+        <button class="btn-quiet ds-again" type="button" data-ds-again>Start again with different notes</button>
       </div>
       <div class="ds-foot"><span class="ds-cost">${kept} of ${draft.buyers.length} selected</span>
         <button class="btn" type="button" data-apply="add"${canAdd ? "" : " disabled"} title="${canAdd ? "" : `A panel holds at most ${L.maxPersonas} buyers`}">Add to my panel</button>
@@ -142,7 +142,7 @@ export function initDataSheet({ getState, apply, market }) {
     if (e.target.dataset.keep != null && draft) { draft.buyers[+e.target.dataset.keep].keep = e.target.checked; paintReview(); }
     if (e.target.id === "dsFile" && e.target.files?.[0]) {
       const f = e.target.files[0];
-      if (f.size > TEXT_MAX * 4) { toast("That file is too large. Paste the most useful part instead.", { tone: "error" }); return; }
+      if (f.size > TEXT_MAX * 4) { toast("That file's too big. Paste the most useful part instead.", { tone: "error" }); return; }
       text = ((text.trim() ? text.trim() + "\n\n" : "") + (await f.text())).slice(0, TEXT_MAX);
       el.querySelector("#dsText").value = text; updateCount();
     }
@@ -158,7 +158,7 @@ export function initDataSheet({ getState, apply, market }) {
     if (a && draft) {
       const chosen = draft.buyers.filter((b) => b.keep && b.name.trim() && b.segment.trim() && b.profile.trim());
       apply(chosen.map(({ name, segment, profile, quotes }, i) => ({ id: `d${Date.now().toString(36)}${i}`, name: name.trim(), segment: segment.trim(), profile: profile.trim(), source: "data", quotes })), a.dataset.apply);
-      toast(`${chosen.length} buyer${chosen.length === 1 ? "" : "s"} from your data ${a.dataset.apply === "replace" ? "now make up your panel" : "joined your panel"}.`);
+      toast(`${chosen.length} buyer${chosen.length === 1 ? "" : "s"} from your notes ${a.dataset.apply === "replace" ? "now make up your panel" : "just joined your panel"}.`);
       draft = null; text = "";
       close();
     }
