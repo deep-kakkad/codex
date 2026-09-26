@@ -349,7 +349,7 @@ import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { morphFormat } from "./morph.js";
 import { initDataSheet, DOC_ICON } from "./buyers-data.js";
 import { GOAL_ART } from "./goal-art.js";
-import { creativeField, creativeBar, prepareImage, readCreatives, IMG_IC } from "./creative-ui.js";
+import { creativeHero, creativeBar, prepareImage, readCreatives, IMG_IC, openCreativePanel, sortImageWords, fly } from "./creative-ui.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
 import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn } from "./account.js";
@@ -859,7 +859,7 @@ function refreshTag(el) {
   if (!label) return;
   const t = state.teams[+el.dataset.i];
   label.querySelectorAll(".ftag").forEach((x) => x.remove());
-  label.querySelector(".count")?.insertAdjacentHTML("beforebegin", pageTag(t, el.dataset.x || el.dataset.f) + fieldTag(t, el.dataset.x ? `x:${el.dataset.x}` : el.dataset.f));
+  label.querySelector(".count")?.insertAdjacentHTML("beforebegin", pageTag(t, el.dataset.x || el.dataset.f) + imageTag(t, el.dataset.x || el.dataset.f) + fieldTag(t, el.dataset.x ? `x:${el.dataset.x}` : el.dataset.f));
 }
 const sentencesOf = (v) => String(v || "").split(/(?<=[.!?])\s+(?=\S)/).filter(Boolean).length;
 
@@ -969,6 +969,49 @@ $("#brands").addEventListener("click", (e) => {
    browser (a small preview per image); the buyers get the description, which is read
    once per image and reused, so the same creative is always judged the same way. */
 let creativeBusy = false;
+const crFresh = new Set(), crJustRead = new Set();
+
+/* ---- The image's words, into the fields ------------------------------------ */
+const IMG_FIELD = { headline: "headline", valueProp: "valueProp", price: "price", cta: "cta" };
+const fieldEl = (k, i) => document.getElementById(k === "cta" ? `x-cta-${i}` : `${k}-${i}`);
+function imageTag(t, k) {
+  const fi = t.fromImage;
+  if (!fi?.vals || fi.vals[k] == null) return "";
+  const now = String(k === "cta" ? t.extras?.cta ?? "" : t[k] ?? "").trim();
+  return now === fi.vals[k] ? `<span class="ftag ftag-page" title="Taken from the words on the image">from the image</span>` : "";
+}
+function imageFillNote(t, i) {
+  if (!t.fromImage?.vals || t.fromImage.dismissed) return "";
+  const n = Object.keys(t.fromImage.vals).length;
+  return `<div class="cr-filled" role="status"><span>${n} field${n === 1 ? "" : "s"} filled from the image's words. Check they read right as the words around the ad.</span>
+    <button type="button" class="btn-quiet" data-cr-unfill="${i}">Undo</button><button type="button" class="btn-quiet" data-cr-filldone="${i}">Done</button></div>`;
+}
+// The chips fly from under the image into the fields they fill, then the words land.
+async function useImageWords(i) {
+  const t = state.teams[i];
+  const m = sortImageWords(t.creative?.description, { brand: t.brand });
+  const L = LIMITS, ctaOn = extrasOn().includes("cta");
+  const max = { headline: L.headline, valueProp: L.valueProp, price: L.price, cta: 40 };
+  const plan = Object.keys(IMG_FIELD).filter((k) => m[k] && (k !== "cta" || ctaOn));
+  if (!plan.length) return toast("Couldn't find words on this image that fit the fields.");
+  const card = document.querySelector(`#brands .brand:nth-child(${i + 1})`);
+  // One after another, top field first, so the eye can follow each word to its place.
+  await Promise.all(plan.map((k, n) => {
+    const chip = card?.querySelector(`[data-cr-word="${m.from[k]}"]`), target = fieldEl(k, i);
+    target?.classList.add("cr-incoming");
+    return fly(chip, target, { duration: 620, lift: 26, text: true, delay: n * 90 });
+  }));
+  const before = { headline: t.headline, valueProp: t.valueProp, price: t.price, cta: t.extras?.cta ?? "" };
+  const vals = {};
+  plan.forEach((k) => {
+    const v = String(m[k]).slice(0, max[k]).trim();
+    if (k === "cta") { t.extras = t.extras || {}; t.extras.cta = v; } else t[k] = v;
+    vals[k] = v;
+  });
+  t.fromImage = { vals, before };
+  save(); renderBrands();
+  plan.forEach((k) => fieldEl(k, i)?.classList.add("cr-landed"));
+}
 function renderCreativeBar() {
   const el = document.getElementById("creativeBar");
   if (!el) return;
@@ -989,7 +1032,10 @@ async function setCreative(i, file) {
     // An image this project has already had read keeps its description.
     const known = state.teams.find((x) => x.creative?.id === img.id && x.creative.description)?.creative.description;
     t.creative = { id: img.id, thumb: img.thumb, name: img.name, description: known || null, ...(known ? {} : { upload: img.upload }) };
+    delete t.fromImage;
+    crFresh.add(i);
     save(); renderBrands();
+    setTimeout(() => crFresh.delete(i), 900);
     try { localStorage.setItem("__cr_probe", "1"); localStorage.removeItem("__cr_probe"); } catch { toast("Your browser's storage is full. Read the images now so only small previews are kept.", { tone: "error" }); }
   } catch (err) { toast(err.message, { tone: "error" }); }
 }
@@ -1014,42 +1060,67 @@ $("#brands").addEventListener("drop", (e) => {
 });
 $("#brands").addEventListener("click", (e) => {
   const r = e.target.closest("[data-cr-remove]");
-  if (r) { delete state.teams[+r.dataset.crRemove].creative; save(); renderBrands(); }
+  if (r) { const t = state.teams[+r.dataset.crRemove]; delete t.creative; delete t.fromImage; save(); renderBrands(); return; }
+  const d = e.target.closest("[data-cr-details]");
+  if (d) { const i = +d.dataset.crDetails; return openCreativePanel(state.teams[i], document.querySelector(`[data-cr-hero="${i}"] .cr-hero-img`)); }
+  const f = e.target.closest("[data-cr-fill]");
+  if (f) return useImageWords(+f.dataset.crFill);
+  const u = e.target.closest("[data-cr-unfill]");
+  if (u) {
+    const t = state.teams[+u.dataset.crUnfill], b = t.fromImage?.before;
+    if (b) { t.headline = b.headline; t.valueProp = b.valueProp; t.price = b.price; if (t.extras && "cta" in t.fromImage.vals) t.extras.cta = b.cta; }
+    delete t.fromImage; save(); renderBrands(); toast("Back to how it was.");
+    return;
+  }
+  const dn = e.target.closest("[data-cr-filldone]");
+  if (dn) { const t = state.teams[+dn.dataset.crFilldone]; if (t.fromImage) { t.fromImage.dismissed = true; delete t.fromImage.before; } save(); renderBrands(); }
 });
-document.getElementById("creativeBar").addEventListener("click", async (e) => {
-  if (e.target.closest("[data-cr-signin]")) return openSignIn("login");
-  if (!e.target.closest("[data-cr-read]") || creativeBusy) return;
-  creativeBusy = true; renderCreativeBar();
+// Reads every image not yet read. While it happens each of those images is scanned,
+// and when the words come back they rise out of the image as chips. Returns true
+// when every image has its description.
+async function readImagesNow() {
+  if (creativeBusy) return false;
+  creativeBusy = true; renderBrands();
+  let ok = false;
+  const pending = state.teams.filter((t) => t.creative && !t.creative.description).map((t) => t.creative);
   try {
     const r = await readCreatives(state.teams);
+    pending.forEach((c) => crJustRead.add(c.id));
     rememberCreatives(); save();
     toast(r.charged ? `Read ${r.read} image${r.read === 1 ? "" : "s"}. ${r.charged} credits used.` : "Those images were read before, so nothing was charged.");
-  } catch (err) { toast(err.message, { tone: "error" }); if (err.status === 401) openSignIn("login"); }
+    ok = true;
+  } catch (err) { toast(err.message, { tone: "error" }); setStatus(err.message, true); if (err.status === 401) openSignIn("login"); }
   creativeBusy = false; renderBrands();
+  setTimeout(() => crJustRead.clear(), 1600);
   import("./account.js").then((m) => m.refresh?.()).catch(() => {});
+  return ok;
+}
+document.getElementById("creativeBar").addEventListener("click", async (e) => {
+  if (e.target.closest("[data-cr-signin]")) return openSignIn("login");
+  if (e.target.closest("[data-cr-read]")) readImagesNow();
 });
 
 function renderBrands() {
   const L = LIMITS;
   $("#brands").innerHTML = state.teams.map((t, i) => `
-    <div class="brand" style="--c:${COLORS[t.slot]}">
+    <div class="brand${state.creativeOn ? " has-creative" : ""}" style="--c:${COLORS[t.slot]}">
+      ${state.creativeOn ? creativeHero(t, i, { cost: account().costs?.ask ?? 10, reading: creativeBusy && t.creative && !t.creative.description, fresh: crFresh.has(i), justRead: crJustRead.has(t.creative?.id) }) + imageFillNote(t, i) : ""}
       ${pageBox(t, i)}
       <label for="brand-${i}">Version name ${pageTag(t, "brand")}<span class="count" data-for="brand-${i}"></span></label>
       <div class="brand-name"><span class="sw" style="background:var(--c)" aria-hidden="true"></span><input id="brand-${i}" class="name" data-i="${i}" data-f="brand" maxlength="${L.brand + 20}" value="${esc(t.brand)}"></div>
       ${FIELDS.map(([f, lab, tag]) => `
-        <label for="${f}-${i}">${lab} ${pageTag(t, f)}${fieldTag(t, f)}<span class="count" data-for="${f}-${i}"></span></label>
+        <label for="${f}-${i}">${lab} ${pageTag(t, f)}${imageTag(t, f)}${fieldTag(t, f)}<span class="count" data-for="${f}-${i}"></span></label>
         ${tag === "input"
           ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
           : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
       ${extrasOn().map((k) => {
         const f = EXTRA_BY_KEY[k];
         return `
-        <label for="x-${k}-${i}">${esc(f.label)} ${pageTag(t, k)}${fieldTag(t, `x:${k}`)}<span class="count" data-for="x-${k}-${i}"></span></label>
+        <label for="x-${k}-${i}">${esc(f.label)} ${pageTag(t, k)}${imageTag(t, k)}${fieldTag(t, `x:${k}`)}<span class="count" data-for="x-${k}-${i}"></span></label>
         ${f.tag === "textarea"
           ? `<textarea id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}">${esc(t.extras?.[k] || "")}</textarea>`
           : `<input id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}" value="${esc(t.extras?.[k] || "")}">`}`;
       }).join("")}
-      ${state.creativeOn ? creativeField(t, i, { cost: account().costs?.ask ?? 10 }) : ""}
       ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this version")}</button>` : ""}
     </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a version</button>` : "");
   document.querySelectorAll("#brands [data-f]").forEach(updateBrandCount);
@@ -1186,8 +1257,8 @@ async function runRound() {
     if (state.teams.some((t) => !t.creative.description)) {
       if (!account().signedIn) { setStatus("Sign in to test creatives. Reading images costs credits.", true); openSignIn("login"); return; }
       setStatus("Reading your images…", false);
-      try { const r = await readCreatives(state.teams); rememberCreatives(); save(); renderBrands(); if (r.charged) toast(`Read ${r.read} image${r.read === 1 ? "" : "s"}. ${r.charged} credits used.`); }
-      catch (err) { setStatus(err.message, true); toast(err.message, { tone: "error" }); return; }
+      if (!(await readImagesNow())) return;
+      setStatus("", false);
     }
   }
   const teams = state.teams.map(({ brand, headline, valueProp, price, extras, creative }) => ({

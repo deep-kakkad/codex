@@ -69,7 +69,9 @@ export function adMock(ad, format, { draft = false, marks = null, image = null }
   const shows = ad.creative?.description?.shows;
   const pic = image || ad.creative
     ? mk("image", image
-      ? `<img class="m-img" src="${esc(image)}" alt="${esc(shows || "The uploaded creative")}">`
+      // Never cropped: the whole ad sits in the frame, and a soft blur of the same
+      // picture fills whatever space its shape leaves, so words near the edge stay in view.
+      ? `<span class="m-imgwrap"><span class="m-img-bg" style="background-image:url('${esc(image)}')" aria-hidden="true"></span><img class="m-img" src="${esc(image)}" alt="${esc(shows || "The uploaded creative")}"></span>`
       : `<span class="m-img m-img-none"><b>Image</b>${esc(shows || "An uploaded creative")}</span>`)
     : "";
 

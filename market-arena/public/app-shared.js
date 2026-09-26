@@ -8,7 +8,7 @@ import { menuButton, ICON } from "./ui.js";
 import { drawArena, liveArena, arenaLegend } from "./arena.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { clearPush } from "./ad-parts.js";
-import { descriptionList } from "./creative-ui.js";
+import { creativePanelHtml, fly } from "./creative-ui.js";
 import { morphFormat } from "./morph.js";
 import { EXTRA_FIELDS } from "./validate.js";
 import { GOAL_BY_KEY } from "./goals.js";
@@ -671,6 +671,21 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     openDrawer(shell(`${b.brand}: what did the work`, esc(quoteOf(part.text, 90)), body));
   }
 
+  // An uploaded creative: the picture large, and the words the buyers read instead of
+  // it. The ad's picture flies from the report into the panel.
+  function investigateCreative(r, id, from) {
+    const b = r.brands.find((x) => x.id === id);
+    if (!b?.creative) return;
+    const thumb = getImage?.(b.creative.id) || null;
+    openDrawer(creativePanelHtml({ brand: b.brand, thumb, description: b.creative.description }));
+    const src = from?.closest(".adf")?.querySelector(".m-img");
+    const target = drawerEl.querySelector(".crp-img");
+    if (src && target && !reducedMotion()) {
+      target.style.visibility = "hidden";
+      setTimeout(() => fly(src, target, { duration: 480 }).then(() => { target.style.visibility = ""; }), 30);
+    }
+  }
+
   function showDefinition(key) {
     const [title, text] = DEFS[key] || ["", ""];
     openDrawer(shell("Definition", esc(title), `<p>${esc(text)}</p>`));
@@ -689,6 +704,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     // The face to lift, when the buyer was opened from a seat or a row that shows one.
     if (kind === "buyer") return investigateBuyer(current, a, from?.matches?.(".seat, .erow") ? from.querySelector(".buyerface") : null);
     if (kind === "part") return investigatePart(current, a, b);
+    if (kind === "creative") return investigateCreative(current, a, from);
   }
   document.addEventListener("click", (e) => {
     if (e.target.closest(".drawer-x")) return closeDrawer();
@@ -974,7 +990,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
           ${w.push ? `<button type="button" class="why" data-investigate="part:${b.id}:${w.push.key}"><i class="k-wave"></i><span class="why-t">${esc(w.push.label.toLowerCase().startsWith("line") ? quoteOf(w.push.text) : w.push.label.replace(/^The /, "the "))}</span><b>${pct(w.push.v)}</b></button>`
                    : `<span class="why why-none">Nothing clearly put people off</span>`}
         </div>` : ""}
-        ${b.creative ? `<details class="cr-read"><summary>What the buyers read about the image</summary>${descriptionList(b.creative.description)}</details>` : ""}
+        ${b.creative ? `<button type="button" class="cr-link adf-read" data-investigate="creative:${b.id}">What the buyers read about the image</button>` : ""}
       </figure>`;
     }).join("");
   }

@@ -1494,7 +1494,9 @@ button.prow:hover{background:var(--canvas)}
 .ftag-page{background:var(--paper);box-shadow:var(--ctl-ring);color:var(--muted)}
 
 /* ============ Uploaded creatives in the ad mocks ============ */
-.m-img{display:block;width:100%;height:100%;object-fit:cover;background:#EFEFEC}
+.m-imgwrap{position:relative;display:block;width:100%;height:100%;overflow:hidden;background:#EFEFEC;isolation:isolate}
+.m-img-bg{position:absolute;inset:-24px;background-size:cover;background-position:center;filter:blur(22px) saturate(1.15);opacity:.6;transform:scale(1.08);z-index:-1}
+.m-img{position:relative;display:block;width:100%;height:100%;object-fit:contain}
 .m-img-none{display:grid;align-content:center;gap:4px;padding:14px 16px;color:var(--muted);font-size:12.5px;line-height:1.45;
   background:repeating-linear-gradient(135deg,#F2F2EF 0 10px,#ECECE8 10px 20px)}
 .m-img-none b{font:600 11px var(--body);letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
@@ -1506,38 +1508,12 @@ button.prow:hover{background:var(--canvas)}
 .me-pic{flex:none;width:64px;height:64px;border-radius:8px;overflow:hidden}
 .me-pic .m-img-none{padding:6px;font-size:0}.me-pic .m-img-none b{font-size:9px}
 /* A marked creative: an outline in the mark's colour, since a picture can't be underlined. */
-.mk.mk-pull1 > .m-img,.mk.mk-pull2 > .m-img{outline:4px solid rgba(var(--hl),.95);outline-offset:-4px}
-.mk.mk-push > .m-img{outline:3px dashed var(--bad);outline-offset:-4px}
+.mk.mk-pull1 > .m-imgwrap,.mk.mk-pull2 > .m-imgwrap{box-shadow:inset 0 0 0 4px rgba(var(--hl),.95)}
+.mk.mk-pull1 > .m-imgwrap .m-img,.mk.mk-pull2 > .m-imgwrap .m-img{padding:4px}
+.mk.mk-push > .m-imgwrap{outline:3px dashed var(--bad);outline-offset:-4px}
 
 /* ============ Uploaded creatives in the builder ============ */
 .ep-creative{display:inline-flex;align-items:center;gap:6px}
-.cr-field{margin-top:14px}
-.cr-lab{display:block;font:500 var(--t-small) var(--body);color:var(--ink);margin:0 0 6px}
-.cr-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
-.cr-drop{position:relative;display:grid;justify-items:center;gap:4px;padding:20px 14px;border-radius:var(--r-panel);cursor:pointer;text-align:center;
-  background:var(--canvas);box-shadow:inset 0 0 0 1.5px var(--line-strong);transition:box-shadow .15s ease,background-color .15s ease}
-.cr-drop b{font:600 var(--t-small) var(--body)}
-.cr-drop span:not(.cr-drop-ic){font-size:12px;color:var(--muted)}
-.cr-drop:hover,.cr-drop.over,.cr-drop:focus-within{background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--ink)}
-.cr-drop-ic{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:var(--paper);box-shadow:var(--e1);color:var(--ink);margin-bottom:4px}
-.cr-field.over .cr-has{box-shadow:inset 0 0 0 1.5px var(--ink)}
-.cr-has{display:grid;grid-template-columns:88px 1fr;gap:12px;align-items:start;padding:8px;border-radius:var(--r-panel);background:var(--canvas)}
-.cr-thumb{width:88px;height:88px;object-fit:cover;border-radius:8px;background:#EFEFEC;box-shadow:0 0 0 1px rgba(24,24,27,.06)}
-.cr-meta{display:grid;gap:4px;min-width:0}
-.cr-meta b{font:600 var(--t-small) var(--body);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cr-status{font-size:12px;line-height:1.45;color:var(--muted)}
-.cr-ok{color:var(--good);font-weight:600}
-.cr-acts{display:flex;align-items:center;gap:2px;margin-left:-10px}
-.cr-acts .btn-quiet{height:28px;font-size:12.5px}
-.cr-replace{position:relative;cursor:pointer}
-.cr-read{margin-top:8px;font-size:12.5px}
-.cr-read summary{cursor:pointer;color:var(--muted);font-weight:500}
-.cr-read summary:hover{color:var(--ink)}
-.cr-dl{display:grid;gap:6px;margin:8px 0 0;padding:10px 12px;border-radius:10px;background:var(--canvas)}
-.cr-dl div{display:grid;grid-template-columns:120px 1fr;gap:10px}
-.cr-dl dt{color:var(--muted)}
-.cr-dl dd{margin:0;color:var(--ink);line-height:1.45}
-.adf .cr-read{padding:0 2px}
 .cr-bar{display:flex;align-items:center;gap:14px;margin:0 0 16px;padding:14px 16px;border-radius:var(--r-panel);background:var(--paper);box-shadow:var(--e1)}
 .cr-bar-ic{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--canvas);color:var(--ink)}
 .cr-bar-t{flex:1;font-size:13px;line-height:1.5;color:var(--muted)}
@@ -1550,3 +1526,74 @@ button.prow:hover{background:var(--canvas)}
 .pmark{display:block}
 .final-arena{height:190px;max-width:420px}
 .ds-pmark{height:110px;margin:4px 0 8px}
+
+/* ============ Creative, image first ============ */
+.brand.has-creative{padding-top:14px}
+.cr-hero-wrap{margin:0 0 16px}
+.cr-input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.cr-drop{position:relative;display:grid;justify-items:center;align-content:center;gap:4px;padding:20px 14px;border-radius:var(--r-panel);cursor:pointer;text-align:center;
+  background:var(--canvas);box-shadow:inset 0 0 0 1.5px var(--line-strong);transition:box-shadow .15s ease,background-color .15s ease}
+.cr-drop-hero{aspect-ratio:16/10}
+.cr-drop b{font:600 var(--t-small) var(--body)}
+.cr-drop span:not(.cr-drop-ic){font-size:12px;color:var(--muted)}
+.cr-drop:hover,.cr-drop.over,.cr-drop:focus-within{background:var(--paper);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.cr-drop-ic{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:var(--paper);box-shadow:var(--e1);color:var(--ink);margin-bottom:6px}
+/* The ad itself: whole, never cropped, a soft blur of it filling the frame. */
+.cr-hero{position:relative;aspect-ratio:16/10;border-radius:var(--r-panel);overflow:hidden;background:#EFEFEC;isolation:isolate;box-shadow:0 0 0 1px rgba(24,24,27,.06)}
+.cr-hero.over{box-shadow:0 0 0 2px var(--ink)}
+.cr-hero-bg{position:absolute;inset:-24px;background-size:cover;background-position:center;filter:blur(22px) saturate(1.15);opacity:.6;transform:scale(1.08);z-index:-1}
+.cr-hero-img{position:relative;display:block;width:100%;height:100%;object-fit:contain}
+.cr-chip-state{position:absolute;left:10px;top:10px;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;
+  background:rgba(255,255,255,.92);box-shadow:0 1px 3px rgba(0,0,0,.12);font:600 11.5px var(--body);color:var(--muted);backdrop-filter:blur(6px)}
+.cr-chip-state.ok{color:var(--good)}
+.cr-chip-state.reading{color:var(--ink)}
+.cr-hero-acts{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;opacity:0;transform:translateY(4px);transition:opacity .15s ease,transform .15s ease}
+.cr-hero:hover .cr-hero-acts,.cr-hero:focus-within .cr-hero-acts{opacity:1;transform:none}
+@media (hover:none){.cr-hero-acts{opacity:1;transform:none}}
+.cr-hbtn{position:relative;display:inline-flex;align-items:center;height:28px;padding:0 11px;border:0;border-radius:999px;cursor:pointer;
+  background:rgba(255,255,255,.94);box-shadow:0 1px 3px rgba(0,0,0,.14);font:600 12px var(--body);color:var(--ink)}
+.cr-hbtn:hover{background:#fff}
+/* Arrive: the image develops in from the top. */
+.cr-hero.fresh .cr-hero-img{animation:crDevelop .7s cubic-bezier(.3,.7,.2,1) both}
+.cr-hero.fresh .cr-hero-bg{animation:crFade .7s ease both}
+@keyframes crDevelop{from{clip-path:inset(0 0 100% 0);transform:scale(1.03)}to{clip-path:inset(0 0 0 0);transform:none}}
+@keyframes crFade{from{opacity:0}}
+/* Read: a band of light sweeps down the image while it is being read. */
+.cr-scan{position:absolute;left:0;right:0;top:0;height:34%;pointer-events:none;opacity:0;
+  background:linear-gradient(180deg,rgba(255,255,255,0),rgba(255,255,255,.55) 70%,rgba(255,255,255,.95) 97%,rgba(255,255,255,0));mix-blend-mode:screen}
+.cr-hero.reading .cr-scan{opacity:1;animation:crScan 1.5s cubic-bezier(.45,0,.55,1) infinite}
+.cr-hero.reading .cr-hero-img{filter:saturate(.75)}
+@keyframes crScan{from{transform:translateY(-100%)}to{transform:translateY(300%)}}
+/* Then the words found on it come out as chips, one after another. */
+.cr-words{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.cr-word{display:inline-block;max-width:100%;padding:3px 9px;border-radius:7px;background:var(--canvas);box-shadow:inset 0 0 0 1px rgba(24,24,27,.07);
+  font-size:12px;line-height:1.45;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cr-word.more,.cr-word.none{color:var(--muted);background:none}
+.cr-words.just .cr-word{animation:crWord .5s cubic-bezier(.3,.7,.2,1) both;animation-delay:calc(var(--k) * 70ms)}
+@keyframes crWord{from{opacity:0;transform:translateY(-12px) scale(.94)}}
+.cr-row{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px}
+.cr-link{padding:0;border:0;background:none;font:600 12.5px var(--body);color:var(--ink);cursor:pointer;text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:3px}
+.cr-link:hover{text-decoration-color:var(--ink)}
+.cr-note{margin:8px 0 0;font-size:12px;line-height:1.45;color:var(--muted)}
+.cr-filled{display:flex;flex-wrap:wrap;align-items:center;gap:6px 6px;margin:-6px 0 14px;padding:9px 10px;border-radius:10px;background:var(--canvas);font-size:12px;line-height:1.45;color:var(--muted)}
+.cr-filled span{flex:1 1 100%}
+.cr-filled .btn-quiet{height:26px;font-size:12px}
+/* Use the words: the fields they land in glow once. */
+.cr-incoming{box-shadow:0 0 0 2px rgba(var(--hl),.9)!important;transition:box-shadow .2s ease}
+.cr-landed{animation:crLanded 1.1s ease both}
+@keyframes crLanded{0%{box-shadow:0 0 0 3px rgba(var(--hl),.95);background:rgba(var(--hl),.14)}100%{box-shadow:inherit;background:inherit}}
+/* The side panel: the image large, then what the buyers read. */
+.crp-frame{position:relative;aspect-ratio:4/3;margin:0 0 16px;border-radius:14px;overflow:hidden;background:#EFEFEC;isolation:isolate;box-shadow:var(--e1)}
+.crp-img{position:relative;display:block;width:100%;height:100%;object-fit:contain}
+.crp-frame.none{display:grid;place-items:center;aspect-ratio:auto;padding:28px 20px;text-align:center;color:var(--muted);font-size:13px;
+  background:repeating-linear-gradient(135deg,#F2F2EF 0 10px,#ECECE8 10px 20px)}
+.cr-dl{display:grid;gap:12px;margin:14px 0 0;padding:0}
+.cr-dl div{display:grid;grid-template-columns:130px 1fr;gap:12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.cr-dl div:last-child{border-bottom:0}
+.cr-dl dt{font-size:13px;color:var(--muted)}
+.cr-dl dd{margin:0;font-size:14px;line-height:1.5;color:var(--ink)}
+.cr-words.static{margin-top:0}
+.cr-words.static .cr-word{white-space:normal}
+.adf-read{margin:8px 2px 0}
+@media (max-width:640px){.cr-dl div{grid-template-columns:1fr;gap:2px}}
+@media (prefers-reduced-motion:reduce){.cr-hero.fresh .cr-hero-img,.cr-hero.fresh .cr-hero-bg,.cr-words.just .cr-word,.cr-landed{animation:none}.cr-hero.reading .cr-scan{animation:none;opacity:0}}
