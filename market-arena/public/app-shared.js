@@ -11,6 +11,7 @@ import { clearPush } from "./ad-parts.js";
 import { EXTRA_FIELDS } from "./validate.js";
 import { GOAL_BY_KEY } from "./goals.js";
 
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 export const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
 export const INK_ON = [false, false, false, true]; // text colour on each version swatch
 export const HEX = ["#2F4BD1", "#9A3F7A", "#1E7F72", "#D9A21B"];
@@ -398,6 +399,8 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
   }
   function paintDrawer(html, scroll = 0) {
     drawerEl.innerHTML = html;
+    // A face that flew in waits in its seat's place only while its buyer is showing.
+    if (flight && !drawerEl.querySelector(`.dh-face[data-buyer="${CSS.escape(flight.id)}"]`)) { flight.src.style.visibility = ""; flight = null; }
     if (drawerStack.length) drawerEl.querySelector(".drawer-head")?.insertAdjacentHTML("afterbegin",
       `<button class="drawer-back" type="button" aria-label="Back">${ICON.chevron}</button>`);
     const body = drawerEl.querySelector(".drawer-body");
@@ -410,13 +413,60 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
   }
   function closeDrawer() {
     if (!drawerEl) return;
+    // The buyer goes back to their seat as the panel leaves.
+    if (flight) {
+      const { src, id } = flight; flight = null;
+      const face = drawerEl.querySelector(`.dh-face[data-buyer="${CSS.escape(id)}"] .buyerface`);
+      if (face && src.isConnected && onScreen(src)) flyFace(face, src.getBoundingClientRect(), { from: face.getBoundingClientRect(), color: getComputedStyle(src).color })
+        .then(() => { src.style.visibility = ""; });
+      else src.style.visibility = "";
+    }
     scrimEl.classList.remove("open"); drawerEl.classList.remove("open");
     drawerStack = [];
     lastFocus?.focus?.();
   }
 
-  const shell = (kick, title, body) => `
-    <div class="drawer-head">
+  /* ---- Motion that connects places -------------------------------------------
+     Opening a buyer lifts their face out of the seat (or row) that was selected and
+     flies it into the head of the panel; closing sends it back. It is one element
+     moving between two places, so the reader never loses who they were looking at.
+     Nothing moves under reduced motion. */
+  let flight = null;   // { src, id }: the face lifted from the page, hidden until it returns
+  const onScreen = (el) => { const b = el.getBoundingClientRect(); return b.width > 0 && b.bottom > 0 && b.top < innerHeight && b.right > 0 && b.left < innerWidth; };
+  // Moves a copy of `svg` from one rectangle to another, above everything.
+  function flyFace(svg, to, { from, color, duration = 460 } = {}) {
+    const a = from || svg.getBoundingClientRect();
+    const ghost = svg.cloneNode(true);
+    Object.assign(ghost.style, { position: "fixed", left: `${a.left}px`, top: `${a.top}px`, width: `${a.width}px`, height: `${a.height}px`,
+      margin: 0, zIndex: 80, pointerEvents: "none", color: color || getComputedStyle(svg).color, transformOrigin: "0 0", visibility: "visible",
+      filter: "drop-shadow(0 6px 14px rgba(20,20,24,.18))" });
+    ghost.removeAttribute("aria-label"); ghost.setAttribute("aria-hidden", "true");
+    document.body.append(ghost);
+    const k = to.width / a.width;
+    const anim = ghost.animate([
+      { transform: "translate(0,0) scale(1)" },
+      { transform: `translate(${(to.left - a.left) * 0.5}px,${(to.top - a.top) * 0.5 - 28}px) scale(${(1 + k) / 2 * 1.08})`, offset: 0.5 },
+      { transform: `translate(${to.left - a.left}px,${to.top - a.top}px) scale(${k})` },
+    ], { duration, easing: "cubic-bezier(.4,0,.2,1)" });
+    return anim.finished.catch(() => {}).then(() => ghost.remove());
+  }
+  // Where an element inside the drawer will be once the drawer has finished sliding in.
+  function settledRect(el) {
+    const b = el.getBoundingClientRect(), d = drawerEl.getBoundingClientRect();
+    return { left: b.left - d.left + drawerEl.offsetLeft, top: b.top - d.top + drawerEl.offsetTop, width: b.width, height: b.height };
+  }
+  function flyIntoDrawer(src, id) {
+    const target = drawerEl.querySelector(`.dh-face[data-buyer="${CSS.escape(id)}"] .buyerface`);
+    if (!src || !target || reducedMotion() || !onScreen(src) || drawerEl.contains(src)) return;
+    const to = settledRect(target);
+    target.style.visibility = "hidden";
+    src.style.visibility = "hidden";
+    flight = { src, id };
+    flyFace(src, to, { from: src.getBoundingClientRect() }).then(() => { target.style.visibility = ""; });
+  }
+
+  const shell = (kick, title, body, face = "") => `
+    <div class="drawer-head">${face}
       <div class="dh"><span class="drawer-kick">${esc(kick)}</span><h3>${title}</h3></div>
       <button class="drawer-x" aria-label="Close">×</button>
     </div>
@@ -473,7 +523,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     openDrawer(shell(`${b.brand}: ${OBJ_LABEL[key]}`, `Why ${esc(b.brand)} loses people`, body));
   }
 
-  function investigateBuyer(r, id) {
+  function investigateBuyer(r, id, src) {
     const c = r.customers.find((x) => x.id === id);
     if (!c) return;
     const segs = [...new Set(r.customers.map((c2) => c2.segment))];
@@ -494,7 +544,9 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
           <td class="num">${pct(c.purchaseProbs[b.id] || 0)}</td><td>${cap(OBJ_NOUN[x.objection])}</td></tr>`; }).join("")}
       </tbody></table></div>
       <p class="drawer-lede" style="margin-top:16px;font-size:var(--t-small)">These are the model's answers to five typed questions about this buyer. It returns choices and scores, not written reasoning, so nothing here is a quote or an explanation the buyer gave.</p>`;
-    openDrawer(shell(`${c.segment}`, esc(c.name), body));
+    const face = `<span class="dh-face" data-buyer="${esc(c.id)}" style="color:${colorFor(r, c.purchase)}">${buyerFace(c, segs.indexOf(c.segment), 52, { tint: "currentColor", dashed: isTossup(c) })}</span>`;
+    openDrawer(shell(`${c.segment}`, esc(c.name), body, face));
+    if (src) flyIntoDrawer(src, c.id);
   }
 
   // One row per buyer: face, who they are, a bar for the number in question, and
@@ -622,14 +674,15 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
   // Every number in the report is a claim with evidence behind it. They all go
   // through one listener, so a new call site needs only a data-investigate attribute:
   //   share:ID  obj:KEY:ID  stage:STAGE:ID  seg:INDEX:ID  buyer:ID  part:ID:KEY
-  function investigate(spec) {
+  function investigate(spec, from) {
     if (!current) return;
     const [kind, a, b] = spec.split(":");
     if (kind === "obj") return investigateObjection(current, a, b);
     if (kind === "share") return investigateShare(current, a);
     if (kind === "stage") return investigateStage(current, a, b);
     if (kind === "seg") return investigateSegment(current, +a, b);
-    if (kind === "buyer") return investigateBuyer(current, a);
+    // The face to lift, when the buyer was opened from a seat or a row that shows one.
+    if (kind === "buyer") return investigateBuyer(current, a, from?.matches?.(".seat, .erow") ? from.querySelector(".buyerface") : null);
     if (kind === "part") return investigatePart(current, a, b);
   }
   document.addEventListener("click", (e) => {
@@ -638,7 +691,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     const def = e.target.closest("[data-def]");
     if (def) return showDefinition(def.dataset.def);
     const probe = e.target.closest("[data-investigate]");
-    if (probe) return investigate(probe.dataset.investigate);
+    if (probe) return investigate(probe.dataset.investigate, probe);
   });
   // Cells and bars that are not buttons still answer to the keyboard.
   document.addEventListener("keydown", (e) => {
@@ -1071,12 +1124,57 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
         if (shows) first = false;
       });
     });
+    slideInk(nav);
   }
 
+  // The line under the selected tab slides from the tab you left to the one you
+  // chose, rather than blinking out in one place and in at another.
+  let inkAt = null;
+  function slideInk(nav) {
+    const on = nav.querySelector('[aria-selected="true"]');
+    if (!on) return;
+    const ink = Object.assign(document.createElement("span"), { className: "rtab-ink" });
+    ink.setAttribute("aria-hidden", "true");
+    nav.classList.add("has-ink");
+    nav.append(ink);
+    const to = { x: on.offsetLeft, w: on.offsetWidth };
+    const place = (p) => { ink.style.transform = `translateX(${p.x}px)`; ink.style.width = `${p.w}px`; };
+    if (inkAt && !reducedMotion() && (inkAt.x !== to.x || inkAt.w !== to.w)) {
+      place(inkAt);
+      ink.getBoundingClientRect();
+      ink.classList.add("moving");
+    }
+    place(to);
+    inkAt = to;
+  }
+
+  // Tabs cross-fade: what you are leaving fades out quickly, then what you chose
+  // fades up in its place. A newer choice made mid-fade wins.
+  let tabSwap = 0;
   function setTab(key, { focus = false } = {}) {
     if (!TAB_KEYS.includes(key)) return;
+    const leaving = key === activeTab || reducedMotion() ? [] : panelsOf(TABS.find((t) => t.key === activeTab) || TABS[0]).filter((el) => !el.classList.contains("tab-off") && !el.classList.contains("hidden"));
+    const swap = ++tabSwap;
     activeTab = key;
+    if (leaving.length) {
+      // The selection moves at once, so the tabs answer the click immediately.
+      const nav = $("#reportNav");
+      nav?.querySelectorAll("[data-tab]").forEach((b) => { const on = b.dataset.tab === key; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; });
+      if (nav) { nav.querySelector(".rtab-ink")?.remove(); slideInk(nav); }
+      if (focus) document.getElementById(`tab-${key}`)?.focus();
+      Promise.all(leaving.map((el) => el.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 110, easing: "ease-in", fill: "forwards" }).finished.catch(() => {})))
+        .then(() => {
+          leaving.forEach((el) => el.getAnimations().forEach((a) => a.cancel()));
+          if (swap === tabSwap) showTab(key, focus);
+        });
+      return;
+    }
+    showTab(key, focus);
+  }
+  function showTab(key, focus) {
     renderTabs();
+    if (!reducedMotion()) panelsOf(TABS.find((t) => t.key === key)).filter((el) => !el.classList.contains("hidden"))
+      .forEach((el) => el.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }], { duration: 220, easing: "cubic-bezier(.2,.7,.3,1)" }));
     try { history.replaceState(null, "", `${location.pathname}${location.search}#${key}`); } catch {}
     // Land at the top of the report, not wherever the previous tab was scrolled to.
     const res = $("#results");
