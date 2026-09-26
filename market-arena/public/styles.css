@@ -54,6 +54,10 @@
   --ctl-ring:0 0 0 1px rgba(24,24,27,.13),0 1px 2px rgba(24,24,27,.06);
   --ctl-ring-hover:0 0 0 1px rgba(24,24,27,.2),0 1px 3px rgba(24,24,27,.08);
   --well:#EEEEEA;         /* inset tracks and segmented controls */
+  /* The page texture: a 1px dot every 20px. Faint enough to sit behind text,
+     present enough that the canvas reads as a surface, not an absence. */
+  --dots:radial-gradient(circle,rgba(24,24,27,.17) 1px,transparent 1.35px);
+  --dots-size:20px 20px;
 
   --topbar-h:56px;
 
@@ -64,7 +68,7 @@
 }
 *,*::before,*::after{box-sizing:inherit}
 html{scroll-padding-top:calc(var(--topbar-h) + 52px)}
-body{margin:0;background:var(--canvas);color:var(--ink);font:var(--t-body)/1.55 var(--body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body{margin:0;background:var(--canvas) var(--dots);background-size:var(--dots-size);color:var(--ink);font:var(--t-body)/1.55 var(--body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .wrap{max-width:1180px;margin:0 auto;padding:0 24px}
 button,input,textarea,select{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--ink);outline-offset:2px}
