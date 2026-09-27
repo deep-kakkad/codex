@@ -213,7 +213,8 @@
 
 <script type="module">
 import { LOGO_MARK } from "./icons.js";
-import { createResultsView, exportCsv } from "./app-shared.js";
+import { createResultsView, exportCsv, roundCard } from "./app-shared.js";
+import { snapshot, downloadBlob } from "./snapshot.js";
 import { menuButton } from "./ui.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
@@ -244,7 +245,7 @@ async function init() {
     document.title = `${data.meta?.title || "Shared round"} | Market Arena`;
     $("#scBrief").textContent = data.meta?.brief || "";
     if (data.meta?.round) $("#scBadge").textContent = `Shared round ${data.meta.round}`;
-    rounds = [data.round];
+    rounds = [data.round]; shareMeta = data.meta || null;
     view.renderResults(rounds, false);
     // The snapshot is a single round, so the view numbers it 1; say which round
     // it actually was in the session it came from.
@@ -253,7 +254,15 @@ async function init() {
   } catch (err) { showError(err.message); }
 }
 
+let shareMeta = null;
+async function saveImage() {
+  if (!rounds[0]) return;
+  const no = shareMeta?.round || 1;
+  downloadBlob(await snapshot(roundCard(rounds[0], { title: shareMeta?.title || "", roundNo: no })), `market-arena-round-${no}.png`);
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-save-image]")) saveImage(); });
 menuButton($("#moreBtn"), () => [
+  { label: "Save as image", onSelect: saveImage },
   { label: "Download CSV", onSelect: () => exportCsv(rounds, "market-arena-shared-result.csv") },
   { label: "Download PDF", onSelect: () => window.print() },
 ], { align: "end", label: "Download" });

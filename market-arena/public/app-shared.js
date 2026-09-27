@@ -7,9 +7,10 @@ import { objectionIcon, stageIcon, segmentTint, buyerFace } from "./icons.js";
 import { menuButton, ICON } from "./ui.js";
 import { drawArena, liveArena, arenaLegend } from "./arena.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
-import { clearPush } from "./ad-parts.js";
+import { clearPush, adParts } from "./ad-parts.js";
 import { creativePanelHtml, fly } from "./creative-ui.js";
 import { morphFormat } from "./morph.js";
+import { burst } from "./burst.js";
 import { EXTRA_FIELDS } from "./validate.js";
 import { GOAL_BY_KEY } from "./goals.js";
 
@@ -112,6 +113,30 @@ export function movesFor(r) {
   });
 }
 const ORDINAL = ["1st", "2nd", "3rd", "4th"];
+
+// A round as the picture "Save as image" draws (see snapshot.js): the verdict, the
+// room in the order the report seats it, the bars and a legend. Words and numbers
+// match the report's, including calling a gap under 5 points a tie.
+export function roundCard(r, { title = "", roundNo = 1 } = {}) {
+  const slotOf = (b) => r.slots?.[r.brands.indexOf(b)] ?? r.brands.indexOf(b);
+  const colorOf = (id) => (id === "none" ? NONE_COLOR : HEX[slotOf(r.brands.find((b) => b.id === id))] || NONE_COLOR);
+  const ranked = [...r.brands].sort((a, b) => b.share - a.share);
+  const win = ranked[0], second = ranked[1];
+  const gap = second ? Math.round((win.share - second.share) * 100) : 100, tied = gap < 5;
+  const order = [...r.brands].sort((a, b) => picksFor(r, b.id) - picksFor(r, a.id) || b.share - a.share).map((b) => b.id).concat("none");
+  const n = panelOf(r);
+  return {
+    kicker: [title, `Round ${roundNo}`].filter(Boolean).join(" · "),
+    verdict: tied ? `${win.brand} and ${second.brand} are neck and neck` : `${win.brand} wins round ${roundNo}`,
+    sub: tied ? `${pct(win.share)} against ${pct(second.share)} with ${n} simulated buyers. Too close to call.`
+      : `A ${pct(win.share)} average chance of being picked, ${gap} points clear, with ${n} simulated buyers.`,
+    people: [...r.customers].sort((a, b) => order.indexOf(a.purchase) - order.indexOf(b.purchase))
+      .map((c) => ({ ...c, segIndex: r.segments.indexOf(c.segment), color: colorOf(c.purchase), dashed: isTossup(c) })),
+    center: { big: pct(win.share), sub: win.brand },
+    bars: [...ranked.map((b) => ({ label: b.brand, value: b.share, color: colorOf(b.id) })), { label: "Bought nothing", value: r.noPurchase.share, color: NONE_COLOR }],
+    legend: order.map((id) => ({ label: id === "none" ? "Bought nothing" : r.brands.find((b) => b.id === id).brand, color: colorOf(id), count: picksFor(r, id) })),
+  };
+}
 
 // `readOnly` is for the shared view, which has no editor to send anyone to.
 // `getImage(id)`: the picture for an uploaded creative, when this page has it.
@@ -248,12 +273,48 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
   }
   // The round is in: the chamber sorts itself into blocs, then the report takes over
   // with the chamber drawn in exactly those seats.
-  async function liveSort(r) {
+  //
+  // Then a beat before the report: the verdict alone, one big line, for about a
+  // second, so the result lands as a moment rather than a page of numbers arriving
+  // at once. If a version you rewrote since the last round wins, clearly (5+ points
+  // ahead, the same bar the report uses for a tie) and up on its own last round, the
+  // line says so and the logo's dots burst over the room. Reduced motion: no pause.
+  async function liveSort(r, { prev = null } = {}) {
     if (!live?.arena) return;
     const last = $("#liveLast");
     if (last) last.textContent = "Everyone's in. Sorting the room by pick.";
+    // Anyone whose decision didn't stream in (a connection that holds the response
+    // until it's complete) takes their seat now, so the room is never left empty.
+    r.customers.forEach((c) => live.arena.take(c.id, live.colorOf[c.purchase] || NONE_COLOR, isTossup(c)));
+    const count = $("#liveCount");
+    if (count) count.textContent = `All ${live.n} buyers have decided`;
     await live.arena.sort(seatOrder(r).map((c) => c.id));
+    const arena = live.arena;
     live = null;
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const ranked = [...r.brands].sort((a, b) => b.share - a.share);
+    const win = ranked[0], second = ranked[1];
+    if (!win) return;
+    const slot = r.slots?.[r.brands.indexOf(win)] ?? 0;
+    const gap = second ? Math.round((win.share - second.share) * 100) : 100;
+    const tied = gap < 5;
+    const was = prev ? bySlot(prev, slot) : null;
+    const rewrote = was && (diffFields(r).some(([f]) => (fieldValue(was, f) || "") !== (fieldValue(win, f) || "")) || (was.creative?.id || null) !== (win.creative?.id || null));
+    const gain = was ? Math.round((win.share - was.share) * 100) : 0;
+    const paidOff = !tied && rewrote && gain >= 5;
+    arena.setCenter({ name: `<i class="sw" style="background:${COLORS[slot]}"></i>${esc(win.brand)}`, big: pct(win.share), sub: tied ? `tied with ${esc(second.brand)}` : "average chance of being picked" });
+    const h = $("#hero .hero-verdict"), sub = $("#liveLast"), status = $("#hero .live-status");
+    if (h) {
+      h.textContent = tied ? `${win.brand} and ${second.brand} are neck and neck` : `${win.brand} wins`;
+      h.classList.add("verdict-in");
+    }
+    if (status) status.classList.add("done");
+    if (sub) sub.textContent = paidOff ? `Your rewrite paid off: up ${gain} points on the last round.` : tied ? `${pct(win.share)} against ${pct(second.share)}. Too close to call.` : `${pct(win.share)} average chance of being picked, ${gap} points clear.`;
+    if (paidOff) {
+      const box = $("#heroArena")?.getBoundingClientRect();
+      if (box) setTimeout(() => burst(box.left + box.width / 2, box.top + box.height * 0.22, { colors: ["#1C1C1F", "#FF5A36", HEX[slot] || "#FF5A36"] }), 180);
+    }
+    if (!reduce) await new Promise((res) => setTimeout(res, paidOff ? 1700 : 1200));
   }
 
   // Seating order for a finished round: blocs by outright picks (most on the left,
@@ -302,12 +363,25 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
           </div>`).join("")}
       </div>
       <div class="lc-more"><button type="button" class="lc-any" data-change-any>Or edit anything yourself</button>
-        <button class="hero-explore" type="button" data-tab-go="market">See how the room split</button></div>
+        <span class="lc-more-r"><button class="hero-explore" type="button" data-save-image>Save as image</button>
+        <button class="hero-explore" type="button" data-tab-go="market">See how the room split</button></span></div>
     </section>`;
   }
   // From round 2 on, the cause next to the effect: what was rewritten in each version,
   // how far its numbers moved, and how many buyers came or went.
-  function moved(r, prev) {
+  // Before and after as the ads themselves: last round's card and this round's, side
+  // by side, with what was rewritten highlighted in both.
+  function beforeAfter(was, now, idx) {
+    const oldParts = adParts(was), newParts = adParts(now);
+    const marks = (parts, other, kind, id) => ({ id, parts: Object.fromEntries(parts
+      .filter((p) => !other.some((o) => o.text === p.text))
+      .map((p) => [p.key, { [kind]: true, title: kind === "now" ? "Rewritten for this round" : "What it said before" }])) });
+    const card = (ad, m, label) => `<figure class="mv-card"><figcaption>${label}</figcaption>
+      ${adMock({ ...ad, extras: ad.extras || {} }, "card", { marks: m, image: ad.creative?.id ? getImage?.(ad.creative.id) : null })}</figure>`;
+    return `<div class="mv-ba">${card(was, marks(oldParts, newParts, "was", was.id), `Round ${idx}`)}
+      <span class="mv-ba-arrow" aria-hidden="true">→</span>${card(now, marks(newParts, oldParts, "now", now.id), `Round ${idx + 1}`)}</div>`;
+  }
+  function moved(r, prev, idx = 1) {
     if (!prev) return "";
     const slotOfId = (round, id) => { if (id === "none") return -1; const i = round.brands.findIndex((x) => x.id === id); return i < 0 ? -1 : round.slots[i]; };
     const before = Object.fromEntries(prev.customers.map((c) => [c.id, slotOfId(prev, c.purchase)]));
@@ -333,7 +407,9 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
           <div class="mv-head"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>
             <span class="mv-d ${d > 0 ? "up" : d < 0 ? "down" : ""}">${d > 0 ? "+" : d < 0 ? "−" : "±"}${Math.abs(d)} pts</span>
             <span class="mv-who">${won || lost ? [won ? `${won} buyer${won === 1 ? "" : "s"} came over` : "", lost ? `${lost} left` : ""].filter(Boolean).join(", ") : "Nobody switched"}</span></div>
-          ${changes.length ? changes.slice(0, 3).map((c) => `<div class="mv-row">${fmtChange(c, b, bySlot(prev, slot))}</div>`).join("") : `<div class="mv-row mv-same">Unchanged. Its move is the wobble, or a knock-on from the others.</div>`}
+          ${changes.length
+            ? beforeAfter(bySlot(prev, slot), b, idx) + changes.filter(([f]) => f === "brand" || f === "creative").map((c) => `<div class="mv-row">${fmtChange(c, b, bySlot(prev, slot))}</div>`).join("")
+            : `<div class="mv-row mv-same">Unchanged. Its move is the wobble, or a knock-on from the others.</div>`}
         </div>`).join("")}
       ${touched.some((x) => x.changes.length > 1) ? `<p class="mv-note">Where a version had more than one change, the move belongs to all of them together. Test them one at a time to know which did the work.</p>` : ""}
     </div>`;
@@ -380,6 +456,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
             </div>`; })()}
           <div class="hero-actions">
             ${readOnly ? "" : `<button class="btn" data-go-latest>Go to round ${total}</button>`}
+            <button class="hero-explore" type="button" data-save-image>Save as image</button>
             <button class="hero-explore" type="button" data-tab-go="market">See how the room split</button>
           </div>
         </div>`;
@@ -436,7 +513,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
             </button>`).join("")}
         </div>
 
-        ${moved(r, prev)}
+        ${moved(r, prev, idx)}
         ${!readOnly && idx === total - 1 ? loopCards(r, total) : nextMove}
       </div>`;
     const segIdx = (c) => r.segments.indexOf(c.segment);

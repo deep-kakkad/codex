@@ -1918,3 +1918,32 @@ body.has-loopbar .toasts{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 .cl-item h3{margin:0 0 2px;font:600 15px var(--body)}
 .cl-item p{margin:0;font-size:14.5px;line-height:1.55;color:var(--muted);max-width:68ch}
 @media (max-width:640px){.cl-rel{grid-template-columns:1fr;gap:8px}}
+
+/* Before and after, round to round: last round's ad and this one's, side by side. */
+.mv-ba{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:10px;margin:10px 0 4px}
+.mv-card{margin:0;display:grid;gap:6px}
+.mv-card figcaption{font:600 11.5px var(--body);color:var(--muted);letter-spacing:.02em}
+.mv-card .mock{box-shadow:inset 0 0 0 1px rgba(24,24,27,.08);border-radius:10px;background:var(--paper);font-size:13px}
+.mv-card:first-child .mock{opacity:.78}
+.mv-ba-arrow{font:600 18px var(--display);color:var(--faint)}
+.mk-diff{-webkit-box-decoration-break:clone;box-decoration-break:clone;padding:0 2px;margin:0 -2px;border-radius:3px}
+.mk-now{background:#DDF0E3;box-shadow:inset 0 -2px 0 #2F7A45}
+.mk-was{background:#F6E3E0;text-decoration:line-through;text-decoration-color:rgba(180,35,24,.55)}
+@media (max-width:640px){.mv-ba{grid-template-columns:1fr}.mv-ba-arrow{transform:rotate(90deg);justify-self:center}}
+
+/* The reveal: the verdict arrives on its own before the report takes over. */
+.hero-verdict.verdict-in{animation:verdictIn .55s cubic-bezier(.2,.8,.2,1) both}
+@keyframes verdictIn{from{opacity:0;transform:translateY(14px) scale(.97);letter-spacing:-.02em;filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
+.live-status.done .live-dot{animation:none;background:var(--good)}
+@media (prefers-reduced-motion:reduce){.hero-verdict.verdict-in{animation:none}}
+
+/* Writing hints: one quiet line under a field. */
+.hint{display:flex;align-items:flex-start;gap:6px;margin:6px 0 0;padding:6px 6px 6px 9px;border-radius:8px;background:#FBF6EA;box-shadow:inset 0 0 0 1px rgba(176,128,24,.14);
+  font-size:12.5px;line-height:1.45;color:#6E5415;animation:hintIn .25s ease}
+.hint[hidden]{display:none}
+.hint span{flex:1}
+.hint-x{flex:none;width:20px;height:20px;margin:-2px 0;border:0;border-radius:5px;background:none;color:#9A7A2E;font-size:15px;line-height:1;cursor:pointer}
+.hint-x:hover{background:rgba(176,128,24,.12);color:#6E5415}
+@keyframes hintIn{from{opacity:0;transform:translateY(-3px)}}
+@media (prefers-reduced-motion:reduce){.hint{animation:none}}
+.lc-more-r{display:inline-flex;gap:16px;flex-wrap:wrap}

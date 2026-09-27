@@ -50,6 +50,9 @@ export function adMock(ad, format, { draft = false, marks = null, image = null }
   const mk = (key, html) => {
     const m = marks?.parts?.[key];
     if (!m || !html) return html;
+    // Before and after: what a later round rewrote (`now`) and what it replaced (`was`).
+    // Marks only, never buttons: there's no evidence behind them to open.
+    if (m.was || m.now) return `<span class="mk-diff ${m.now ? "mk-now" : "mk-was"}" title="${esc(m.title || "")}">${html}</span>`;
     const cls = [m.pull === 1 ? "mk-pull1" : m.pull === 2 ? "mk-pull2" : "", m.push ? "mk-push" : ""].filter(Boolean).join(" ");
     return cls ? `<span class="mk ${cls}" data-investigate="part:${marks.id}:${key}" role="button" tabindex="0" title="${esc(m.title)}">${html}</span>` : html;
   };

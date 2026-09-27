@@ -344,7 +344,8 @@
 
 <script type="module">
 import { LOGO_MARK, caseMark, caseTint, buyerFace, segmentTint, objectionIcon } from "./icons.js";
-import { createResultsView, exportCsv, esc, workOf, movesFor } from "./app-shared.js";
+import { createResultsView, exportCsv, esc, workOf, movesFor, roundCard } from "./app-shared.js";
+import { snapshot, downloadBlob } from "./snapshot.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { morphFormat } from "./morph.js";
 import { initDataSheet, DOC_ICON } from "./buyers-data.js";
@@ -354,6 +355,7 @@ import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from 
 import { GOALS } from "./goals.js";
 import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn, rememberPending, pendingAction, clearPending } from "./account.js";
 import { menuButton, toast, ask, confirmBox, promptBox } from "./ui.js";
+import { hintFor, hintHtml, dismissHint } from "./hints.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
 const view = createResultsView({ onFormat: (f) => { if (state) setFormat(f); }, getFormat: () => state?.format, getImage: (id) => state?.creativeThumbs?.[id] || null, onRender: () => updateLoop() });
@@ -505,6 +507,7 @@ menuButton($("#moreBtn"), () => {
     hasRounds ? { label: "Share results", className: "m-only", onSelect: shareRound } : null,
     hasRounds ? { label: editorOpen() ? "Hide editor" : "Edit versions", className: "m-only", onSelect: toggleEditor } : null,
     { label: $("#directory").classList.contains("open") ? "Hide the buyers" : "See all buyers", onSelect: toggleDirectory },
+    { label: "Save as image", disabled: !hasRounds, onSelect: saveImage },
     { label: "Download CSV", disabled: !hasRounds, onSelect: () => exportCsv(state.rounds, "market-arena-results.csv") },
     { label: "Download PDF", disabled: !hasRounds, onSelect: () => window.print() },
     { label: "Pricing", onSelect: () => { location.href = "pricing.html"; } },
@@ -514,6 +517,18 @@ menuButton($("#moreBtn"), () => {
 }, { align: "end", label: "More actions" });
 
 $("#editPitches").addEventListener("click", toggleEditor);
+
+// The round on screen as one picture, for a slide or a post.
+async function saveImage() {
+  const idx = view.viewedIndex(), r = state?.rounds?.[idx];
+  if (!r) return;
+  try {
+    const blob = await snapshot(roundCard(r, { title: state.scenario.title?.trim() || "", roundNo: idx + 1 }));
+    downloadBlob(blob, `market-arena-round-${idx + 1}.png`);
+    toast("Saved. The image says the buyers are simulated, so it travels honestly.");
+  } catch { toast("Couldn't make the image. Try again.", { tone: "error" }); }
+}
+document.addEventListener("click", (e) => { if (e.target.closest("[data-save-image]")) saveImage(); });
 
 async function init() {
   const data = await (await fetch("/api/templates")).json();
@@ -1276,6 +1291,37 @@ document.getElementById("creativeBar").addEventListener("click", async (e) => {
   if (e.target.closest("[data-cr-read]")) readImagesNow();
 });
 
+/* ---- Writing hints ------------------------------------------------------------
+   One quiet line under a field when something is likely to trip buyers up (see
+   hints.js). Updated a moment after typing stops, so it never nags mid-word. */
+const valueIn = (t, f) => (f in EXTRA_BY_KEY ? t.extras?.[f] : t[f]) ?? "";
+const hintIdOf = (i, f) => (f in EXTRA_BY_KEY ? `x-${f}-${i}` : `${f}-${i}`);
+// Only on fields you've written in: a ready-made case's copy isn't yours to fix.
+const touchedHints = new Set();
+function fieldHint(i, f) {
+  const t = state.teams[i];
+  if (!touchedHints.has(hintIdOf(i, f))) return hintHtml(hintIdOf(i, f), null);
+  const others = state.teams.filter((_, j) => j !== i).map((o) => ({ brand: o.brand, value: valueIn(o, f) }));
+  return hintHtml(hintIdOf(i, f), hintFor(f, valueIn(t, f), { others }));
+}
+const hintTimers = {};
+function refreshHint(el) {
+  const i = +el.dataset.i, f = el.dataset.x || el.dataset.f;
+  if (f === "brand") return;
+  touchedHints.add(hintIdOf(i, f));
+  clearTimeout(hintTimers[el.id]);
+  hintTimers[el.id] = setTimeout(() => {
+    const cur = document.querySelector(`#brands [data-hint-for="${hintIdOf(i, f)}"]`);
+    if (cur) cur.outerHTML = fieldHint(i, f);
+  }, 650);
+}
+document.addEventListener("click", (e) => {
+  const x = e.target.closest("#brands [data-hint-off]");
+  if (!x) return;
+  dismissHint(x.dataset.hintOff);
+  x.closest(".hint").hidden = true;
+});
+
 function renderBrands() {
   const L = LIMITS;
   $("#brands").innerHTML = state.teams.map((t, i) => `
@@ -1293,6 +1339,7 @@ function renderBrands() {
         ${tag === "input"
           ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
           : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}
+        ${fieldHint(i, f)}
         ${wasLine(t, i, f)}`).join("")}
       ${extrasOn().map((k) => {
         const f = EXTRA_BY_KEY[k];
@@ -1302,6 +1349,7 @@ function renderBrands() {
         ${f.tag === "textarea"
           ? `<textarea id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}">${esc(t.extras?.[k] || "")}</textarea>`
           : `<input id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}" value="${esc(t.extras?.[k] || "")}">`}
+        ${fieldHint(i, k)}
         ${wasLine(t, i, `extras.${k}`)}`;
       }).join("")}
       ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this version")}</button>` : ""}
@@ -1359,11 +1407,11 @@ $("#brands").addEventListener("input", (e) => {
     const t = state.teams[+el.dataset.i];
     t.extras = t.extras || {};
     t.extras[el.dataset.x] = el.value;
-    updateBrandCount(el); refreshTag(el); save(); renderPreview(); refreshWas(el); updateLoop();
+    updateBrandCount(el); refreshTag(el); save(); renderPreview(); refreshWas(el); updateLoop(); refreshHint(el);
     return;
   }
   if (!el.dataset.f) return;
-  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateBrandCount(el); refreshTag(el); save(); renderPreview(); refreshWas(el); updateLoop();
+  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateBrandCount(el); refreshTag(el); save(); renderPreview(); refreshWas(el); updateLoop(); refreshHint(el);
 });
 $("#brands").addEventListener("click", (e) => {
   if (e.target.dataset.rm !== undefined) { state.teams.splice(+e.target.dataset.rm, 1); save(); renderBrands(); }
@@ -1522,7 +1570,7 @@ async function runRound(opts) {
     data.goal = state.goal || null;
     data.format = formatOf(state.format);
     data.goalNote = state.goalNote || "";
-    await view.liveSort(data);
+    await view.liveSort(data, { prev: state.rounds[state.rounds.length - 1] || null });
     state.rounds.push(data); rememberCreatives(); save(); renderResearchCard();
     setStatus("", false); view.resetOpen();
     // "live": the faces are already filled in, so they are not greyed and replayed.

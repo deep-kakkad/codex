@@ -48,14 +48,17 @@
       <div class="rst-field">
         <label for="rHeadline">Headline</label>
         <input id="rHeadline" maxlength="90" autocomplete="off" placeholder="The first line a buyer reads">
+        <p class="hint" data-hint-for="rHeadline" hidden></p>
       </div>
       <div class="rst-field">
         <label for="rBody">Body copy</label>
         <textarea id="rBody" maxlength="280" rows="4" placeholder="What it is, and why it's worth it"></textarea>
+        <p class="hint" data-hint-for="rBody" hidden></p>
       </div>
       <div class="rst-field">
         <label for="rPrice">Price <span class="rst-opt">optional</span></label>
         <input id="rPrice" maxlength="50" autocomplete="off" placeholder="Leave blank if the ad doesn't say">
+        <p class="hint" data-hint-for="rPrice" hidden></p>
       </div>
       <p class="rst-problem" id="rstProblem" role="alert"></p>
       <div class="rst-go">
@@ -83,6 +86,8 @@ import { adMock } from "./ad-formats.js";
 import { clearPush } from "./ad-parts.js";
 import { initAccount, mountAccountBar } from "./account.js";
 import { ask, toast } from "./ui.js";
+import { hintFor, hintHtml, dismissHint } from "./hints.js";
+import { snapshot, downloadBlob } from "./snapshot.js";
 
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -128,9 +133,16 @@ $(".rst-panel").addEventListener("click", (e) => {
 $("#rstExample").addEventListener("click", () => {
   const ex = EXAMPLES[panel];
   $("#rBrand").value = ex.brand; $("#rHeadline").value = ex.headline; $("#rBody").value = ex.body; $("#rPrice").value = ex.price;
+  Object.keys(HINT_FIELD).forEach(showHint);
   $("#rHeadline").focus();
 });
 
+// The same gentle writing hints the builder shows, a moment after typing stops.
+const HINT_FIELD = { rHeadline: "headline", rBody: "valueProp", rPrice: "price" };
+const hintTimers = {};
+const showHint = (id) => { const slot = document.querySelector(`[data-hint-for="${id}"]`); if (slot) slot.outerHTML = hintHtml(id, hintFor(HINT_FIELD[id], $("#" + id).value)); };
+Object.keys(HINT_FIELD).forEach((id) => $("#" + id).addEventListener("input", () => { clearTimeout(hintTimers[id]); hintTimers[id] = setTimeout(() => showHint(id), 650); }));
+$("#rstForm").addEventListener("click", (e) => { const x = e.target.closest("[data-hint-off]"); if (!x) return; dismissHint(x.dataset.hintOff); x.closest(".hint").hidden = true; });
 const FIELD_EL = { brand: "#rBrand", headline: "#rHeadline", valueProp: "#rBody", price: "#rPrice" };
 function problem(msg, field) {
   $("#rstProblem").textContent = msg || "";
@@ -251,6 +263,7 @@ function render({ round, ad, panel: p, id }, { left = null, shared = false } = {
       <div class="rst-acts">
         ${shared ? `<a class="btn-primary" href="roast.html">Roast your own ad</a>` : `<button class="btn-primary" type="button" id="rstBeat">Test it against a rewrite</button>`}
         ${id ? `<button class="btn" type="button" id="rstCopy">Copy link</button>` : ""}
+        <button class="btn" type="button" id="rstImage">Save as image</button>
       </div>
     </div>
     ${left != null && !shared ? `<p class="rst-left">${left === 0 ? "That was your last free roast today." : `${left} free roast${left === 1 ? "" : "s"} left today.`} Full rounds are free with an account.</p>` : ""}
@@ -262,6 +275,18 @@ function render({ round, ad, panel: p, id }, { left = null, shared = false } = {
     catch { toast(`Share link: ${url}`, { sticky: true }); }
   });
   $("#rstBeat")?.addEventListener("click", () => beatIt(ad, p));
+  $("#rstImage").addEventListener("click", async () => {
+    const people = [...round.customers].sort((a, c) => (a.purchase === "t1" ? 0 : 1) - (c.purchase === "t1" ? 0 : 1))
+      .map((c) => ({ ...c, segIndex: round.segments.indexOf(c.segment), color: c.purchase === "t1" ? BUY : WALK, dashed: (c.margin ?? 1) < 0.1 }));
+    const blob = await snapshot({
+      kicker: `Roast my ad · ${p === "business" ? "Business buyers" : "People"}`,
+      verdict, sub: `“${ad.headline}”${ad.brand && ad.brand !== "This brand" ? `, ${ad.brand}` : ""}. A ${pct(b.share)} average chance of buying.`,
+      people, center: { big: `${buyers}/${n}`, sub: "would buy" },
+      bars: [["Noticed it", f.attention], ["Interested", f.interest], ["Believed it", f.belief], ["Would buy", f.purchase]].map(([label, v]) => ({ label, value: v || 0, color: label === "Would buy" ? BUY : "#1C1C1F" })),
+      legend: [{ label: "Would buy", color: BUY, count: buyers }, { label: "Walked away", color: WALK, count: n - buyers }],
+    });
+    downloadBlob(blob, "market-arena-roast.png");
+  });
   if (!reduced()) $("#rstResult").animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: 380, easing: "cubic-bezier(.3,.7,.2,1)" });
 }
 
