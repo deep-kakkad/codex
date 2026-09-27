@@ -12,7 +12,44 @@ const ID = "https://cdn.jsdelivr.net/npm/@netlify/identity@2.0.0/+esm";
 import { menuButton } from "./ui.js";
 
 let lib = null, me = { signedIn: false }, listeners = [];
-const load = async () => (lib ||= await import(/* @vite-ignore */ ID));
+const load = async () => {
+  if (lib) return lib;
+  lib = await import(/* @vite-ignore */ ID);
+  // Every sign-in, token renewal or confirmation rewrites the cookies; make each one last.
+  try { lib.onAuthChange((event) => { if (event !== "logout") keepSignedIn(); }); } catch {}
+  return lib;
+};
+
+/* ---- Staying signed in -----------------------------------------------------------
+   The Identity library keeps the session in two places: the saved session in this
+   browser's storage, and two cookies (nf_jwt, the access token; nf_refresh, to get a
+   new one) that the server reads. It writes those cookies without an expiry, so the
+   browser deletes them when it closes; on the next visit the library finds a saved
+   session but no cookie and throws the session away. That, and nothing renewing the
+   hour-long access token on later visits, is why people were signed out.
+   So: the cookies are rewritten to last 30 days, restored from the saved session if
+   the browser dropped them, and on every page load an expired token is renewed before
+   the server is asked who you are. Sign-out still deletes all of it. */
+const KEEP_S = 30 * 24 * 3600;
+const readCookie = (name) => {
+  const m = new RegExp(`(?:^|; )${name}=([^;]*)`).exec(document.cookie);
+  if (!m || !m[1]) return null;
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+};
+const writeCookie = (name, value) => {
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; secure; samesite=lax; max-age=${KEEP_S}`;
+};
+function savedSession() {
+  try { return JSON.parse(localStorage.getItem("gotrue.user") || "null")?.token || null; } catch { return null; }
+}
+function keepSignedIn() {
+  const saved = savedSession();
+  if (!saved?.access_token && !readCookie("nf_jwt")) return;   // signed out: nothing to keep
+  const jwt = readCookie("nf_jwt") || saved?.access_token;
+  const refresh = readCookie("nf_refresh") || saved?.refresh_token;
+  if (jwt) writeCookie("nf_jwt", jwt);
+  if (refresh) writeCookie("nf_refresh", refresh);
+}
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 export const account = () => me;
@@ -115,7 +152,7 @@ function panel() {
     msg(mode === "login" ? "Signing in…" : "Creating your account…");
     try {
       const { login, signup } = await load();
-      if (mode === "login") { await login(email, pass); signedInHere = true; close(); await refresh(); }
+      if (mode === "login") { await login(email, pass); keepSignedIn(); signedInHere = true; close(); await refresh(); }
       else {
         await signup(email, pass);
         // Email confirmation is required on this project, so there is no session yet.
@@ -176,7 +213,10 @@ function ago(t) {
 }
 
 export async function signOut() {
-  try { (await load()).logout(); } catch {}
+  try { await (await load()).logout(); } catch {}
+  // Belt and braces: the long-lived cookies and the saved session go too.
+  for (const n of ["nf_jwt", "nf_refresh"]) document.cookie = `${n}=; path=/; secure; samesite=lax; max-age=0`;
+  try { localStorage.removeItem("gotrue.user"); } catch {}
   await refresh();
 }
 
@@ -212,11 +252,17 @@ export function mountAccountBar(host) {
 // OAuth comes back to whatever page it left from, with the result in the URL.
 export async function initAccount() {
   try {
-    const { handleAuthCallback } = await load();
+    const id = await load();
     if (/access_token|error_description|confirmation_token|recovery_token/.test(location.hash + location.search)) {
-      await handleAuthCallback();
+      await id.handleAuthCallback();
       history.replaceState(null, "", location.pathname);
     }
+    // Put back cookies the browser dropped, renew an expired token, then start the
+    // timer that renews it again a minute before it runs out.
+    keepSignedIn();
+    try { await id.refreshSession(); } catch {}
+    try { await id.getUser(); } catch {}
+    keepSignedIn();
   } catch {}
   const m = await refresh();
   // Signed in from a link or a redirect that landed somewhere else (the confirmation
