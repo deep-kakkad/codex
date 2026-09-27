@@ -5,7 +5,9 @@
   "type": "module",
   "description": "A marketing simulation where brands compete for a synthetic market judged by TypeSafe's Jev model.",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test test/*.test.mjs",
+    "pages": "node scripts/build-pages.mjs"
   },
   "engines": {
     "node": ">=18"

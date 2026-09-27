@@ -1,0 +1,5 @@
+User-agent: *
+Disallow: /api/
+Disallow: /account.html
+Disallow: /shared.html
+Sitemap: https://market-arena-dk.netlify.app/sitemap.xml

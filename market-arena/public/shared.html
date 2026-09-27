@@ -238,6 +238,8 @@ async function init() {
     const res = await fetch(`/api/share/${encodeURIComponent(id)}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Couldn't load this round.");
+    // A roast has its own page: one ad on its own, not a round to compare.
+    if (data.kind === "roast") return location.replace(`roast.html?r=${encodeURIComponent(id)}`);
     $("#scTitle").textContent = data.meta?.title || "A shared round";
     document.title = `${data.meta?.title || "Shared round"} | Market Arena`;
     $("#scBrief").textContent = data.meta?.brief || "";

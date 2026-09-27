@@ -575,10 +575,23 @@ function renderTemplateGrid() {
   });
   $("#templateGrid").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-tpl]"); if (!btn) return;
-    const t = TEMPLATES.find((x) => x.id === btn.dataset.tpl);
-    loadScenario({ scenario: { title: t.scenario.title, brief: t.scenario.brief }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) },
-      1);
+    openCase(TEMPLATES.find((x) => x.id === btn.dataset.tpl));
   });
+}
+function openCase(t, step = 1) {
+  loadScenario({ scenario: { title: t.scenario.title, brief: t.scenario.brief }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) }, step);
+}
+// practice.html?case=<id> opens a ready-made case straight away (the use-case pages
+// link here). An open project is only replaced after asking.
+async function openCaseFromLink() {
+  const id = new URLSearchParams(location.search).get("case");
+  if (!id) return;
+  history.replaceState(null, "", location.pathname);
+  const t = TEMPLATES.find((x) => x.id === id && x.id !== "blank");
+  if (!t) return;
+  if (state?.personas?.length && !(await confirmBox({ icon: "open", title: `Open the “${t.scenario.title}” case?`,
+    body: "It replaces the project you have open. Save that one first if you want it back.", ok: "Open the case", cancel: "Stay here" }))) return;
+  openCase(t, 3);
 }
 function renderSavedGrid() {
   const saved = loadJSON(SAVED_KEY, []);
@@ -1743,7 +1756,7 @@ async function shareRound() {
 }
 $("#share").addEventListener("click", shareRound);
 
-init().then(() => onAccountChange(resumePending));
+init().then(() => { onAccountChange(resumePending); openCaseFromLink(); });
 
 /* ---------------------------------------------------------------- account + ask */
 mountAccountBar($("#acctBar"));

@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'><circle cx='7.0' cy='33.0' r='5.6' fill='%23121212'/><circle cx='12.0' cy='21.0' r='5.6' fill='%23121212'/><circle cx='24.0' cy='16.0' r='5.6' fill='%23121212'/><circle cx='36.0' cy='21.0' r='5.6' fill='%23FF5A36'/><circle cx='41.0' cy='33.0' r='5.6' fill='%23121212'/><rect x='4' y='41.5' width='40' height='3.4' rx='1.7' fill='%23121212' opacity='.4'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wdth,wght@0,75..100,400..700;1,75..100,400..700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<title>Roast my ad: will anyone buy it? | Market Arena</title>
+<meta name="description" content="Paste your ad. Eight simulated buyers read it and decide: buy, or walk away. See what worked, what put them off and why the rest passed. Free, no sign-up.">
+<meta property="og:title" content="Roast my ad: will anyone buy it?">
+<meta property="og:description" content="Eight simulated buyers read your ad and decide. Free, no sign-up, under a minute.">
+<link rel="canonical" href="https://market-arena-dk.netlify.app/roast.html">
+</head>
+<body class="roast-page">
+<header class="topbar">
+  <div class="wrap tb-inner">
+    <a class="tb-brand" href="./" aria-label="Market Arena home"><span id="logoSlot"></span><span class="tb-name">Market Arena</span></a>
+    <span class="tb-sep brand-sep" aria-hidden="true">/</span>
+    <span class="tb-here">Roast my ad</span>
+    <div class="tb-spacer"></div>
+    <div class="tb-actions"><div class="acct" id="acctBar"></div><a class="btn d-only" href="practice.html">Start a project</a></div>
+  </div>
+</header>
+
+<main class="wrap page">
+  <div class="rst-head">
+    <span class="rst-kicker">Free · no sign-up · under a minute</span>
+    <h1>Will anyone buy it?</h1>
+    <p class="sub">Paste your ad. Eight simulated buyers read it and decide: buy it, or walk away. You see what worked, what put them off and why the rest passed.</p>
+  </div>
+
+  <div class="rst-grid">
+    <form class="rst-form" id="rstForm" novalidate>
+      <div class="rst-field">
+        <span class="rst-lab" id="panelLab">Who is it for?</span>
+        <div class="seg-ctl rst-panel" role="radiogroup" aria-labelledby="panelLab">
+          <button type="button" role="radio" class="psize active" data-panel="people" aria-checked="true">People</button>
+          <button type="button" role="radio" class="psize" data-panel="business" aria-checked="false">Businesses</button>
+        </div>
+      </div>
+      <div class="rst-field">
+        <label for="rBrand">Brand name <span class="rst-opt">optional</span></label>
+        <input id="rBrand" maxlength="30" autocomplete="off" placeholder="e.g. Fieldday">
+      </div>
+      <div class="rst-field">
+        <label for="rHeadline">Headline</label>
+        <input id="rHeadline" maxlength="90" autocomplete="off" placeholder="The first line a buyer reads">
+      </div>
+      <div class="rst-field">
+        <label for="rBody">Body copy</label>
+        <textarea id="rBody" maxlength="280" rows="4" placeholder="What it is, and why it's worth it"></textarea>
+      </div>
+      <div class="rst-field">
+        <label for="rPrice">Price <span class="rst-opt">optional</span></label>
+        <input id="rPrice" maxlength="50" autocomplete="off" placeholder="Leave blank if the ad doesn't say">
+      </div>
+      <p class="rst-problem" id="rstProblem" role="alert"></p>
+      <div class="rst-go">
+        <button class="btn-primary" type="submit" id="rstRun">Roast it</button>
+        <button class="linkish rst-example" type="button" id="rstExample">Try an example</button>
+      </div>
+      <p class="rst-fine" id="rstFine">Three free roasts a day. The buyers are simulated, so treat it as a first read, not market research.</p>
+    </form>
+
+    <section class="rst-stage" id="rstStage" aria-live="polite">
+      <div class="rst-shared hidden" id="rstShared"></div>
+      <div id="rstArena" role="group" aria-label="The eight buyers"></div>
+      <p class="rst-waiting" id="rstWaiting"></p>
+      <div id="rstResult"></div>
+    </section>
+  </div>
+</main>
+
+<footer><div class="wrap row"><span>Buyers are simulated by TypeSafe's Jev model. Use the results to pick what deserves a real test. They are not market research.</span></div></footer>
+
+<script type="module">
+import { LOGO_MARK, segmentTint } from "./icons.js";
+import { drawArena, liveArena } from "./arena.js";
+import { adMock } from "./ad-formats.js";
+import { clearPush } from "./ad-parts.js";
+import { initAccount, mountAccountBar } from "./account.js";
+import { ask, toast } from "./ui.js";
+
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const pct = (x) => Math.round(x * 100) + "%";
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+$("#logoSlot").innerHTML = LOGO_MARK(22);
+mountAccountBar($("#acctBar"));
+initAccount();
+
+// The two panels, as the server has them (lib/roast.js). Only names and groups are
+// needed here, to seat the room before anyone has decided.
+const PANELS = {
+  people: [["r1", "Dana", "Careful spenders"], ["r2", "Luis", "Careful spenders"], ["r3", "Priya", "Busy professionals"], ["r4", "Tom", "Busy professionals"],
+    ["r5", "Mei", "Early adopters"], ["r6", "Sam", "Early adopters"], ["r7", "Grace", "Skeptics"], ["r8", "Omar", "Skeptics"]],
+  business: [["b1", "Alex", "Small-company founders"], ["b2", "Nadia", "Small-company founders"], ["b3", "Chris", "Team managers"], ["b4", "Ana", "Team managers"],
+    ["b5", "Rahul", "Hands-on specialists"], ["b6", "Jo", "Hands-on specialists"], ["b7", "Martin", "Cautious approvers"], ["b8", "Keiko", "Cautious approvers"]],
+};
+const EXAMPLES = {
+  people: { brand: "Fieldday", headline: "Dinner's done in 15 minutes", body: "Chef-designed meal kits with everything pre-chopped. Pick three meals a week, skip any week, cancel anytime.", price: "$8.99 a serving" },
+  business: { brand: "Ledgerline", headline: "Close your books in a day, not a week", body: "Ledgerline matches every bank line to its invoice and flags what doesn't fit. Set up in an afternoon, no consultant needed.", price: "$49 per user a month" },
+};
+const BUY = "#2F7A45", WALK = "#8E8E95";
+const OBJ = { price: "the price", trust: "doubt about the claims", relevance: "a poor fit with their life", unclear: "not getting the offer" };
+let panel = "people", running = false, last = null;
+
+const people = (p) => PANELS[p].map(([id, name, segment], i) => ({ id, name, segment, segIndex: Math.floor(i / 2) }));
+function waitingRoom() {
+  if (last) return;
+  drawArena($("#rstArena"), { investigate: false, seat: 44,
+    people: people(panel).map((x) => ({ ...x, color: "#C9C9C4", label: `${x.name}, ${x.segment}` })),
+    center: { big: "8", sub: "buyers waiting" } });
+  const groups = [...new Set(PANELS[panel].map((x) => x[2]))];
+  $("#rstWaiting").innerHTML = `Two each from ${groups.map((g, i) => `<b style="color:${segmentTint(i)}">${esc(g.toLowerCase())}</b>`).join(", ").replace(/, ([^,]*)$/, " and $1")}.`;
+}
+
+// Who it's for
+$(".rst-panel").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-panel]"); if (!b || running) return;
+  panel = b.dataset.panel;
+  document.querySelectorAll("[data-panel]").forEach((x) => { const on = x === b; x.classList.toggle("active", on); x.setAttribute("aria-checked", String(on)); });
+  if (!last) waitingRoom();
+});
+$("#rstExample").addEventListener("click", () => {
+  const ex = EXAMPLES[panel];
+  $("#rBrand").value = ex.brand; $("#rHeadline").value = ex.headline; $("#rBody").value = ex.body; $("#rPrice").value = ex.price;
+  $("#rHeadline").focus();
+});
+
+const FIELD_EL = { brand: "#rBrand", headline: "#rHeadline", valueProp: "#rBody", price: "#rPrice" };
+function problem(msg, field) {
+  $("#rstProblem").textContent = msg || "";
+  document.querySelectorAll(".rst-form .bad").forEach((el) => el.classList.remove("bad"));
+  if (field && FIELD_EL[field]) { $(FIELD_EL[field]).classList.add("bad"); $(FIELD_EL[field]).focus(); }
+}
+
+$("#rstForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (running) return;
+  const ad = { brand: $("#rBrand").value.trim(), headline: $("#rHeadline").value.trim(), valueProp: $("#rBody").value.trim(), price: $("#rPrice").value.trim() };
+  if (!ad.headline) return problem("Add the headline. It's the first thing a buyer reads.", "headline");
+  if (!ad.valueProp) return problem("Add the body copy: what it is and why it's worth it.", "valueProp");
+  problem("");
+  running = true; last = null;
+  $("#rstRun").disabled = true; $("#rstRun").textContent = "Buyers are reading…";
+  $("#rstResult").innerHTML = ""; $("#rstShared").classList.add("hidden");
+  $("#rstWaiting").textContent = "Each buyer is reading your ad and deciding.";
+  const room = people(panel);
+  const live = liveArena($("#rstArena"), { people: room, seat: 44, center: { big: "0/8", sub: "decided" } });
+  let decided = 0;
+  try {
+    const res = await fetch("/api/roast", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/x-ndjson" }, body: JSON.stringify({ panel, ad }) });
+    if (!res.ok || !(res.headers.get("content-type") || "").includes("ndjson")) {
+      const d = await res.json().catch(() => ({}));
+      throw Object.assign(new Error(d.error || "The roast didn't run. Try again in a moment."), { field: d.field, limit: res.status === 429 });
+    }
+    let result = null, left = null, buf = "";
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    const handle = (line) => {
+      if (!line.trim()) return;
+      const m = JSON.parse(line);
+      if (m.type === "start") left = m.left;
+      if (m.type === "buyer") { decided++; live.take(m.id, m.purchase === "t1" ? BUY : WALK, m.margin < 0.1); live.setCenter({ big: `${decided}/8`, sub: "decided" }); }
+      if (m.type === "result") result = m.data;
+      if (m.type === "error") throw new Error(m.error);
+    };
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf("\n")) >= 0) { handle(buf.slice(0, i)); buf = buf.slice(i + 1); }
+    }
+    handle(buf);
+    if (!result) throw new Error("The roast cut out before it finished. Try again.");
+    // The room sorts itself: everyone who'd buy on the left, everyone who walked on the right.
+    const order = [...result.round.customers].sort((a, b) => (a.purchase === "t1" ? 0 : 1) - (b.purchase === "t1" ? 0 : 1)).map((c) => c.id);
+    await live.sort(order);
+    last = result;
+    render(result, { left });
+    if (result.id) history.replaceState(null, "", `?r=${result.id}`);
+  } catch (err) {
+    waitingRoom();
+    if (err.field) problem(err.message, err.field);
+    else if (err.limit) showLimit(err.message);
+    else { problem(err.message); toast(err.message, { tone: "error" }); }
+  }
+  running = false;
+  $("#rstRun").disabled = false; $("#rstRun").textContent = last ? "Roast it again" : "Roast it";
+});
+
+function showLimit(msg) {
+  $("#rstResult").innerHTML = `<div class="rst-limit"><p>${esc(msg)}</p><a class="btn-primary" href="practice.html">Start a free project</a></div>`;
+}
+
+/* ---- The verdict ------------------------------------------------------------ */
+function render({ round, ad, panel: p, id }, { left = null, shared = false } = {}) {
+  const b = round.brands[0], n = round.customers.length;
+  const buyers = round.customers.filter((c) => c.purchase === "t1").length;
+  const close = round.customers.filter((c) => (c.margin ?? 1) < 0.1).length;
+  const verdict = buyers === 0 ? "Nobody would buy it yet" : buyers === n ? `All ${n} would buy it`
+    : buyers * 2 >= n ? `${buyers} of ${n} would buy it` : `${n - buyers} of ${n} walked away`;
+  const segs = round.segments.map((s) => ({ s, k: b.bySegmentPicks?.[s] ?? 0, of: round.segmentSizes?.[s] ?? 2 }));
+  const best = [...segs].sort((x, y) => y.k / y.of - x.k / x.of)[0], worst = [...segs].sort((x, y) => x.k / x.of - y.k / y.of)[0];
+  const spread = best && worst && best.k / best.of !== worst.k / worst.of
+    ? ` Strongest with ${esc(best.s.toLowerCase())} (${best.k} of ${best.of}), weakest with ${esc(worst.s.toLowerCase())} (${worst.k} of ${worst.of}).` : "";
+  // What did the work, what cost it, and why the rest passed.
+  const pulls = (b.parts || []).map((x) => ({ ...x, v: b.pull?.[x.key] ?? 0 })).sort((x, y) => y.v - x.v);
+  const top = pulls[0]?.v >= 0.15 ? pulls[0] : null;
+  const cp = clearPush(b.push);
+  const push = cp ? { ...b.parts.find((x) => x.key === cp.key), v: cp.share } : null;
+  const [objKey, objVal] = Object.entries(b.objections || {}).filter(([k]) => k !== "none").sort((x, y) => y[1] - x[1])[0] || ["none", 0];
+  const q = (t) => `“${esc(t)}”`;
+  const f = b.funnel || {};
+  const marks = { id: b.id, parts: {} };
+  if (top) marks.parts[top.key] = { pull: 1, title: `Convinced ${pct(top.v)}` };
+  if (push) marks.parts[push.key] = { ...(marks.parts[push.key] || {}), push: true, title: `Put off ${pct(push.v)}` };
+
+  $("#rstWaiting").textContent = "";
+  drawArena($("#rstArena"), { investigate: false, seat: 44,
+    people: [...round.customers].sort((a, c) => (a.purchase === "t1" ? 0 : 1) - (c.purchase === "t1" ? 0 : 1)).map((c) => ({
+      ...c, segIndex: round.segments.indexOf(c.segment), color: c.purchase === "t1" ? BUY : WALK, dashed: (c.margin ?? 1) < 0.1,
+      label: `${c.name}, ${c.segment}: ${c.purchase === "t1" ? "would buy" : "walked away"}` })),
+    center: { big: `${buyers}/${n}`, sub: "would buy" } });
+
+  $("#rstResult").innerHTML = `
+    <div class="rst-verdict">
+      <h2>${verdict}</h2>
+      <p>A ${pct(b.share)} average chance of buying.${spread}${close ? ` ${close === 1 ? "One buyer" : `${close} buyers`} could have gone either way (dashed).` : ""}</p>
+      <div class="rst-legend"><span><i style="background:${BUY}"></i>Would buy</span><span><i style="background:${WALK}"></i>Walked away</span></div>
+    </div>
+    ${b.flagged ? `<p class="flag">This ad talks to the test instead of to the buyer. Write it the way you'd actually run it.</p>` : ""}
+    <div class="rst-funnel">${[["Noticed it", f.attention], ["Interested", f.interest], ["Believed it", f.belief], ["Would buy", f.purchase]].map(([k, v]) => `
+      <div class="rf"><span class="rf-k">${k}</span><span class="rf-bar"><i style="width:${pct(v || 0)}"></i></span><b>${pct(v || 0)}</b></div>`).join("")}</div>
+    <div class="rst-cards">
+      <div class="rc rc-good"><span class="rc-k"><i class="k-hl"></i>What worked</span>
+        <p>${top ? `${q(top.text)} <span>convinced ${pct(top.v)}</span>` : "No single line stood out. The ad works, or doesn't, as a whole."}</p></div>
+      <div class="rc rc-bad"><span class="rc-k"><i class="k-wave"></i>What put them off</span>
+        <p>${push ? `${push.key === "price" ? "The price, " : ""}${q(push.text)} <span>put off ${pct(push.v)}</span>` : "Nothing clearly stood out as a turn-off."}</p></div>
+      <div class="rc"><span class="rc-k">Why the rest passed</span>
+        <p>${objKey !== "none" ? `Mostly ${OBJ[objKey]} <span>${pct(objVal)}</span>` : "Nothing in particular."}</p></div>
+    </div>
+    <div class="rst-ad"><span class="rst-lab">Your ad, marked up</span>
+      <div class="pitches ads fmt-card"><figure class="adf" style="--c:var(--b1)">${adMock({ ...ad, extras: {} }, "card", { marks })}</figure></div></div>
+    <div class="rst-next">
+      <div><b>One ad on its own shows where it leaks, not how it will sell.</b>
+        <span>Write a rewrite and put both in front of the same buyers. The one they pick is your answer.</span></div>
+      <div class="rst-acts">
+        ${shared ? `<a class="btn-primary" href="roast.html">Roast your own ad</a>` : `<button class="btn-primary" type="button" id="rstBeat">Test it against a rewrite</button>`}
+        ${id ? `<button class="btn" type="button" id="rstCopy">Copy link</button>` : ""}
+      </div>
+    </div>
+    ${left != null && !shared ? `<p class="rst-left">${left === 0 ? "That was your last free roast today." : `${left} free roast${left === 1 ? "" : "s"} left today.`} Full rounds are free with an account.</p>` : ""}
+    <p class="rst-mark">Roasted with <a href="./">Market Arena</a>. Buyers are simulated.</p>`;
+
+  $("#rstCopy")?.addEventListener("click", async () => {
+    const url = `${location.origin}${location.pathname}?r=${id}`;
+    try { await navigator.clipboard.writeText(url); toast("Link copied. Anyone with it sees this roast."); }
+    catch { toast(`Share link: ${url}`, { sticky: true }); }
+  });
+  $("#rstBeat")?.addEventListener("click", () => beatIt(ad, p));
+  if (!reduced()) $("#rstResult").animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: 380, easing: "cubic-bezier(.3,.7,.2,1)" });
+}
+
+function fixField() {
+  const b = last?.round?.brands?.[0], cp = b && clearPush(b.push);
+  if (!cp) return "headline";
+  return cp.key === "price" ? "price" : /^body\d+$/.test(cp.key) ? "valueProp" : "headline";
+}
+// Into a project: this ad as version 1, an empty rewrite beside it, the same eight
+// buyers. An open project is saved first, so nothing is lost.
+const SESSION_KEY = "market-arena-practice-session", SAVED_KEY = "market-arena-practice-saved";
+async function beatIt(ad, p) {
+  let open = null;
+  try { open = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch {}
+  if (open?.personas?.length) {
+    const title = open.scenario?.title?.trim() || "Untitled project";
+    const ok = await ask({ icon: "save", title: "Save your open project first?",
+      body: `“${title}” is open in the builder. It goes to your saved projects, with its rounds, and this ad opens in its place.`,
+      actions: [{ label: "Cancel", value: null }, { label: "Save it and continue", value: true, kind: "primary" }] });
+    if (!ok) return;
+    try {
+      const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
+      saved.unshift({ id: `sc${Date.now()}`, name: title, savedAt: Date.now(), ...open });
+      localStorage.setItem(SAVED_KEY, JSON.stringify(saved.slice(0, 20)));
+    } catch {}
+  }
+  const brand = ad.brand && ad.brand !== "This brand" ? ad.brand : "Your brand";
+  const price = ad.price === "Not stated in the ad" ? "" : ad.price;
+  const personas = (last?.round?.customers || []).map(({ id, name, segment, profile }) => ({ id, name, segment, profile }));
+  const state = {
+    scenario: { title: `${brand}: the roast rematch`, brief: `Started from a roast. Version 1 is the ad as it was; write a rewrite that fixes what put buyers off.` },
+    personas, personaPool: personas.map((x) => ({ ...x })),
+    // The rewrite starts as a copy with one field cleared: the one that put buyers off
+    // most (or the headline), so the two versions differ in exactly one place.
+    teams: [{ slot: 0, brand, headline: ad.headline, valueProp: ad.valueProp, price },
+            { slot: 1, brand: `${brand} rewrite`.slice(0, 30), headline: ad.headline, valueProp: ad.valueProp, price, [fixField()]: "" }],
+    rounds: [], step: 3,
+  };
+  try { localStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch {}
+  location.href = "practice.html";
+}
+
+// A shared roast: the same verdict, read-only, with a way to roast your own.
+async function openShared(id) {
+  try {
+    const res = await fetch(`/api/share/${encodeURIComponent(id)}`);
+    const data = await res.json();
+    if (!res.ok || data.kind !== "roast") throw new Error(data.error || "This link doesn't lead to a roast.");
+    last = data; panel = data.panel;
+    $("#rBrand").value = data.ad.brand === "This brand" ? "" : data.ad.brand; $("#rHeadline").value = data.ad.headline;
+    $("#rBody").value = data.ad.valueProp; $("#rPrice").value = data.ad.price === "Not stated in the ad" ? "" : data.ad.price;
+    document.querySelectorAll("[data-panel]").forEach((x) => { const on = x.dataset.panel === panel; x.classList.toggle("active", on); x.setAttribute("aria-checked", String(on)); });
+    $("#rstShared").classList.remove("hidden");
+    $("#rstShared").innerHTML = `Someone shared this roast with you. The ad is on the left; change it and roast your own.`;
+    $("#rstRun").textContent = "Roast my version";
+    render(data, { shared: true });
+  } catch (err) { last = null; waitingRoom(); problem(err.message); }
+}
+
+const shared = new URLSearchParams(location.search).get("r");
+if (shared) openShared(shared); else waitingRoom();
+</script>
+</body>
+</html>
