@@ -12,6 +12,10 @@ try {
   });
 } catch {}
 const { scenario, templates, round, share, getShare, askRound, prepareRound, roundStream } = await import("./lib/handlers.js");
+const { currentUser } = await import("./lib/auth.js");
+// This server only ever runs on your own machine, so rounds run as you: the
+// DEV_USER_EMAIL account if set, otherwise a local stand-in.
+const localUser = async () => (await currentUser().catch(() => null)) || { id: "local", email: "local@localhost" };
 if (!process.env.TYPESAFE_API_KEY) { console.error("Set TYPESAFE_API_KEY in your shell or a .env file, then start again."); process.exit(1); }
 
 const PUBLIC = fileURLToPath(new URL("./public", import.meta.url));
@@ -26,14 +30,14 @@ http.createServer(async (req, res) => {
     let body = "";
     for await (const c of req) { body += c; if (body.length > 32000) return send(res, [413, { error: "Request too large." }]); }
     if ((req.headers.accept || "").includes("application/x-ndjson")) {
-      const prep = prepareRound(body, req.headers["x-arena-code"], req.socket.remoteAddress);
+      const prep = prepareRound(body, req.headers["x-arena-code"], req.socket.remoteAddress, await localUser());
       if (prep.error) return send(res, prep.error);
       res.writeHead(200, { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache" });
       const reader = roundStream(prep).getReader();
       for (;;) { const { done, value } = await reader.read(); if (done) break; res.write(value); }
       return res.end();
     }
-    return send(res, await round(body, req.headers["x-arena-code"], req.socket.remoteAddress));
+    return send(res, await round(body, req.headers["x-arena-code"], req.socket.remoteAddress, await localUser()));
   }
   if (req.method === "POST" && url === "/api/share") {
     let body = "";

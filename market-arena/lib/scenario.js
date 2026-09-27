@@ -4,7 +4,7 @@ export const SCENARIO = {
   id: "cold-brew-india",
   title: "Cold brew comes to India",
   brief:
-    "Most Indian shoppers have never tried ready-to-drink cold coffee. Twelve buyers in four groups see three brands side by side. Who gets picked, and who gets ignored?",
+    "Most Indian shoppers have never tried ready-to-drink cold coffee. Buyers from four groups see three brands side by side. Who gets picked, and who gets ignored?",
 };
 
 export const PERSONAS = [

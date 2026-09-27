@@ -8,14 +8,14 @@ import { ask as askModel, ASK_COST_CREDITS } from "./ask.js";
 
 const codeOk = (code) => !process.env.ARENA_CODE || (code || "").trim() === process.env.ARENA_CODE;
 
-// Best-effort per-IP throttle for the code-free Practice mode, so a public link can't be
-// used to burn the TypeSafe budget. In-memory only: resets on cold start / restart, which
-// is an accepted gap for an MVP, not a substitute for real abuse protection at scale.
+// Practice rounds need an account (they're free, but not anonymous), plus a
+// best-effort throttle per account so one account can't burn the TypeSafe budget.
+// In-memory only: resets on cold start / restart, which is an accepted gap for an MVP,
+// not a substitute for real abuse protection at scale.
 const PRACTICE_WINDOW_MS = 60 * 60 * 1000;
 const PRACTICE_MAX_PER_WINDOW = 20;
 const practiceHits = new Map();
-function practiceRateLimited(ip) {
-  const key = ip || "unknown";
+function practiceRateLimited(key) {
   const now = Date.now();
   const hits = (practiceHits.get(key) || []).filter((t) => now - t < PRACTICE_WINDOW_MS);
   if (hits.length >= PRACTICE_MAX_PER_WINDOW) { practiceHits.set(key, hits); return true; }
@@ -57,7 +57,8 @@ export function cleanContext(ctx) {
 
 // Checks a round request and, if it is good, returns a `run(onBuyer)` that runs it.
 // A bad request comes back as `{ error: [status, body] }` before anything runs.
-export function prepareRound(rawBody, code, ip) {
+/* user: the signed-in account ({ id, email }) or null. Practice rounds refuse null. */
+export function prepareRound(rawBody, code, ip, user = null) {
   let body;
   try { body = JSON.parse(rawBody || "{}"); } catch { return { error: [400, { error: "The request wasn't valid JSON." }] }; }
   const { teams, personas, mode } = body;
@@ -66,7 +67,8 @@ export function prepareRound(rawBody, code, ip) {
 
   if (mode === "practice") {
     if (!process.env.TYPESAFE_API_KEY) return noKey;
-    if (practiceRateLimited(ip)) return { error: [429, { error: "That's 20 rounds in an hour from this connection, the beta limit. Take a breather and try again shortly." }] };
+    if (!user?.id) return { error: [401, { error: "Sign in to run a round. Rounds are free, and your project stays as you left it.", signIn: true }] };
+    if (practiceRateLimited(`u:${user.id}`)) return { error: [429, { error: "That's 20 rounds in an hour, the beta limit. Take a breather and try again shortly." }] };
     const teamProblem = validateTeams(teams);
     if (teamProblem) return { error: [400, { error: teamProblem }] };
     const personaProblem = validatePersonas(personas);
@@ -83,8 +85,8 @@ export function prepareRound(rawBody, code, ip) {
 }
 export const ROUND_FAILED = "The buyers couldn't be reached just now. Run the round again in a moment.";
 
-export async function round(rawBody, code, ip) {
-  const prep = prepareRound(rawBody, code, ip);
+export async function round(rawBody, code, ip, user = null) {
+  const prep = prepareRound(rawBody, code, ip, user);
   if (prep.error) return prep.error;
   try { return [200, await prep.run()]; }
   catch (e) { console.error(e); return [502, { error: ROUND_FAILED }]; }

@@ -91,9 +91,33 @@ const quoteOf = (t, n = 64) => `“${t.length > n ? t.slice(0, n - 1).trimEnd() 
 // A part as the report names it: its words in quotes, or "the image" for a creative.
 const partName = (p, n) => (p.key === "image" ? "the image" : quoteOf(p.text, n));
 
+// Where each version should change next: the part of its ad that clearly put buyers
+// off, as the field to rewrite, or, when no single part stands out, the field that
+// answers its biggest objection. One move per version, strongest version first.
+const OBJ_FIELD = { price: ["price", "Price"], trust: ["valueProp", "Value proposition"], relevance: ["headline", "Headline"], unclear: ["headline", "Headline"] };
+export function fieldOfPart(key) {
+  if (key === "headline") return ["headline", "Headline"];
+  if (/^body\d+$/.test(key)) return ["valueProp", "Value proposition"];
+  if (key === "price") return ["price", "Price"];
+  if (key === "image") return ["creative", "Image"];
+  const x = EXTRA_FIELDS.find((f) => f.key === key);
+  return x ? [`extras.${key}`, x.label] : ["headline", "Headline"];
+}
+export function movesFor(r) {
+  return [...r.brands].map((b) => ({ b, slot: r.slots[r.brands.indexOf(b)] })).sort((x, y) => y.b.share - x.b.share).map(({ b, slot }, rank) => {
+    const w = workOf(b);
+    const [objKey, objVal] = Object.entries(b.objections || {}).filter(([k]) => k !== "none").sort((x, y) => y[1] - x[1])[0] || ["none", 0];
+    const [field, label] = w?.push ? fieldOfPart(w.push.key) : OBJ_FIELD[objKey] || ["headline", "Headline"];
+    return { id: b.id, slot, brand: b.brand, share: b.share, rank, field, label, push: w?.push || null, keep: w?.top || null, objKey, objVal };
+  });
+}
+const ORDINAL = ["1st", "2nd", "3rd", "4th"];
+
 // `readOnly` is for the shared view, which has no editor to send anyone to.
 // `getImage(id)`: the picture for an uploaded creative, when this page has it.
-export function createResultsView({ readOnly = false, onFormat = null, getFormat = null, getImage = null } = {}) {
+// `onRender({ index, latest, total })`: called after a round is drawn, so the page
+// can keep anything that depends on which round is showing in step.
+export function createResultsView({ readOnly = false, onFormat = null, getFormat = null, getImage = null, onRender = null } = {}) {
   let open = null;
   let format = null;    // the format picked in this report; null means the round's own
   let viewIndex = null; // null means "whatever the latest round is"
@@ -252,6 +276,69 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
      Everything below it is evidence for the two things stated here: what happened,
      and what to do next. Built from the same numbers the sections use, so the hero
      can never disagree with the report underneath it. */
+  /* ---- The loop: read a round, pick what to change, run the next one ----------
+     Under the latest round's verdict, one card per version: its weakest spot in this
+     round, and a button that opens the editor on exactly that field. The editor and
+     the round bar at the bottom of the screen take it from there. */
+  function loopCards(r, total) {
+    const moves = movesFor(r);
+    // Each line opens its evidence: who said it, and what they said.
+    const evidence = (m) => m.push
+      ? `<button type="button" class="lc-why" data-investigate="part:${m.id}:${m.push.key}"><i class="k-wave"></i><span>Put off ${pct(m.push.v)}: ${esc(partName(m.push, 70))}</span></button>`
+      : `<button type="button" class="lc-why" data-investigate="obj:${m.objKey}:${m.id}"><span class="lc-obj">${objectionIcon(m.objKey)}</span><span>Why people passed: ${OBJ_NOUN[m.objKey] || "nothing in particular"} (${pct(m.objVal)})</span></button>`;
+    return `<section class="loop" id="loopCards" aria-labelledby="loopH">
+      <div class="loop-head">
+        <h3 id="loopH">Pick what to change for round ${total + 1}</h3>
+        <p>Each card is that version's weakest spot in round ${total}. Change one thing per version and leave the rest alone. Then round ${total + 1} tells you what that one change was worth.</p>
+      </div>
+      <div class="loop-cards">
+        ${moves.map((m) => `
+          <div class="lc" data-lc-slot="${m.slot}" style="--c:${COLORS[m.slot]}">
+            <div class="lc-top"><span class="sw" style="background:var(--c)"></span><b>${esc(m.brand)}</b><span class="lc-rank">${ORDINAL[m.rank] || ""} · ${pct(m.share)}</span></div>
+            ${evidence(m)}
+            ${m.keep && m.keep.key !== m.push?.key ? `<button type="button" class="lc-keep" data-investigate="part:${m.id}:${m.keep.key}"><i class="k-hl"></i><span>Keep ${esc(partName(m.keep, 50))}, it convinced ${pct(m.keep.v)}</span></button>` : ""}
+            <span class="lc-done" aria-live="polite"></span>
+            <button type="button" class="lc-go" data-change-slot="${m.slot}" data-change-field="${m.field}">${m.field === "creative" ? "Try a different image" : `Change the ${esc(m.label.toLowerCase())}`}<span aria-hidden="true">→</span></button>
+          </div>`).join("")}
+      </div>
+      <div class="lc-more"><button type="button" class="lc-any" data-change-any>Or edit anything yourself</button>
+        <button class="hero-explore" type="button" data-tab-go="market">See how the room split</button></div>
+    </section>`;
+  }
+  // From round 2 on, the cause next to the effect: what was rewritten in each version,
+  // how far its numbers moved, and how many buyers came or went.
+  function moved(r, prev) {
+    if (!prev) return "";
+    const slotOfId = (round, id) => { if (id === "none") return -1; const i = round.brands.findIndex((x) => x.id === id); return i < 0 ? -1 : round.slots[i]; };
+    const before = Object.fromEntries(prev.customers.map((c) => [c.id, slotOfId(prev, c.purchase)]));
+    const rows = r.brands.map((b, i) => {
+      const slot = r.slots[i], was = bySlot(prev, slot);
+      if (!was) return null;
+      const changes = diffFields(r).filter(([f]) => (fieldValue(was, f) || "") !== (fieldValue(b, f) || ""));
+      if ((was.creative?.id || null) !== (b.creative?.id || null)) changes.push(["creative", "Image"]);
+      const won = r.customers.filter((c) => slotOfId(r, c.purchase) === slot && before[c.id] !== undefined && before[c.id] !== slot).length;
+      const lost = r.customers.filter((c) => before[c.id] === slot && slotOfId(r, c.purchase) !== slot).length;
+      const d = Math.round((b.share - was.share) * 100);
+      return { b, slot, changes, d, won, lost };
+    }).filter(Boolean).sort((a, b) => (b.changes.length > 0) - (a.changes.length > 0));
+    const touched = rows.filter((x) => x.changes.length);
+    if (!touched.length) return `<div class="moved"><h3>Nothing changed since the last round</h3>
+      <p>Same ads, same buyers. That makes this round a re-run: however far the numbers moved is roughly how much they wobble on their own. Keep it in mind before reading much into a gap that small.</p></div>`;
+    const fmtChange = ([f, label], b, was) => f === "creative"
+      ? `<span class="mv-f">${label}</span><span class="mv-now">a new image</span>`
+      : `<span class="mv-f">${label}</span><span class="mv-was">${esc(fieldValue(was, f) || "—")}</span><span class="mv-arrow" aria-hidden="true">→</span><span class="mv-now">${esc(fieldValue(b, f) || "—")}</span>`;
+    return `<div class="moved"><h3>What you changed, and what it moved</h3>
+      ${rows.map(({ b, slot, changes, d, won, lost }) => `
+        <div class="mv" style="--c:${COLORS[slot]}">
+          <div class="mv-head"><span class="sw" style="background:var(--c)"></span><b>${esc(b.brand)}</b>
+            <span class="mv-d ${d > 0 ? "up" : d < 0 ? "down" : ""}">${d > 0 ? "+" : d < 0 ? "−" : "±"}${Math.abs(d)} pts</span>
+            <span class="mv-who">${won || lost ? [won ? `${won} buyer${won === 1 ? "" : "s"} came over` : "", lost ? `${lost} left` : ""].filter(Boolean).join(", ") : "Nobody switched"}</span></div>
+          ${changes.length ? changes.slice(0, 3).map((c) => `<div class="mv-row">${fmtChange(c, b, bySlot(prev, slot))}</div>`).join("") : `<div class="mv-row mv-same">Unchanged. Its move is the wobble, or a knock-on from the others.</div>`}
+        </div>`).join("")}
+      ${touched.some((x) => x.changes.length > 1) ? `<p class="mv-note">Where a version had more than one change, the move belongs to all of them together. Test them one at a time to know which did the work.</p>` : ""}
+    </div>`;
+  }
+
   function renderHero(r, prev, idx, total, animate = false) {
     if (!has("#hero")) return;
     const n = panelOf(r);
@@ -279,6 +366,23 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
 
     const blocs = blocsFor(r);
     const counts = Object.fromEntries(blocs.map((b) => [b.key, picksFor(r, b.key)]));
+    // The shared view and earlier rounds keep the one-line "next move"; the latest
+    // round in the project gets the change cards that start the next round.
+    const nextMove = `<div class="hero-next">
+          <h3>Your next move</h3>
+          <p>${workOf(win)?.push
+            ? `${pct(workOf(win).push.v)} of buyers named ${esc(partName(workOf(win).push, 60))} as the part of <b>${esc(win.brand)}</b>'s ad that put them off most. ${workOf(win).push.key === "image" ? "Try a different image" : "Rewrite it"}, change nothing else, and round ${total + 1} will tell you exactly what that was worth.`
+            : `Change <b>${esc(win.brand)}</b>'s ${esc(OBJ_LEVER[objKey] || "pitch")}, change nothing else, and round ${total + 1} will tell you exactly what that was worth.`}</p>
+          ${(() => { const w = workOf(win); if (!w || (!w.top && !w.push)) return "";
+            return `<div class="keepfix">
+              ${w.top ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.top.key}"><span class="kf-k">Keep</span><i class="k-hl"></i><span class="kf-t">${esc(partName(w.top, 70))}</span><span class="kf-v">convinced ${pct(w.top.v)}</span></button>` : ""}
+              ${w.push ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.push.key}"><span class="kf-k">Fix</span><i class="k-wave"></i><span class="kf-t">${esc(partName(w.push, 70))}</span><span class="kf-v">put off ${pct(w.push.v)}</span></button>` : ""}
+            </div>`; })()}
+          <div class="hero-actions">
+            ${readOnly ? "" : `<button class="btn" data-go-latest>Go to round ${total}</button>`}
+            <button class="hero-explore" type="button" data-tab-go="market">See how the room split</button>
+          </div>
+        </div>`;
     $("#hero").classList.remove("hidden");
     $("#hero").innerHTML = `
       <div class="hero-body">
@@ -332,21 +436,8 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
             </button>`).join("")}
         </div>
 
-        <div class="hero-next">
-          <h3>Your next move</h3>
-          <p>${workOf(win)?.push
-            ? `${pct(workOf(win).push.v)} of buyers named ${esc(partName(workOf(win).push, 60))} as the part of <b>${esc(win.brand)}</b>'s ad that put them off most. ${workOf(win).push.key === "image" ? "Try a different image" : "Rewrite it"}, change nothing else, and round ${total + 1} will tell you exactly what that was worth.`
-            : `Change <b>${esc(win.brand)}</b>'s ${esc(OBJ_LEVER[objKey] || "pitch")}, change nothing else, and round ${total + 1} will tell you exactly what that was worth.`}</p>
-          ${(() => { const w = workOf(win); if (!w || (!w.top && !w.push)) return "";
-            return `<div class="keepfix">
-              ${w.top ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.top.key}"><span class="kf-k">Keep</span><i class="k-hl"></i><span class="kf-t">${esc(partName(w.top, 70))}</span><span class="kf-v">convinced ${pct(w.top.v)}</span></button>` : ""}
-              ${w.push ? `<button type="button" class="kf" data-investigate="part:${win.id}:${w.push.key}"><span class="kf-k">Fix</span><i class="k-wave"></i><span class="kf-t">${esc(partName(w.push, 70))}</span><span class="kf-v">put off ${pct(w.push.v)}</span></button>` : ""}
-            </div>`; })()}
-          <div class="hero-actions">
-            ${readOnly ? "" : `<button class="btn" data-prepare-round>Write round ${total + 1}</button>`}
-            <button class="hero-explore" type="button" data-tab-go="market">See how the room split</button>
-          </div>
-        </div>
+        ${moved(r, prev)}
+        ${!readOnly && idx === total - 1 ? loopCards(r, total) : nextMove}
       </div>`;
     const segIdx = (c) => r.segments.indexOf(c.segment);
     drawArena($("#heroArena"), {
@@ -840,6 +931,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     renderHistory(rounds, idx);
     numberSections();
     $("#meta").textContent = `${r.model}, ${r.tokens.toLocaleString()} tokens, ${(r.ms / 1000).toFixed(1)}s`;
+    onRender?.({ index: idx, latest, total: rounds.length });
   }
 
   // What public research told the buyers, next to what the buyers then did with it.
@@ -1213,6 +1305,7 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     if (t) return setTab(t.dataset.tab);
     const go = e.target.closest("[data-tab-go]");
     if (go) setTab(go.dataset.tabGo);
+    if (e.target.closest("[data-go-latest]")) { open = null; renderResults(getRounds(), false, null); }
   });
   document.addEventListener("keydown", (e) => {
     const t = e.target.closest?.("#reportNav [data-tab]");

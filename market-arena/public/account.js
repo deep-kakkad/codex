@@ -16,6 +16,27 @@ const load = async () => (lib ||= await import(/* @vite-ignore */ ID));
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 export const account = () => me;
+
+// "Run this after sign-in". Someone who presses Run while signed out is sent to sign
+// in, and signing in can leave the page: Google redirects away and back, and a new
+// account confirms from a link in an email, often in another tab. Their project is
+// already saved in this browser; this note says a round was waiting, so the app can
+// take them back to it and run it without them setting anything up again. It expires,
+// so an abandoned sign-in doesn't fire a round days later.
+const PENDING = "market-arena-pending";
+const PENDING_TTL = 60 * 60 * 1000;
+export function rememberPending(what) {
+  try { localStorage.setItem(PENDING, JSON.stringify({ ...what, at: Date.now() })); } catch {}
+}
+export function pendingAction() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PENDING) || "null");
+    if (p && Date.now() - p.at < PENDING_TTL) return p;
+    localStorage.removeItem(PENDING);
+  } catch {}
+  return null;
+}
+export function clearPending() { try { localStorage.removeItem(PENDING); } catch {} }
 export const onAccountChange = (fn) => { listeners.push(fn); fn(me); };
 const announce = () => listeners.forEach((f) => f(me));
 
@@ -67,9 +88,9 @@ function panel() {
     mode = m;
     $("#authTitle").textContent = m === "login" ? "Sign in" : "Create an account";
     $("#authGo").textContent = m === "login" ? "Sign in" : "Create account";
-    $("#authSub").textContent = m === "login"
+    $("#authSub").textContent = el._sub || (m === "login"
       ? "Welcome back. Your credits are right where you left them."
-      : "100 free credits to start, no card. Rounds are free; a question or a research run costs 10.";
+      : "100 free credits to start, no card. Rounds are free; a question or a research run costs 10.");
     $("#authPass").autocomplete = m === "login" ? "current-password" : "new-password";
     $("#authSwapText").textContent = m === "login" ? "New here?" : "Already have an account?";
     $("#authSwap").textContent = m === "login" ? "Create an account" : "Sign in";
@@ -80,6 +101,7 @@ function panel() {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !el.classList.contains("hidden")) close(); });
 
   $("#authGoogle").addEventListener("click", async () => {
+    leaving = true;
     msg("Redirecting to Google…");
     (await load()).oauthLogin("google");
   });
@@ -93,11 +115,15 @@ function panel() {
     msg(mode === "login" ? "Signing in…" : "Creating your account…");
     try {
       const { login, signup } = await load();
-      if (mode === "login") { await login(email, pass); await refresh(); close(); }
+      if (mode === "login") { await login(email, pass); signedInHere = true; close(); await refresh(); }
       else {
         await signup(email, pass);
         // Email confirmation is required on this project, so there is no session yet.
-        msg("Check your email to confirm the address, then sign in.");
+        // A waiting round stays waiting: the link brings them back to it.
+        awaitingConfirm = true;
+        msg(pendingAction()
+          ? "Check your email and click the link. It signs you in and brings you straight back here to run your round."
+          : "Check your email to confirm the address, then sign in.");
       }
     } catch (err) {
       msg(friendly(err), true);
@@ -105,8 +131,12 @@ function panel() {
   });
 
   el._setMode = setMode;
+  el._setSub = (t) => { el._sub = t; setMode(mode); };
   return el;
 }
+// Closing the box without signing in drops a waiting round, unless the person is on
+// their way to sign in elsewhere (Google, or the confirmation email).
+let signedInHere = false, awaitingConfirm = false, leaving = false;
 
 // The library's messages are accurate but not written for the person reading them.
 function friendly(err) {
@@ -119,13 +149,22 @@ function friendly(err) {
   return m.slice(0, 160) || "That didn't work. Try again.";
 }
 
-export function open(mode = "login") {
+/* sub: a line saying why they're being asked, e.g. that the round they pressed Run on
+   will run as soon as they're in. */
+export function open(mode = "login", { sub = "" } = {}) {
   const el = panel();
+  signedInHere = awaitingConfirm = leaving = false;
   el._setMode(mode);
+  el._setSub(sub || "");
   el.classList.remove("hidden");
   el.querySelector("#authEmail").focus();
 }
-function close() { document.getElementById("authPanel")?.classList.add("hidden"); }
+function close() {
+  const el = document.getElementById("authPanel");
+  if (!el || el.classList.contains("hidden")) return;
+  el.classList.add("hidden");
+  if (!signedInHere && !awaitingConfirm && !leaving) clearPending();
+}
 
 // "3 min ago", "2 h ago", "4 Sep": short enough for a menu line.
 function ago(t) {
@@ -179,5 +218,10 @@ export async function initAccount() {
       history.replaceState(null, "", location.pathname);
     }
   } catch {}
-  return refresh();
+  const m = await refresh();
+  // Signed in from a link or a redirect that landed somewhere else (the confirmation
+  // email opens the home page): a round was waiting, so go back to it.
+  const p = pendingAction();
+  if (m.signedIn && p?.page && !location.pathname.endsWith(p.page)) location.replace(p.page);
+  return m;
 }

@@ -90,9 +90,9 @@
       <div class="wrap">
         <h2>Meet your buyers</h2>
         <p class="sub" id="personasSub">Groups form from whatever you type as the segment. Rename, add or remove anyone.</p>
-        <div class="data-cta" id="dataCta">
+        <div class="data-cta fx-gold" id="dataCta">
           <span class="dc-ic" id="dataCtaIcon"></span>
-          <span class="dc-t"><b>Got reviews, interview notes or survey answers?</b><span>Turn them into buyers. Optional, and you approve every one before it joins.</span></span>
+          <span class="dc-t"><b>Got reviews, interview notes or survey answers? <span class="fx-tag" id="dataCtaCost">10 credits</span></b><span>Turn them into buyers. Optional, and you approve every one before it joins.</span></span>
           <button class="btn" type="button" id="openDataSheet">Build buyers from my data</button>
         </div>
         <div class="panel-size" id="panelSize">
@@ -344,7 +344,7 @@
 
 <script type="module">
 import { LOGO_MARK, caseMark, caseTint, buyerFace, segmentTint, objectionIcon } from "./icons.js";
-import { createResultsView, exportCsv, esc, workOf } from "./app-shared.js";
+import { createResultsView, exportCsv, esc, workOf, movesFor } from "./app-shared.js";
 import { adMock, formatSwitch, formatOf } from "./ad-formats.js";
 import { morphFormat } from "./morph.js";
 import { initDataSheet, DOC_ICON } from "./buyers-data.js";
@@ -352,12 +352,11 @@ import { GOAL_ART } from "./goal-art.js";
 import { creativeHero, creativeBar, prepareImage, readCreatives, IMG_IC, openCreativePanel, sortImageWords, fly } from "./creative-ui.js";
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
-import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn } from "./account.js";
+import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn, rememberPending, pendingAction, clearPending } from "./account.js";
 import { menuButton, toast } from "./ui.js";
-import { drawArena } from "./arena.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
-const view = createResultsView({ onFormat: (f) => { if (state) setFormat(f); }, getFormat: () => state?.format, getImage: (id) => state?.creativeThumbs?.[id] || null });
+const view = createResultsView({ onFormat: (f) => { if (state) setFormat(f); }, getFormat: () => state?.format, getImage: (id) => state?.creativeThumbs?.[id] || null, onRender: () => updateLoop() });
 const $ = (s) => document.querySelector(s);
 const COLORS = ["var(--b1)", "var(--b2)", "var(--b3)", "var(--b4)"];
 
@@ -383,6 +382,8 @@ function setStatus(text, isError) {
    button, and it lives here once a project has results; before the first round it
    sits at the end of the editor, where the setup finishes. */
 let running = false;
+let focusChange = null;   // { slot, field } the user chose from a change card (see the loop)
+let loopBar = null;       // the round bar, made on first use
 const inProject = () => Boolean(state) && $("#pickerSection").classList.contains("hidden");
 const viewedRoundIndex = () => view.viewedIndex();
 const editorOpen = () => !$("#builder").classList.contains("collapsed");
@@ -394,11 +395,15 @@ function renderTopbar() {
   if (state) $("#projectName").textContent = state.scenario.title?.trim() || "Untitled project";
   if (!here || !hasRounds) $("#roundTabs").classList.add("hidden");
   $("#moreBtn").classList.toggle("hidden", !here);
-  ["#share", "#editPitches", "#runBar"].forEach((id) => $(id).classList.toggle("hidden", !here || !hasRounds));
+  ["#share", "#editPitches"].forEach((id) => $(id).classList.toggle("hidden", !here || !hasRounds));
+  // Once there are results, the next round is run from the round bar at the bottom,
+  // which knows what has changed; the top bar never offers a blind "Run".
+  $("#runBar").classList.add("hidden");
   if (hasRounds) {
     $("#editPitches").textContent = editorOpen() ? "Hide editor" : "Edit versions";
     $("#runBar").textContent = running ? "Running…" : `Run round ${state.rounds.length + 1}`;
   }
+  updateLoop();
   const back = $("#backToProject");
   back.classList.toggle("hidden", here || !state);
   if (state) back.textContent = `Back to ${state.scenario.title?.trim() || "your project"}`;
@@ -515,14 +520,42 @@ async function init() {
   if (session?.personas?.length) {
     state = session; showBuilder();
     if (state.rounds.length) { view.renderResults(state.rounds, false); collapseBuilder(true); }
+    else if (state.step) goToStep(state.step);
   }
   renderTopbar();
 }
 
+// Each case shows the fight itself: its competing ads, dealt out like a hand of
+// cards, with the buyers who'll judge them as a line underneath. The blank case
+// shows empty ad outlines waiting to be written.
+function adFan(t) {
+  const blank = t.id === "blank";
+  const ads = t.defaultTeams.slice(0, 3);
+  const n = ads.length, mid = (n - 1) / 2;
+  // Held like a hand: each card overlaps the one to its left, so every brand shows in
+  // its top-left corner and the last card reads in full.
+  const step = n === 3 ? 62 : 92, tilt = n === 3 ? 7 : 5;
+  const ad = (b, i) => {
+    const k = i - mid;
+    return `
+    <span class="cfan-ad${blank ? " is-blank" : ""}" style="--c:${COLORS[i]};--x:${k * step}px;--y:${Math.abs(k) * 7}px;--r:${k * tilt}deg;--z:${i + 1};--d:${i * 70}ms">
+      ${blank
+        ? `<span class="cfan-ph">${i === 0 ? "Your ad" : "Theirs"}</span><i></i><i></i><i class="short"></i>`
+        : `<span class="cfan-brand"><i></i>${esc(b.brand)}</span>
+           <span class="cfan-hl">${esc(b.headline)}</span>
+           <span class="cfan-price">${esc(b.price)}</span>`}
+    </span>`;
+  };
+  const segs = [...new Set(t.personas.map((p) => p.segment))];
+  const faces = t.personas.slice(0, 5).map((p) => buyerFace(p, segs.indexOf(p.segment), 22)).join("");
+  const panel = Math.min(DEFAULT_PANEL, t.personas.length);
+  return `<span class="cfan" aria-hidden="true">${ads.map(ad).join("")}</span>
+    <span class="cfan-room"><span class="cfan-faces">${faces}</span>${blank ? "Your buyers, your groups" : `${panel} buyers · ${segs.length} groups`}</span>`;
+}
 function renderTemplateGrid() {
   const card = (t) => `
     <button class="picker-card" data-tpl="${t.id}" style="--tint:${caseTint(t.id)}">
-      <span class="card-arena" data-arena="${t.id}"></span>
+      ${adFan(t)}
       <span class="card-top">${caseMark(t.id)}<span class="kicker">${esc(t.industry)}</span></span>
       <h3>${esc(t.scenario.title)}</h3>
       <p>${esc(t.scenario.brief)}</p>
@@ -531,15 +564,6 @@ function renderTemplateGrid() {
   // its own group below rather than sitting as a fifth equal tile.
   $("#templateGrid").innerHTML = TEMPLATES.filter((t) => t.id !== "blank").map(card).join("");
   $("#blankGrid").innerHTML = TEMPLATES.filter((t) => t.id === "blank").map(card).join("");
-  // Each case shows its panel, seated and waiting: the people your pitch will face.
-  document.querySelectorAll("[data-arena]").forEach((host) => {
-    const t = TEMPLATES.find((x) => x.id === host.dataset.arena);
-    const segs = [...new Set(t.personas.map((p) => p.segment))];
-    drawArena(host, {
-      investigate: false, seat: 22,
-      people: t.personas.map((p) => ({ ...p, segIndex: segs.indexOf(p.segment), color: segmentTint(segs.indexOf(p.segment)), label: `${p.name}, ${p.segment}` })),
-    });
-  });
   $("#blankGrid").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-tpl]"); if (!btn) return;
     const t = TEMPLATES.find((x) => x.id === btn.dataset.tpl);
@@ -625,8 +649,11 @@ function renderResearchCard() {
   const locked = state.rounds.length > 0;
   const ctx = contextForNextRound();
   const lines = (c) => `<ul class="ctx-list">${c.items.map((i) => `<li>${i.objection !== "none" ? objectionIcon(i.objection) : `<span class="ctx-pull" aria-hidden="true">+</span>`}<span>${esc(i.text)}</span></li>`).join("")}</ul>`;
-  const cost = `<span class="rcost">${account().costs?.ask ?? 10} credits</span>`;
+  const cost = `<span class="rcost fx-tag">${account().costs?.ask ?? 10} credits</span>`;
   card.classList.toggle("on", Boolean(ctx));
+  // An optional extra worth noticing: a slow gold edge until it's used, then a still one.
+  card.classList.toggle("fx-gold", !locked || Boolean(ctx));
+  card.classList.toggle("fx-used", Boolean(ctx));
   if (locked) {
     card.innerHTML = ctx
       ? `<h3>Your buyers read the research</h3>
@@ -673,6 +700,8 @@ function collapseBuilder(collapsed) {
 }
 
 function goToStep(n) {
+  // Remembered, so a reload (or a round trip through sign-in) comes back to this step.
+  if (state && state.step !== n) { state.step = n; save(); }
   document.querySelectorAll("#builder .step").forEach((el) => el.classList.toggle("active", +el.dataset.step === n));
   document.querySelectorAll(".step-tab").forEach((el) => {
     const on = +el.dataset.step === n;
@@ -729,31 +758,93 @@ $("#panelSize").addEventListener("click", (e) => {
   resizePersonas(+btn.dataset.size);
 });
 
+// Buyers sit in groups (their segment). Every group has its own "add" tile, a new
+// group can be started below them, and a buyer moves between groups from a picker,
+// so a typo in a segment name can never quietly split a group in two.
+let newGroupOpen = false, renamingGroup = null;
+const groupsNow = () => [...new Set(state.personas.map((p) => p.segment || ""))];
 function renderPersonas() {
   const L = PERSONA_LIMITS;
-  $("#personasSub").textContent = `${state.personas.length} of up to ${L.maxPersonas} buyers (you need at least ${L.minPersonas}). Groups form from whatever you type as the segment. Rename, add or remove anyone.`;
+  const full = state.personas.length >= L.maxPersonas;
+  $("#personasSub").textContent = `${state.personas.length} of up to ${L.maxPersonas} buyers (you need at least ${L.minPersonas}). Add someone to any group, start a new group, or move a buyer from one group to another.`;
   document.querySelectorAll(".psize").forEach((b) => b.classList.toggle("active", +b.dataset.size === state.personas.length));
   $("#panelCaveat").classList.toggle("hidden", state.personas.length >= 8);
-  const segOrder = [...new Set(state.personas.map((p) => p.segment || ""))];
+  const segOrder = groupsNow();
+  const named = segOrder.filter(Boolean);
+  const picker = (p, i) => `
+      <select data-f="segment" data-i="${i}" class="pseg" aria-label="${esc(p.name || "This buyer")}'s group">
+        ${p.segment ? "" : `<option value="" selected disabled>Pick a group</option>`}
+        ${named.map((g) => `<option value="${esc(g)}"${g === p.segment ? " selected" : ""}>${esc(g)}</option>`).join("")}
+        <option value="__new">New group…</option>
+      </select>`;
   const cardFor = (p, i) => `
-    <div class="pcard" data-i="${i}" style="--seg:${segmentTint(segOrder.indexOf(p.segment || ""))}">
+    <div class="pcard" data-i="${i}" data-pid="${esc(p.id)}" style="--seg:${segmentTint(segOrder.indexOf(p.segment || ""))}">
       <div class="pcard-head">${buyerFace(p, segOrder.indexOf(p.segment || ""), 44)}<input class="pname" data-f="name" data-i="${i}" maxlength="${L.name}" value="${esc(p.name)}" placeholder="Name">${p.source === "data" ? `<span class="pfrom">From your data</span>` : ""}</div>
-      <label>Segment</label><input data-f="segment" data-i="${i}" maxlength="${L.segment}" value="${esc(p.segment)}" placeholder="e.g. Budget-minded small business owners">
+      <label>Group</label>
+      ${p._newSeg != null
+        ? `<input data-f="segment" data-i="${i}" data-newseg maxlength="${L.segment}" value="${esc(p._newSeg)}" placeholder="Name the new group, e.g. Office workers who skip breakfast">`
+        : picker(p, i)}
       <label>Profile <span class="count" data-for="profile-${i}"></span></label>
       <textarea data-f="profile" data-i="${i}" id="profile-${i}" placeholder="Who they are, what they want, and what makes them suspicious.">${esc(p.profile)}</textarea>
       ${p.source === "data" && p.quotes?.length ? `<details class="pquotes"><summary>Based on ${p.quotes.length} line${p.quotes.length === 1 ? "" : "s"} of your data</summary>${p.quotes.map((q) => `<blockquote>${esc(q)}</blockquote>`).join("")}</details>` : ""}
       ${state.personas.length > L.minPersonas ? `<button class="premove" data-rm="${i}">Remove ${esc(p.name || "this buyer")}</button>` : ""}
     </div>`;
+  const addTile = (seg, si) => full
+    ? `<div class="padd-seg is-full"><span>Panel is full at ${L.maxPersonas}. Remove someone to add.</span></div>`
+    : `<button type="button" class="padd-seg" data-add-to="${esc(seg)}" style="--seg:${segmentTint(si)}">
+         <span class="padd-plus" aria-hidden="true">+</span><span>${seg ? `Add to <b>${esc(seg)}</b>` : "Add a buyer"}</span></button>`;
 
   $("#personas").innerHTML = segOrder.map((seg, si) => {
     const members = state.personas.map((p, i) => [p, i]).filter(([p]) => (p.segment || "") === seg);
-    return `<section class="segblock" style="--seg:${segmentTint(si)}">
-      <h3 class="segname"><span class="segdot"></span>${esc(seg || "No group yet")}<span class="segcount">${members.length} buyer${members.length === 1 ? "" : "s"}</span></h3>
-      <div class="personas-grid">${members.map(([p, i]) => cardFor(p, i)).join("")}</div>
+    const title = renamingGroup === seg && seg
+      ? `<input class="segrename" data-rename-from="${esc(seg)}" maxlength="${L.segment}" value="${esc(seg)}" aria-label="Group name">`
+      : `<span class="segtitle">${esc(seg || "No group yet")}</span>${seg ? `<button type="button" class="seg-edit" data-rename="${esc(seg)}">Rename</button>` : ""}`;
+    return `<section class="segblock" data-seg="${esc(seg)}" style="--seg:${segmentTint(si)}">
+      <h3 class="segname"><span class="segdot"></span>${title}<span class="segcount">${members.length} buyer${members.length === 1 ? "" : "s"}</span></h3>
+      <div class="personas-grid">${members.map(([p, i]) => cardFor(p, i)).join("")}${addTile(seg, si)}</div>
     </section>`;
-  }).join("") + (state.personas.length < L.maxPersonas ? `<button class="padd" id="addPersona">+ Add a buyer</button>` : "");
+  }).join("") + (full ? "" : newGroupOpen
+    ? `<form class="newgroup" id="newGroupForm">
+         <label for="newGroupName">Name the new group</label>
+         <div class="newgroup-row"><input id="newGroupName" maxlength="${L.segment}" placeholder="e.g. Office workers who skip breakfast" autocomplete="off">
+         <button class="btn-primary" type="submit">Add group</button><button class="btn-quiet" type="button" data-newgroup-cancel>Cancel</button></div>
+         <p class="newgroup-hint">It starts with one buyer. Add more from the group's own tile.</p>
+       </form>`
+    : `<button class="padd" type="button" data-newgroup>+ New group</button>`);
   document.querySelectorAll("#personas [data-f=profile]").forEach(updatePersonaCount);
+  $("#dataCta").classList.toggle("fx-used", state.personas.some((p) => p.source === "data"));
+  $("#dataCtaCost").textContent = `${account().costs?.ask ?? 10} credits`;
 }
+
+// Cards glide to their new places when buyers are added, moved or removed, so it's
+// clear where someone went. Positions are keyed by buyer, not by index.
+function reflowPersonas(change, { focusId, grewFrom } = {}) {
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const before = new Map([...document.querySelectorAll("#personas .pcard")].map((el) => [el.dataset.pid, el.getBoundingClientRect()]));
+  const tile = grewFrom?.getBoundingClientRect();
+  change();
+  save(); renderPersonas(); renderDirectory();
+  document.querySelectorAll("#personas .pcard").forEach((el) => {
+    if (reduce || !el.animate) return;
+    const now = el.getBoundingClientRect(), was = before.get(el.dataset.pid);
+    if (was) {
+      const dx = was.left - now.left, dy = was.top - now.top;
+      if (Math.abs(dx) + Math.abs(dy) > 1) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: "none" }], { duration: 420, easing: "cubic-bezier(.3,.7,.2,1)" });
+    } else if (tile) {
+      // A new buyer grows out of the tile that made them.
+      el.animate([{ transform: `translate(${tile.left - now.left}px, ${tile.top - now.top}px) scale(${tile.width / now.width}, ${tile.height / now.height})`, opacity: 0.2, transformOrigin: "0 0" },
+        { transform: "none", opacity: 1, transformOrigin: "0 0" }], { duration: 380, easing: "cubic-bezier(.3,.7,.2,1)" });
+    }
+  });
+  if (focusId) document.querySelector(`#personas .pcard[data-pid="${CSS.escape(focusId)}"] [data-f="name"]`)?.focus({ preventScroll: false });
+}
+// A buyer joining a group goes after its last member, so groups stay together.
+function placeInGroup(p) {
+  state.personas.splice(state.personas.indexOf(p), 1);
+  const last = state.personas.findLastIndex((x) => (x.segment || "") === (p.segment || ""));
+  if (last < 0) state.personas.push(p); else state.personas.splice(last + 1, 0, p);
+}
+const newBuyer = (segment) => ({ id: `c${Date.now()}${Math.floor(Math.random() * 1e4)}`, name: "", segment, profile: "" });
 // Buyers from your own data: an optional panel beside the Buyers step.
 const dataSheet = initDataSheet({
   getState: () => state,
@@ -772,18 +863,75 @@ function updatePersonaCount(el) {
   if (c) { c.textContent = `${n}/${max}`; c.classList.toggle("over", n > max); }
 }
 $("#personas").addEventListener("input", (e) => {
-  const el = e.target; if (!el.dataset.f) return;
-  state.personas[+el.dataset.i][el.dataset.f] = el.value; save();
+  const el = e.target; if (!el.dataset.f || el.tagName === "SELECT") return;
+  const p = state.personas[+el.dataset.i];
+  if (el.dataset.newseg != null) { p._newSeg = el.value; return; }
+  p[el.dataset.f] = el.value; save();
   if (el.dataset.f === "profile") updatePersonaCount(el);
 });
+$("#personas").addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.tagName === "SELECT" && el.dataset.f === "segment") {
+    const p = state.personas[+el.dataset.i];
+    if (el.value === "__new") { p._newSeg = ""; renderPersonas(); document.querySelector(`#personas [data-newseg][data-i="${state.personas.indexOf(p)}"]`)?.focus(); return; }
+    return reflowPersonas(() => { p.segment = el.value; placeInGroup(p); });
+  }
+  if (el.dataset.newseg != null) return commitNewSeg(el);
+  if (el.classList.contains("segrename")) return commitRename(el);
+  renderDirectory();
+});
+function commitNewSeg(el) {
+  const p = state.personas[+el.dataset.i]; if (!p || p._newSeg == null) return;
+  const name = el.value.trim().slice(0, PERSONA_LIMITS.segment);
+  delete p._newSeg;
+  if (!name) return renderPersonas();
+  reflowPersonas(() => { p.segment = name; placeInGroup(p); });
+}
+function commitRename(el) {
+  const from = el.dataset.renameFrom, to = el.value.trim().slice(0, PERSONA_LIMITS.segment);
+  renamingGroup = null;
+  if (to && to !== from) state.personas.forEach((p) => { if (p.segment === from) p.segment = to; });
+  save(); renderPersonas(); renderDirectory();
+}
+$("#personas").addEventListener("keydown", (e) => {
+  const el = e.target;
+  if (e.key === "Enter" && (el.dataset.newseg != null || el.classList.contains("segrename"))) { e.preventDefault(); el.blur(); }
+  if (e.key === "Escape" && el.classList.contains("segrename")) { renamingGroup = null; renderPersonas(); }
+  if (e.key === "Escape" && el.dataset.newseg != null) { delete state.personas[+el.dataset.i]._newSeg; renderPersonas(); }
+  if (e.key === "Escape" && el.id === "newGroupName") { newGroupOpen = false; renderPersonas(); }
+});
+$("#personas").addEventListener("focusout", (e) => {
+  const el = e.target;
+  if (el.dataset.newseg != null) commitNewSeg(el);
+  else if (el.classList.contains("segrename") && renamingGroup != null) commitRename(el);
+});
+$("#personas").addEventListener("submit", (e) => {
+  if (e.target.id !== "newGroupForm") return;
+  e.preventDefault();
+  const name = $("#newGroupName").value.trim().slice(0, PERSONA_LIMITS.segment);
+  if (!name) return $("#newGroupName").focus();
+  newGroupOpen = false;
+  const p = newBuyer(name);
+  reflowPersonas(() => { state.personas.push(p); placeInGroup(p); }, { focusId: p.id, grewFrom: e.target });
+});
 $("#personas").addEventListener("click", (e) => {
-  if (e.target.dataset.rm !== undefined) { state.personas.splice(+e.target.dataset.rm, 1); save(); renderPersonas(); renderDirectory(); }
-  if (e.target.id === "addPersona") {
-    state.personas.push({ id: `c${Date.now()}`, name: "", segment: "", profile: "" }); save(); renderPersonas(); renderDirectory();
-    document.querySelector(`#personas [data-i="${state.personas.length - 1}"][data-f="name"]`)?.focus();
+  if (e.target.dataset.rm !== undefined) {
+    const gone = state.personas[+e.target.dataset.rm];
+    return reflowPersonas(() => state.personas.splice(state.personas.indexOf(gone), 1));
+  }
+  const add = e.target.closest("[data-add-to]");
+  if (add) {
+    const p = newBuyer(add.dataset.addTo);
+    return reflowPersonas(() => { state.personas.push(p); placeInGroup(p); }, { focusId: p.id, grewFrom: add });
+  }
+  if (e.target.closest("[data-newgroup]")) { newGroupOpen = true; renderPersonas(); $("#newGroupName")?.focus(); return; }
+  if (e.target.closest("[data-newgroup-cancel]")) { newGroupOpen = false; renderPersonas(); return; }
+  const ren = e.target.closest("[data-rename]");
+  if (ren) {
+    renamingGroup = ren.dataset.rename; renderPersonas();
+    const input = document.querySelector("#personas .segrename"); input?.focus(); input?.select();
   }
 });
-$("#personas").addEventListener("change", () => renderDirectory());
 
 const FIELDS = [["headline", "Headline", "input"], ["valueProp", "Value proposition", "textarea"], ["price", "Price", "input"]];
 
@@ -815,8 +963,6 @@ function renderExtraPick() {
       ${EXTRA_FIELDS.map((f) => `
         <button class="ep-chip" data-extra="${f.key}" aria-pressed="${on.includes(f.key)}"
           ${locked ? "disabled" : ""} title="${esc(f.hint)}">${esc(f.label)}</button>`).join("")}
-      <button class="ep-chip ep-creative" data-creative-toggle aria-pressed="${Boolean(state.creativeOn)}" ${locked ? "disabled" : ""}
-        title="Upload an image for each version. The buyers judge a description of it.">${IMG_IC}Image creative</button>
     </div>
     <p class="ep-note">${locked
       ? `Locked at round 1, so every round compares like with like. Start a new project to test a different set.`
@@ -1015,7 +1161,18 @@ async function useImageWords(i) {
 function renderCreativeBar() {
   const el = document.getElementById("creativeBar");
   if (!el) return;
-  el.innerHTML = state.creativeOn ? creativeBar(state.teams, { signedIn: account().signedIn, cost: account().costs?.ask ?? 10, busy: creativeBusy }) : "";
+  const cost = account().costs?.ask ?? 10, locked = extrasLocked();
+  // Off: an invitation, edged in gold like the other optional extras. On: what the
+  // buyers can and can't judge, with the gold edge standing still.
+  el.innerHTML = state.creativeOn
+    ? `<div class="fx-gold fx-used cr-on">${creativeBar(state.teams, { signedIn: account().signedIn, cost, busy: creativeBusy })}
+        ${locked ? "" : `<button type="button" class="cr-off" data-creative-toggle>Turn images off</button>`}</div>`
+    : locked ? "" : `<div class="fx-card fx-gold">
+        <span class="dc-ic">${IMG_IC}</span>
+        <span class="dc-t"><b>Test the real image ad <span class="fx-tag">${cost} credits to read a set</span></b>
+          <span>Add each version's image. Buyers read what's on it (the words, what it shows, the layout) and judge the whole ad, not just the copy. Locks in when you run round 1.</span></span>
+        <button type="button" class="btn" data-creative-toggle>Add images</button>
+      </div>`;
 }
 // Previews for every creative a round has used, so old reports keep their pictures.
 function rememberCreatives() {
@@ -1039,7 +1196,7 @@ async function setCreative(i, file) {
     try { localStorage.setItem("__cr_probe", "1"); localStorage.removeItem("__cr_probe"); } catch { toast("Your browser's storage is full. Read the images now so only small previews are kept.", { tone: "error" }); }
   } catch (err) { toast(err.message, { tone: "error" }); }
 }
-$("#extraPick").addEventListener("click", (e) => {
+$("#creativeBar").addEventListener("click", (e) => {
   if (!e.target.closest("[data-creative-toggle]") || extrasLocked()) return;
   if (state.creativeOn && state.teams.some((t) => t.creative) && !confirm("Turn off image creatives? The images you've added to each version will be removed.")) return;
   state.creativeOn = !state.creativeOn;
@@ -1106,20 +1263,27 @@ function renderBrands() {
     <div class="brand${state.creativeOn ? " has-creative" : ""}" style="--c:${COLORS[t.slot]}">
       ${state.creativeOn ? creativeHero(t, i, { cost: account().costs?.ask ?? 10, reading: creativeBusy && t.creative && !t.creative.description, fresh: crFresh.has(i), justRead: crJustRead.has(t.creative?.id) }) + imageFillNote(t, i) : ""}
       ${pageBox(t, i)}
+      ${roundLine(t)}
+      ${focusNote(t, "brand")}
       <label for="brand-${i}">Version name ${pageTag(t, "brand")}<span class="count" data-for="brand-${i}"></span></label>
       <div class="brand-name"><span class="sw" style="background:var(--c)" aria-hidden="true"></span><input id="brand-${i}" class="name" data-i="${i}" data-f="brand" maxlength="${L.brand + 20}" value="${esc(t.brand)}"></div>
+      ${wasLine(t, i, "brand")}
       ${FIELDS.map(([f, lab, tag]) => `
+        ${focusNote(t, f)}
         <label for="${f}-${i}">${lab} ${pageTag(t, f)}${imageTag(t, f)}${fieldTag(t, f)}<span class="count" data-for="${f}-${i}"></span></label>
         ${tag === "input"
           ? `<input id="${f}-${i}" data-i="${i}" data-f="${f}" value="${esc(t[f])}">`
-          : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}`).join("")}
+          : `<textarea id="${f}-${i}" data-i="${i}" data-f="${f}">${esc(t[f])}</textarea>`}
+        ${wasLine(t, i, f)}`).join("")}
       ${extrasOn().map((k) => {
         const f = EXTRA_BY_KEY[k];
         return `
+        ${focusNote(t, `extras.${k}`)}
         <label for="x-${k}-${i}">${esc(f.label)} ${pageTag(t, k)}${imageTag(t, k)}${fieldTag(t, `x:${k}`)}<span class="count" data-for="x-${k}-${i}"></span></label>
         ${f.tag === "textarea"
           ? `<textarea id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}">${esc(t.extras?.[k] || "")}</textarea>`
-          : `<input id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}" value="${esc(t.extras?.[k] || "")}">`}`;
+          : `<input id="x-${k}-${i}" data-i="${i}" data-x="${k}" placeholder="${esc(f.hint)}" value="${esc(t.extras?.[k] || "")}">`}
+        ${wasLine(t, i, `extras.${k}`)}`;
       }).join("")}
       ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this version")}</button>` : ""}
     </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a version</button>` : "");
@@ -1128,10 +1292,11 @@ function renderBrands() {
   renderExtraPick();
   renderGoals();
   $("#goalNote").value = state.goalNote || "";
+  updateLoop();
   $("#run").textContent = `Run round ${state.rounds.length + 1}`;
   // Once there are results, Run lives in the top bar, so there is only ever one.
   $("#run").classList.toggle("hidden", state.rounds.length > 0);
-  $("#runHint").textContent = state.rounds.length ? `Changes save as you type. Run round ${state.rounds.length + 1} from the top bar when you're ready.` : "";
+  $("#runHint").textContent = state.rounds.length ? `Changes save as you type. Run round ${state.rounds.length + 1} from the bar at the bottom when you're ready.` : "";
   $("#editorTitle").textContent = state.rounds.length ? `Rework your versions for round ${state.rounds.length + 1}` : "Write the versions you want to test";
   renderPreview();
 }
@@ -1175,11 +1340,11 @@ $("#brands").addEventListener("input", (e) => {
     const t = state.teams[+el.dataset.i];
     t.extras = t.extras || {};
     t.extras[el.dataset.x] = el.value;
-    updateBrandCount(el); refreshTag(el); save(); renderPreview();
+    updateBrandCount(el); refreshTag(el); save(); renderPreview(); refreshWas(el); updateLoop();
     return;
   }
   if (!el.dataset.f) return;
-  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateBrandCount(el); refreshTag(el); save(); renderPreview();
+  state.teams[+el.dataset.i][el.dataset.f] = el.value; updateBrandCount(el); refreshTag(el); save(); renderPreview(); refreshWas(el); updateLoop();
 });
 $("#brands").addEventListener("click", (e) => {
   if (e.target.dataset.rm !== undefined) { state.teams.splice(+e.target.dataset.rm, 1); save(); renderBrands(); }
@@ -1245,7 +1410,46 @@ async function readRound(res, onBuyer) {
   return result;
 }
 
-async function runRound() {
+// Rounds need an account. Someone signed out who presses Run keeps everything they
+// set up: the project is already saved in this browser, a note says a round is
+// waiting, and once they're in (here, via Google, or from the confirmation email)
+// they land back on it and it runs. Problems in the fields are shown first, so they
+// never sign in only to be sent back to fix a typo.
+function needsSignIn() {
+  if (account().signedIn) return false;
+  const teams = state.teams.map(({ brand, headline, valueProp, price, extras }) => ({
+    brand, headline, valueProp, price,
+    ...(extrasOn().length ? { extras: Object.fromEntries(extrasOn().map((k) => [k, extras?.[k] ?? ""])) } : {}),
+  }));
+  const problem = findTeamProblem(teams);
+  if (problem) { showFieldProblem(problem, "team"); return true; }
+  const personaProblem = findPersonaProblem(state.personas.map(({ id, name, segment, profile }) => ({ id, name, segment, profile })));
+  if (personaProblem) { showFieldProblem(personaProblem, "persona"); return true; }
+  clearFieldProblems(); setStatus("", false);
+  save();
+  rememberPending({ what: "run", page: "practice.html" });
+  openSignIn("signup", { sub: `Rounds are free. Create an account or sign in, and this round runs straight away. Your ${state.teams.length} versions and ${state.personas.length} buyers stay exactly as you left them.` });
+  return true;
+}
+function resumePending(m) {
+  if (!m.signedIn || !state || running) return;
+  const p = pendingAction();
+  if (p?.what !== "run") return;
+  clearPending();
+  toast("You're in. Running your round now.");
+  runRound({ confirmed: true });
+}
+
+async function runRound(opts) {
+  if (running) return;
+  if (state.rounds.length && opts?.confirmed !== true && !loopState().count) {
+    const n = state.rounds.length;
+    if (!confirm(`Nothing has changed since round ${n}. Round ${n + 1} would show the same ads to the same buyers, which only tells you whether the result holds. Run it anyway?`)) {
+      scrollToLoopCards();
+      return;
+    }
+  }
+  if (needsSignIn()) return;
   // Validate before anything announces work. The old order set the status line and
   // the skeleton first, so an invalid round showed "Showing your ads to 12 buyers…"
   // for a round that had not started and could not start.
@@ -1255,7 +1459,6 @@ async function runRound() {
     const gap = state.teams.findIndex((t) => !t.creative);
     if (gap >= 0) return showFieldProblem({ index: gap, field: "creative", message: `${state.teams[gap].brand || `Version ${gap + 1}`} needs an image. Every version needs one, so it's a fair fight.` }, "team");
     if (state.teams.some((t) => !t.creative.description)) {
-      if (!account().signedIn) { setStatus("Sign in to test creatives. Reading images costs credits.", true); openSignIn("login"); return; }
       setStatus("Reading your images…", false);
       if (!(await readImagesNow())) return;
       setStatus("", false);
@@ -1289,7 +1492,7 @@ async function runRound() {
     const data = (res.headers.get("content-type") || "").includes("ndjson") && res.body
       ? await readRound(res, (b) => view.liveDecided(b))
       : await res.json();
-    if (!res.ok) throw new Error(data.error || "The round didn't run. Give it another go.");
+    if (!res.ok) throw Object.assign(new Error(data.error || "The round didn't run. Give it another go."), { signIn: res.status === 401 && data.signIn });
     await view.liveFinish();
     data.slots = state.teams.map((t) => t.slot);
     data.goal = state.goal || null;
@@ -1303,16 +1506,187 @@ async function runRound() {
     collapseBuilder(true);
     $("#results").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   } catch (err) {
-    setStatus(err.message, true);
-    toast(err.message, { tone: "error" });
     // Put the last good report back rather than leaving a skeleton or nothing.
     if (state.rounds.length) view.renderResults(state.rounds, false);
     else { $("#results").classList.add("hidden"); $("#reportBar").classList.add("hidden"); collapseBuilder(false); }
+    if (err.signIn) {
+      // The sign-in ran out between loading the page and pressing Run.
+      setStatus("", false);
+      rememberPending({ what: "run", page: "practice.html" });
+      openSignIn("login", { sub: "Your sign-in timed out. Sign in again and this round runs straight away, exactly as you set it up." });
+    } else {
+      setStatus(err.message, true);
+      toast(err.message, { tone: "error" });
+    }
   }
   running = false;
   buttons.forEach((b) => (b.disabled = false));
   renderTopbar();
 }
+/* ---- The loop: read round N, pick what to change, run round N+1 ---------------
+   The report's change cards say where each version is weakest. "Change this" opens
+   the editor on that exact field with round N's evidence pinned above it. Every
+   field that now differs from round N shows what it said before, with a way to put
+   it back. The round bar at the bottom follows along: which step you're on, what
+   has changed so far, and a warning when a version has more than one change, since
+   then you can't tell which one moved it. */
+const norm = (v) => String(v ?? "").replace(/\s+/g, " ").trim();
+const fieldVal = (x, f) => (f.startsWith("extras.") ? x?.extras?.[f.slice(7)] : x?.[f]);
+const lastRound = () => state?.rounds?.[state.rounds.length - 1] || null;
+const lastBrandFor = (t) => { const r = lastRound(); const k = r ? r.slots.indexOf(t.slot) : -1; return k < 0 ? null : r.brands[k]; };
+const labelOf = (f) => ({ brand: "name", headline: "headline", valueProp: "value proposition", price: "price", creative: "image" }[f] || (EXTRA_BY_KEY[f.slice(7)]?.label || f).toLowerCase());
+function changedFields(t) {
+  const was = lastBrandFor(t);
+  if (!was) return null;
+  const keys = ["brand", "headline", "valueProp", "price", ...extrasOn().map((k) => `extras.${k}`)];
+  const out = keys.filter((f) => norm(fieldVal(t, f)) !== norm(fieldVal(was, f)));
+  if (state.creativeOn && (t.creative?.id || null) !== (was.creative?.id || null)) out.push("creative");
+  return out;
+}
+function loopState() {
+  const r = lastRound();
+  if (!r) return { count: 0, versions: [] };
+  const versions = state.teams.map((t, i) => ({ t, i, fields: changedFields(t) }));
+  const removed = r.slots.filter((sl) => !state.teams.some((t) => t.slot === sl)).map((sl) => r.brands[r.slots.indexOf(sl)].brand);
+  const count = versions.reduce((n, v) => n + (v.fields === null ? 1 : v.fields.length), 0) + removed.length;
+  return { count, versions, removed };
+}
+function roundLine(t) {
+  const r = lastRound(), was = lastBrandFor(t);
+  if (!r || !was) return r ? `<p class="rline new">New in round ${state.rounds.length + 1}</p>` : "";
+  const rank = [...r.brands].sort((a, b) => b.share - a.share).findIndex((b) => b.id === was.id);
+  return `<p class="rline"><span>Round ${state.rounds.length}</span><b>${Math.round(was.share * 100)}%</b><span>${["1st", "2nd", "3rd", "4th"][rank] || ""}</span></p>`;
+}
+function wasLine(t, i, f) {
+  const was = lastBrandFor(t);
+  if (!was || norm(fieldVal(t, f)) === norm(fieldVal(was, f))) return "";
+  return `<p class="wasline" data-was="${i}|${f}"><span>Round ${state.rounds.length}:</span> <s>${esc(fieldVal(was, f) || "(empty)")}</s> <button type="button" class="put-back" data-put-back="${i}|${f}">Put it back</button></p>`;
+}
+function refreshWas(el) {
+  const i = +el.dataset.i, f = el.dataset.x ? `extras.${el.dataset.x}` : el.dataset.f;
+  const html = wasLine(state.teams[i], i, f);
+  const cur = document.querySelector(`#brands [data-was="${i}|${f}"]`);
+  if (cur && !html) cur.remove();
+  else if (cur) cur.outerHTML = html;
+  else if (html) (f === "brand" ? el.closest(".brand-name") : el).insertAdjacentHTML("afterend", html);
+}
+function focusNote(t, f) {
+  if (!focusChange || focusChange.slot !== t.slot || focusChange.field !== f) return "";
+  const r = lastRound(); if (!r) return "";
+  const m = movesFor(r).find((x) => x.slot === t.slot);
+  if (!m) return "";
+  const n = state.rounds.length;
+  const why = m.push
+    ? `<b>Put off ${Math.round(m.push.v * 100)}% of buyers in round ${n}.</b>`
+    : `<b>Round ${n}'s top reason to pass: ${{ price: "the price", trust: "doubt about the claims", relevance: "a poor fit with their life", unclear: "a confusing offer" }[m.objKey] || "nothing in particular"} (${Math.round(m.objVal * 100)}%).</b>`;
+  return `<div class="focus-note" role="note"><i class="k-wave" aria-hidden="true"></i><p>${why} Rewrite just this${f === "creative" ? " image" : ""} and keep the rest, so round ${n + 1} shows what it was worth.</p>
+    <button type="button" class="fn-x" data-focus-x aria-label="Hide this note">×</button></div>`;
+}
+function fieldTarget(i, f) {
+  const card = document.querySelector(`#brands .brand:nth-child(${i + 1})`);
+  if (f === "creative") return card?.querySelector(".cr-hero, .cr-drop-hero");
+  if (f.startsWith("extras.")) return document.getElementById(`x-${f.slice(7)}-${i}`);
+  return document.getElementById(`${f}-${i}`);
+}
+function openChange(slot, field) {
+  const i = state.teams.findIndex((t) => t.slot === slot);
+  if (i < 0) return;
+  focusChange = { slot, field };
+  collapseBuilder(false);
+  goToStep(3);
+  renderBrands();
+  const el = fieldTarget(i, field);
+  if (!el) return;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+  const note = el.parentElement?.querySelector(".focus-note");
+  setTimeout(() => {
+    if (el.matches("input, textarea")) { el.focus({ preventScroll: true }); el.setSelectionRange?.(el.value.length, el.value.length); }
+    el.classList.remove("cr-landed"); void el.offsetWidth; el.classList.add("cr-landed");
+    note?.classList.add("in");
+  }, reduce ? 0 : 420);
+}
+function scrollToLoopCards() {
+  const cards = $("#loopCards");
+  if (!cards) return;
+  if (editorOpen()) collapseBuilder(true);
+  view.setTab?.("overview");
+  cards.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  cards.classList.remove("nudge"); void cards.offsetWidth; cards.classList.add("nudge");
+}
+document.addEventListener("click", (e) => {
+  const ch = e.target.closest("[data-change-slot]");
+  if (ch) return openChange(+ch.dataset.changeSlot, ch.dataset.changeField);
+  if (e.target.closest("[data-change-any]")) {
+    collapseBuilder(false); goToStep(3);
+    return $("#brands").scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+  if (e.target.closest("[data-focus-x]")) { focusChange = null; e.target.closest(".focus-note")?.remove(); return; }
+  const pb = e.target.closest("[data-put-back]");
+  if (pb) {
+    const [i, f] = pb.dataset.putBack.split("|"); const t = state.teams[+i], was = lastBrandFor(t);
+    if (!t || !was) return;
+    if (f.startsWith("extras.")) { t.extras = t.extras || {}; t.extras[f.slice(7)] = was.extras?.[f.slice(7)] ?? ""; } else t[f] = was[f] ?? "";
+    save(); renderBrands();
+    fieldTarget(+i, f)?.focus();
+  }
+});
+
+// The round bar: always at the bottom once there are results, on the latest round.
+function makeLoopBar() {
+  loopBar = document.createElement("div");
+  loopBar.className = "loopbar hidden"; loopBar.id = "loopBar";
+  loopBar.setAttribute("role", "region"); loopBar.setAttribute("aria-label", "Next round");
+  document.body.append(loopBar);
+  loopBar.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-lb]"); if (!b) return;
+    if (b.dataset.lb === "pick") scrollToLoopCards();
+    else if (b.dataset.lb === "run") runRound();
+  });
+}
+function updateLoop() {
+  if (!loopBar) makeLoopBar();
+  const r = lastRound();
+  const latest = r && view.viewedIndex() === state.rounds.length - 1;
+  const show = Boolean(state && inProject() && r && latest);
+  loopBar.classList.toggle("hidden", !show);
+  document.body.classList.toggle("has-loopbar", show);
+  if (!show) return;
+  const n = state.rounds.length, next = n + 1;
+  const ls = loopState();
+  const step = ls.count ? 3 : editorOpen() ? 2 : 1;
+  const names = ls.versions.filter((v) => v.fields === null || v.fields.length);
+  const summary = [...names.map((v) => v.fields === null ? `${esc(v.t.brand || "New version")}: new` : `${esc(v.t.brand)}: ${v.fields.map(labelOf).join(", ")}`),
+    ...ls.removed.map((b) => `${esc(b)}: removed`)].join(" · ");
+  const warn = ls.versions.filter((v) => v.fields?.length > 1)
+    .map((v) => `${esc(v.t.brand)} has ${v.fields.length} changes. If it moves, you won't know which one did it.`);
+  const msg = running
+    ? `<b>Running round ${next}…</b>`
+    : step === 1 ? `<b>Round ${n} is in.</b><span>See what put buyers off, then pick one thing to change per version.</span>`
+    : step === 2 ? `<b>Change one thing per version.</b><span>Nothing has changed since round ${n} yet.</span>`
+    : `<b>Round ${next}: ${ls.count} change${ls.count === 1 ? "" : "s"}</b><span>${summary}</span>`;
+  loopBar.innerHTML = `<div class="lb-in">
+    <ol class="lb-rail" data-step="${step}" aria-label="Steps to round ${next}">
+      <li class="${step > 1 ? "done" : "now"}"><i></i>Read round ${n}</li>
+      <li class="${step > 2 ? "done" : step === 2 ? "now" : ""}"><i></i>Pick a change</li>
+      <li class="${step === 3 ? "now" : ""}"><i></i>Run round ${next}</li>
+    </ol>
+    <div class="lb-msg">${msg}${warn.length && !running ? `<span class="lb-warn">${warn[0]}</span>` : ""}</div>
+    ${step === 1 && !running
+      ? `<button type="button" class="btn-primary lb-go" data-lb="pick">Pick a change</button>`
+      : `<button type="button" class="${step === 3 ? "btn-primary" : "btn"} lb-go" data-lb="run"${running ? " disabled" : ""}>${running ? "Running…" : `Run round ${next}`}</button>`}
+  </div>`;
+  // The change cards in the report mirror what's been done.
+  document.querySelectorAll("#loopCards .lc[data-lc-slot]").forEach((card) => {
+    const v = ls.versions.find((x) => x.t.slot === +card.dataset.lcSlot);
+    const done = Boolean(v?.fields?.length);
+    card.classList.toggle("done", done);
+    card.querySelector(".lc-done").textContent = done ? `Changed: ${v.fields.map(labelOf).join(", ")}` : "";
+    const go = card.querySelector(".lc-go");
+    if (go) go.firstChild.textContent = done ? "Edit again" : go.dataset.label || (go.dataset.label = go.firstChild.textContent);
+  });
+}
+
 // The hero button and the drawer's hypothesis both land the user in the editor,
 // scrolled to the field they just decided to change.
 document.addEventListener("click", (e) => {
@@ -1358,7 +1732,7 @@ async function shareRound() {
 }
 $("#share").addEventListener("click", shareRound);
 
-init();
+init().then(() => onAccountChange(resumePending));
 
 /* ---------------------------------------------------------------- account + ask */
 mountAccountBar($("#acctBar"));

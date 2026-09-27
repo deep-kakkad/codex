@@ -17,7 +17,7 @@ export const TEMPLATES = [
     scenario: {
       id: "saas-projectflow",
       title: "A project tool enters a crowded market",
-      brief: "Every team already has three project tools it barely uses. Can a fourth get a look in? Twelve buyers in four groups see every pitch side by side and decide.",
+      brief: "Every team already has three project tools it barely uses. Can a fourth get a look in? Buyers from four groups see every pitch side by side and decide.",
     },
     personas: [
       { id: "s1", name: "Jordan", segment: "Startup operators", profile: "29, ops lead at a 15-person startup in Austin, juggles six tools daily, wants one thing that replaces three, decides fast without procurement" },
@@ -44,7 +44,7 @@ export const TEMPLATES = [
     scenario: {
       id: "retail-dtc",
       title: "A new label launches into a saturated feed",
-      brief: "Everyone's feed is already stuffed with new clothing labels. Twelve shoppers in four groups see every ad side by side. Which one stops the scroll?",
+      brief: "Everyone's feed is already stuffed with new clothing labels. Shoppers from four groups see every ad side by side. Which one stops the scroll?",
     },
     personas: [
       { id: "r1", name: "Zoe", segment: "Trend-forward Gen Z", profile: "19, college student in LA, discovers brands on TikTok, buys on impulse if it looks good on camera, returns anything that doesn't" },
@@ -71,7 +71,7 @@ export const TEMPLATES = [
     scenario: {
       id: "fintech-app",
       title: "A finance app tries to earn trust with money",
-      brief: "Nobody experiments with their money for fun. Twelve people in four groups decide which app, if any, they'd trust with theirs.",
+      brief: "Nobody experiments with their money for fun. People from four groups decide which app, if any, they'd trust with theirs.",
     },
     personas: [
       { id: "f1", name: "Ethan", segment: "First-time investors", profile: "23, junior analyst in New York, has never invested before, intimidated by jargon, wants something that explains itself" },
