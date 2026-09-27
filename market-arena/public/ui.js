@@ -174,3 +174,93 @@ export function toast(message, { tone = "info", timeout, sticky = false } = {}) 
   if (!sticky) setTimeout(dismiss, timeout ?? (tone === "error" ? 8000 : 3500));
   return dismiss;
 }
+
+/* ---- Dialogs -----------------------------------------------------------------
+   Our own confirm and prompt, in place of the browser's. A card that rises out of
+   a dimmed page (a sheet from the bottom on a phone), with a small icon saying what
+   kind of decision it is, plain words, and buttons named after what they do, never
+   "OK". The safe choice is on the left; the one the dialog is about is on the right.
+
+   ask({ title, body, icon, art, tone, input, actions }) resolves to the chosen
+   action's value, the typed text for an input's main action, or null when dismissed
+   (Escape, the ×, or a click outside). A destructive dialog opens with focus on the
+   safe choice, so a stray Enter never deletes anything. */
+const DLG_IC = {
+  loop: '<path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.7"/><path d="M20 4v4.7h-4.7"/><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.3"/><path d="M4 20v-4.7h4.7"/>',
+  trash: '<path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12"/><path d="M9 7V4h6v3"/>',
+  restart: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>',
+  open: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  save: '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>',
+  image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
+  key: '<circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.2-8.2M16 7l2.5 2.5M14 9l1.5 1.5"/>',
+};
+const escHtml = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+export function ask({ title, body = "", icon = null, art = "", tone = "default", input = null, actions = [{ label: "Cancel", value: null }, { label: "OK", value: true, kind: "primary" }] }) {
+  return new Promise((resolve) => {
+    const before = document.activeElement;
+    const id = `dlg${Date.now().toString(36)}`;
+    const wrap = document.createElement("div");
+    wrap.className = `dlg-wrap${tone === "danger" ? " danger" : ""}`;
+    wrap.innerHTML = `
+      <div class="dlg-scrim" data-dlg-close></div>
+      <div class="dlg" role="${input ? "dialog" : "alertdialog"}" aria-modal="true" aria-labelledby="${id}-t"${body ? ` aria-describedby="${id}-b"` : ""}>
+        <button type="button" class="dlg-x" data-dlg-close aria-label="Close">×</button>
+        ${icon && DLG_IC[icon] ? `<span class="dlg-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${DLG_IC[icon]}</svg></span>` : ""}
+        <h2 class="dlg-t" id="${id}-t">${escHtml(title)}</h2>
+        ${body ? `<p class="dlg-b" id="${id}-b">${escHtml(body)}</p>` : ""}
+        ${art ? `<div class="dlg-art" aria-hidden="true">${art}</div>` : ""}
+        ${input ? `<form class="dlg-form" novalidate><label for="${id}-i">${escHtml(input.label || "")}</label>
+          <input id="${id}-i" autocomplete="off" maxlength="${input.max || 120}" value="${escHtml(input.value || "")}" placeholder="${escHtml(input.placeholder || "")}"></form>` : ""}
+        <div class="dlg-acts">${actions.map((a, i) => `<button type="button" class="${a.kind === "primary" ? (tone === "danger" ? "btn-danger" : "btn-primary") : "btn"}" data-dlg-act="${i}">${escHtml(a.label)}</button>`).join("")}</div>
+      </div>`;
+    document.body.append(wrap);
+    const dlg = wrap.querySelector(".dlg"), field = wrap.querySelector("input");
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    requestAnimationFrame(() => wrap.classList.add("in"));
+    const primary = actions.findIndex((a) => a.kind === "primary");
+    let done = false;
+    const finish = (value) => {
+      if (done) return; done = true;
+      document.removeEventListener("keydown", onKey, true);
+      wrap.classList.remove("in"); wrap.classList.add("out");
+      setTimeout(() => wrap.remove(), reduce ? 0 : 180);
+      if (before?.isConnected) before.focus?.({ preventScroll: true });
+      resolve(value);
+    };
+    const choose = (i) => {
+      const a = actions[i];
+      if (input && i === primary) {
+        const v = field.value.trim();
+        if (!v) { field.focus(); field.classList.add("dlg-shake"); setTimeout(() => field.classList.remove("dlg-shake"), 400); return; }
+        return finish(v);
+      }
+      finish(a.value === undefined ? true : a.value);
+    };
+    wrap.addEventListener("click", (e) => {
+      if (e.target.closest("[data-dlg-close]")) return finish(null);
+      const b = e.target.closest("[data-dlg-act]");
+      if (b) choose(+b.dataset.dlgAct);
+    });
+    wrap.querySelector(".dlg-form")?.addEventListener("submit", (e) => { e.preventDefault(); choose(primary); });
+    // Keyboard: Escape dismisses, Tab stays inside the dialog.
+    function onKey(e) {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); return finish(null); }
+      if (e.key !== "Tab") return;
+      const f = [...dlg.querySelectorAll("button, input")];
+      const i = f.indexOf(document.activeElement);
+      if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
+      else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+    }
+    document.addEventListener("keydown", onKey, true);
+    const safe = actions.findIndex((a) => a.kind !== "primary");
+    const first = field || wrap.querySelector(`[data-dlg-act="${tone === "danger" && safe >= 0 ? safe : Math.max(primary, 0)}"]`);
+    first?.focus({ preventScroll: true });
+    if (field) field.select();
+  });
+}
+// The two everyday shapes.
+export const confirmBox = ({ ok = "Continue", cancel = "Cancel", ...rest }) =>
+  ask({ ...rest, actions: [{ label: cancel, value: false }, { label: ok, value: true, kind: "primary" }] }).then((v) => v === true);
+export const promptBox = ({ label = "", value = "", placeholder = "", max, ok = "Save", cancel = "Cancel", ...rest }) =>
+  ask({ ...rest, input: { label, value, placeholder, max }, actions: [{ label: cancel, value: null }, { label: ok, kind: "primary" }] });

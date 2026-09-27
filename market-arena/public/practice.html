@@ -353,7 +353,7 @@ import { creativeHero, creativeBar, prepareImage, readCreatives, IMG_IC, openCre
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
 import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn, rememberPending, pendingAction, clearPending } from "./account.js";
-import { menuButton, toast } from "./ui.js";
+import { menuButton, toast, ask, confirmBox, promptBox } from "./ui.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
 const view = createResultsView({ onFormat: (f) => { if (state) setFormat(f); }, getFormat: () => state?.format, getImage: (id) => state?.creativeThumbs?.[id] || null, onRender: () => updateLoop() });
@@ -427,8 +427,10 @@ function backToProject() {
 }
 $("#backToProject").addEventListener("click", backToProject);
 
-function saveProject() {
-  const name = prompt("Name this project", state.scenario.title || "My project");
+async function saveProject() {
+  const name = await promptBox({ icon: "save", title: "Save this project",
+    body: state.rounds.length ? `Saved in this browser with its buyers, versions and ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""}, so you can come back to it.` : "Saved in this browser with its buyers and versions, so you can come back to it.",
+    label: "Project name", value: state.scenario.title || "My project", max: 80, ok: "Save project" });
   if (!name) return;
   const saved = loadJSON(SAVED_KEY, []);
   saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })), ...(state.research ? { research: state.research } : {}), ...(state.format ? { format: state.format } : {}), ...projectExtras(state) });
@@ -436,11 +438,12 @@ function saveProject() {
   toast(state.rounds.length ? `Saved “${name}” with ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""}.` : `Saved “${name}”.`);
 }
 
-function openSaved(id) {
+async function openSaved(id) {
   const saved = loadJSON(SAVED_KEY, []);
   const p = saved.find((x) => x.id === id);
   if (!p) return;
-  if (state && inProject() && !confirm(`Open “${p.name}”? It replaces the project you have open, so save that one first if you want it back.`)) return;
+  if (state && inProject() && !(await confirmBox({ icon: "open", title: `Open “${p.name}”?`,
+    body: "It replaces the project you have open. Save that one first if you want it back.", ok: "Open project", cancel: "Stay here" }))) return;
   loadScenario({ scenario: { ...p.scenario }, personas: p.personas.map((x) => ({ ...x })), teams: p.teams.map((t) => ({ ...t })), rounds: (p.rounds || []).map((r) => ({ ...r })), research: p.research || null, format: p.format || null, ...projectExtras(p) }, 3);
 }
 // What else a project carries beyond its buyers and versions: the optional fields it
@@ -449,8 +452,9 @@ function projectExtras(x) {
   return Object.fromEntries(["extras", "goal", "goalNote", "creativeOn", "creativeThumbs"].filter((k) => x[k] != null).map((k) => [k, x[k]]));
 }
 
-function startOver() {
-  if (!confirm("Start over? This clears this project, its buyers and every round. Your saved projects stay put.")) return;
+async function startOver() {
+  if (!(await confirmBox({ icon: "restart", tone: "danger", title: "Start over?",
+    body: "This clears this project, its buyers and every round. Your saved projects stay put.", ok: "Start over", cancel: "Keep working" }))) return;
   localStorage.removeItem(SESSION_KEY);
   state = null; view.resetOpen();
   showPicker();
@@ -590,12 +594,13 @@ function renderSavedGrid() {
         <button class="btn-quiet" data-del="${s.id}">Delete</button>
       </div>
     </div>`).join("");
-  $("#savedGrid").onclick = (e) => {
+  $("#savedGrid").onclick = async (e) => {
     const loadId = e.target.dataset.load, delId = e.target.dataset.del;
     if (loadId) openSaved(loadId);
     if (delId) {
       const gone = saved.find((x) => x.id === delId);
-      if (!confirm(`Delete “${gone?.name || "this project"}”? This can't be undone.`)) return;
+      if (!(await confirmBox({ icon: "trash", tone: "danger", title: `Delete “${gone?.name || "this project"}”?`,
+        body: `Its buyers, versions${gone?.rounds?.length ? ` and ${gone.rounds.length} round${gone.rounds.length > 1 ? "s" : ""}` : ""} go with it. This can't be undone.`, ok: "Delete project", cancel: "Keep it" }))) return;
       saveJSON(SAVED_KEY, saved.filter((x) => x.id !== delId)); renderSavedGrid();
       toast("Project deleted.");
     }
@@ -1196,9 +1201,10 @@ async function setCreative(i, file) {
     try { localStorage.setItem("__cr_probe", "1"); localStorage.removeItem("__cr_probe"); } catch { toast("Your browser's storage is full. Read the images now so only small previews are kept.", { tone: "error" }); }
   } catch (err) { toast(err.message, { tone: "error" }); }
 }
-$("#creativeBar").addEventListener("click", (e) => {
+$("#creativeBar").addEventListener("click", async (e) => {
   if (!e.target.closest("[data-creative-toggle]") || extrasLocked()) return;
-  if (state.creativeOn && state.teams.some((t) => t.creative) && !confirm("Turn off image creatives? The images you've added to each version will be removed.")) return;
+  if (state.creativeOn && state.teams.some((t) => t.creative) && !(await confirmBox({ icon: "image", tone: "danger", title: "Turn images off?",
+    body: "The images you've added to each version will be removed. Words already read from them stay in your fields.", ok: "Turn images off", cancel: "Keep images" }))) return;
   state.creativeOn = !state.creativeOn;
   if (!state.creativeOn) state.teams.forEach((t) => { delete t.creative; });
   save(); renderExtraPick(); renderBrands();
@@ -1443,11 +1449,16 @@ function resumePending(m) {
 async function runRound(opts) {
   if (running) return;
   if (state.rounds.length && opts?.confirmed !== true && !loopState().count) {
+    // The next round drawn as a copy of this one: same ads, same colours, an equals
+    // sign between. The main button sends them to pick a change instead.
     const n = state.rounds.length;
-    if (!confirm(`Nothing has changed since round ${n}. Round ${n + 1} would show the same ads to the same buyers, which only tells you whether the result holds. Run it anyway?`)) {
-      scrollToLoopCards();
-      return;
-    }
+    const ads = state.teams.map((t) => `<i style="--c:${COLORS[t.slot]}"></i>`).join("");
+    const choice = await ask({ icon: "loop", title: `Nothing has changed since round ${n}`,
+      body: `Round ${n + 1} would show the same ads to the same buyers. That tells you whether the result holds, not what to change.`,
+      art: `<div class="dlg-same"><figure><span class="ds-ads">${ads}</span>Round ${n}</figure><span class="ds-eq">=</span><figure><span class="ds-ads">${ads}</span>Round ${n + 1}</figure></div>`,
+      actions: [{ label: "Run it anyway", value: "run" }, { label: "Pick a change", value: "pick", kind: "primary" }] });
+    if (choice === "pick") return scrollToLoopCards();
+    if (choice !== "run") return;
   }
   if (needsSignIn()) return;
   // Validate before anything announces work. The old order set the status line and

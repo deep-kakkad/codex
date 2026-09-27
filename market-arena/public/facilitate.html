@@ -243,6 +243,7 @@
 import { LOGO_MARK, buyerFace } from "./icons.js";
 import { createResultsView, exportCsv, esc } from "./app-shared.js";
 import { findTeamProblem } from "./validate.js";
+import { confirmBox, promptBox } from "./ui.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(28);
 const view = createResultsView();
@@ -380,7 +381,7 @@ async function runRound() {
   const problem = findTeamProblem(teams);
   if (problem) return showFieldProblem(problem);
   if (config.needsCode && !getCode()) {
-    const c = prompt("Enter the class code from your facilitator");
+    const c = await promptBox({ icon: "key", title: "Enter the class code", body: "Your facilitator has it. You only need to enter it once on this device.", label: "Class code", ok: "Run the round" });
     if (!c) return setStatus("Enter the class code to run a round.", true);
     try { localStorage.setItem(CODE, c.trim()); } catch {}
   }
@@ -412,9 +413,9 @@ $("#toggleDir").addEventListener("click", (e) => {
   const d = $("#directory"), o = d.classList.toggle("open");
   e.target.setAttribute("aria-expanded", o); e.target.textContent = o ? "Hide the buyers" : "Meet the buyers";
 });
-$("#reset").addEventListener("click", () => {
+$("#reset").addEventListener("click", async () => {
   view.resetOpen();
-  if (!confirm("Start a new game? This clears every round and resets the versions.")) return;
+  if (!(await confirmBox({ icon: "restart", tone: "danger", title: "Start a new game?", body: "This clears every round and resets the versions.", ok: "Start a new game", cancel: "Keep playing" }))) return;
   state = { teams: config.defaults.map((t, i) => ({ ...t, slot: i })), rounds: [] }; save();
   $("#results").classList.add("hidden"); $("#reportBar").classList.add("hidden");
   ["#csv", "#pdf", "#share"].forEach((s) => ($(s).disabled = true));
