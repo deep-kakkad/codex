@@ -2153,7 +2153,7 @@ body.has-loopbar .toasts{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 .td-press{transform:scale(.96)}
 .td-finds{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:8px}
 .td-finds li{display:flex;gap:10px;align-items:flex-start;line-height:1.45}
-.td-ob{flex:none;padding:1px 7px;border-radius:999px;font:600 11.5px/1.6 var(--body)}
+.td-ob{flex:none;min-width:48px;text-align:center;padding:1px 7px;border-radius:999px;font:600 11.5px/1.6 var(--body)}
 .td-ob-price{background:var(--bad-bg);color:var(--bad)}
 .td-ob-trust{background:#FBF2D9;color:#7A5A12}
 .td-ob-pull{background:var(--good-bg);color:var(--good)}
