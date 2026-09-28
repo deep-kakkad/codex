@@ -67,6 +67,19 @@
     </div>
   </section>
 
+  <!-- Your turn: pick an ad and the room answers, from the same real round. -->
+  <section class="h-sec" id="try">
+    <div class="wrap">
+      <div class="h-head try-head">
+        <p class="try-line"><span class="try-tag">Try it</span>Tap the ad you'd run. The room sorts around your pick.</p>
+        <h2 class="h-h2">Which ad would you run?</h2>
+        <p class="h-p">Guess first, then see who agrees. These are the real reactions from the round above: nothing to sign up for, nothing to wait for.</p>
+      </div>
+      <div class="try" id="tryRoom"></div>
+      <p class="try-cta"><a class="btn-primary h-cta" href="practice.html">Now test your own ads</a><a class="try-alt" href="roast.html">Or roast one ad, no sign-up</a></p>
+    </div>
+  </section>
+
   <section class="h-sec" id="how">
     <div class="wrap">
       <div class="h-head">
@@ -106,10 +119,17 @@
       </div>
       <figure class="xray-demo" id="xrayDemo" aria-label="An ad from one of our test rounds, marked with what convinced buyers and what put them off"></figure>
     </div>
-    <div class="wrap h-feats">
-      <article class="h-feat"><span class="hf-ic" id="icData"></span><h3>Buyers from your own data</h3><p>Paste reviews, interview notes or survey answers. We draft buyers from them and show the exact lines each one is based on. Optional, never required.</p></article>
-      <article class="h-feat"><span class="hf-ic" id="icPage"></span><h3>Start from any web page</h3><p>Paste a link, yours or the rival who keeps beating you. The headline, promise and price fill in, each marked as the page's own words or a summary.</p></article>
-      <article class="h-feat"><span class="hf-ic" id="icFmt"></span><h3>Test the real image ad</h3><p>Upload the creative itself. Buyers read its exact words, what it shows and how it's laid out, and you see it in a social post, landing page or email.</p></article>
+  </section>
+
+  <section class="h-sec" id="features">
+    <div class="wrap">
+      <div class="h-head">
+        <p class="h-kicker">What's inside</p>
+        <h2 class="h-h2">Six things a round can do.</h2>
+        <p class="h-p">Each one plays out below the way it looks in the app. Click any of them, or sit back and watch.</p>
+      </div>
+      <div id="tour"></div>
+      <p class="tour-note">The last two use the real coffee rounds from the top of this page. The others show the same screens with example content.</p>
     </div>
   </section>
 
@@ -198,7 +218,8 @@ import { drawArena, liveArena, arenaLegend } from "./arena.js";
 import { GOALS } from "./goals.js";
 import { GOAL_ART } from "./goal-art.js";
 import { adMock } from "./ad-formats.js";
-import { IMG_IC } from "./creative-ui.js";
+import { featureTour } from "./tour.js";
+import { tryRoom } from "./try-room.js";
 import { initAccount, mountAccountBar } from "./account.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
@@ -368,9 +389,9 @@ $("#xrayDemo").innerHTML = `<div class="adf" style="--c:var(--b2)">${adMock(XRAY
     <div class="kf"><span class="kf-k">Fix</span><i class="k-wave"></i><span class="kf-t">${esc(XRAY.fix.text)}</span><span class="kf-v">put off ${pct(XRAY.fix.v)}</span></div>
   </div>
   <figcaption>From one of our test rounds: 12 simulated buyers, three cold brew ads. The bad line was ours, on purpose.</figcaption>`;
-$("#icData").innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
-$("#icPage").innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L12 5.6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/></svg>';
-$("#icFmt").innerHTML = IMG_IC;
+
+tryRoom($("#tryRoom"));
+featureTour($("#tour"));
 
 $("#questions").innerHTML = GOALS.map((g) => `<div class="q">${GOAL_ART[g.key] || ""}<h3>${esc(g.q)}</h3><p>${esc(g.hint)}</p></div>`).join("");
 </script>

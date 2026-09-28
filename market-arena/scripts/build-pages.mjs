@@ -268,6 +268,9 @@ ${footer("../")}`;
    is on the draft and not live yet; give it its date the day it ships. */
 const CHANGES = [
   { date: null, next: true, title: "The next release", items: [
+    ["Try it on the homepage", "Pick the coffee ad you'd run and the room sorts around your pick: who would buy it, who went elsewhere and what stopped the rest. Then cut one version's price and watch buyers move. Real reactions from two recorded rounds, no sign-up."],
+    ["A tour of what's inside", "Six features, each played out on its own screen by a pointer you can follow. It goes through once, pauses while you hover, and Replay runs any of them again."],
+    ["A colour for each feature", "Buyers are mint, your data cream, web pages sky, images lavender, rounds peach and the room's split rose, on the homepage and in the app."],
     ["Roast my ad", "Paste one ad, free and without signing up. Eight buyers decide whether they'd buy it, and you see what worked, what put them off and why the rest passed."],
     ["Round 2 is the obvious next step", "Under each result, one card per version shows its weakest spot. It opens the editor on exactly that field. A bar at the bottom counts your changes and warns when one version has two. Round 2 then opens with what you changed and what it moved."],
     ["Test the real image ad", "Upload each version's image. The buyers read what's on it and judge the whole ad. Each image is read once and never stored."],

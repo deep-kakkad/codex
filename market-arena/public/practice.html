@@ -355,7 +355,7 @@ import { creativeHero, creativeBar, prepareImage, readCreatives, IMG_IC, openCre
 import { findTeamProblem, findPersonaProblem, EXTRA_FIELDS, EXTRA_BY_KEY } from "./validate.js";
 import { GOALS } from "./goals.js";
 import { initAccount, mountAccountBar, onAccountChange, account, open as openSignIn, rememberPending, pendingAction, clearPending } from "./account.js";
-import { menuButton, toast, ask, confirmBox, promptBox } from "./ui.js";
+import { menuButton, toast, ask, confirmBox, promptBox, doneInPlace, copyText } from "./ui.js";
 import { hintFor, hintHtml, dismissHint } from "./hints.js";
 
 document.getElementById("logoSlot").innerHTML = LOGO_MARK(22);
@@ -508,14 +508,18 @@ menuButton($("#moreBtn"), () => {
 $("#editPitches").addEventListener("click", toggleEditor);
 
 // The round on screen as one picture, for a slide or a post.
-async function saveImage() {
+// From a button that stays on screen (the share box), the button itself says Saved.
+// From a menu, which closes, a toast does.
+async function saveImage(btn) {
   const idx = view.viewedIndex(), r = state?.rounds?.[idx];
   if (!r) return;
+  const work = async () => { const { blob } = await roundImage(idx); downloadBlob(blob, `market-arena-round-${idx + 1}.png`); };
+  const fail = () => toast("Couldn't make the image. Try again.", { tone: "error" });
+  if (btn) return doneInPlace(btn, work, { done: "Saved", fail });
   try {
-    const { blob } = await roundImage(idx);
-    downloadBlob(blob, `market-arena-round-${idx + 1}.png`);
+    await work();
     toast("Saved. The image says the buyers are simulated, so it travels honestly.");
-  } catch { toast("Couldn't make the image. Try again.", { tone: "error" }); }
+  } catch { fail(); }
 }
 document.addEventListener("click", (e) => { if (e.target.closest("[data-save-image]")) saveImage(); });
 
@@ -575,15 +579,15 @@ function renderTemplateGrid() {
   // its own group below rather than sitting as a fifth equal tile.
   $("#templateGrid").innerHTML = TEMPLATES.filter((t) => t.id !== "blank").map(card).join("");
   $("#blankGrid").innerHTML = TEMPLATES.filter((t) => t.id === "blank").map(card).join("");
-  $("#blankGrid").addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-tpl]"); if (!btn) return;
-    const t = TEMPLATES.find((x) => x.id === btn.dataset.tpl);
-    loadScenario({ scenario: { title: "", brief: "" }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) }, 1);
-  });
+  $("#blankGrid").addEventListener("click", (e) => { if (e.target.closest("[data-tpl]")) startBlank(); });
   $("#templateGrid").addEventListener("click", (e) => {
     const btn = e.target.closest("[data-tpl]"); if (!btn) return;
     openCase(TEMPLATES.find((x) => x.id === btn.dataset.tpl));
   });
+}
+function startBlank() {
+  const t = TEMPLATES.find((x) => x.id === "blank");
+  loadScenario({ scenario: { title: "", brief: "" }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) }, 1);
 }
 function openCase(t, step = 1) {
   loadScenario({ scenario: { title: t.scenario.title, brief: t.scenario.brief }, personas: t.personas.map((p) => ({ ...p })), teams: t.defaultTeams.map((b, i) => ({ ...b, slot: i })) }, step);
@@ -617,9 +621,13 @@ function renderSavedGrid() {
         <button class="btn" data-load="${s.id}">Open</button>
         <button class="btn-quiet" data-del="${s.id}">Delete</button>
       </div>
-    </div>`).join("");
+    </div>`).join("") + (!saved.length ? "" : `
+    <button type="button" class="picker-card add-card" data-new-blank>
+      <span class="padd-plus" aria-hidden="true">+</span><b>New project</b>
+      <span>Start from a blank sheet, or pick a ready-made case below.</span></button>`);
   $("#savedGrid").onclick = async (e) => {
     const card = e.target.closest("[data-saved]");
+    if (e.target.closest("[data-new-blank]")) return startBlank();
     const loadId = e.target.dataset.load || (card && !e.target.closest("button") ? card.dataset.saved : null), delId = e.target.dataset.del;
     if (loadId) openSaved(loadId);
     if (delId) {
@@ -904,7 +912,7 @@ function renderPersonas() {
          <button class="btn-primary" type="submit">Add group</button><button class="btn-quiet" type="button" data-newgroup-cancel>Cancel</button></div>
          <p class="newgroup-hint">It starts with one buyer. Add more from the group's own tile.</p>
        </form>`
-    : `<button class="padd" type="button" data-newgroup>+ New group</button>`);
+    : `<button class="padd" type="button" data-newgroup><span class="padd-plus" aria-hidden="true">+</span>New group</button>`);
   document.querySelectorAll("#personas [data-f=profile]").forEach(updatePersonaCount);
   $("#dataCta").classList.toggle("fx-used", state.personas.some((p) => p.source === "data"));
   $("#dataCtaCost").textContent = `${account().costs?.ask ?? 10} credits`;
@@ -1419,7 +1427,9 @@ function renderBrands() {
         ${wasLine(t, i, `extras.${k}`)}`;
       }).join("")}
       ${state.teams.length > L.minTeams ? `<button class="remove" data-rm="${i}">Remove ${esc(t.brand || "this version")}</button>` : ""}
-    </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add" id="addBrand">+ Add a version</button>` : "");
+    </div>`).join("") + (state.teams.length < L.maxTeams ? `<button class="add add-card" type="button" id="addBrand">
+      <span class="padd-plus" aria-hidden="true">+</span><b>Add a version</b>
+      <span>Up to ${L.maxTeams}. Change one thing from the others to see what moves buyers.</span></button>` : "");
   document.querySelectorAll("#brands [data-f]").forEach(updateBrandCount);
   renderCreativeBar();
   renderExtraPick();
@@ -1488,7 +1498,7 @@ $("#brands").addEventListener("click", (e) => {
       state.teams.splice(Math.min(at, state.teams.length), 0, gone); save(); renderBrands();
     } } });
   }
-  if (e.target.id === "addBrand") {
+  if (e.target.closest("#addBrand")) {
     const used = new Set(state.teams.map((t) => t.slot));
     const slot = [0, 1, 2, 3].find((s) => !used.has(s));
     state.teams.push({ brand: "", headline: "", valueProp: "", price: "", slot }); save(); renderBrands();
@@ -1906,7 +1916,7 @@ async function shareRound() {
       <div class="shr-pic"><img alt="What people will see: round ${n}'s verdict and the room of buyers" hidden></div>
       <div class="shr-link"><input readonly value="Making a link…" aria-label="Share link"><button type="button" class="btn-primary" data-shr-copy disabled>Copy link</button></div>
     </div>`,
-    actions: [{ label: "Save image", keep: true, onClick: () => saveImage() }, { label: "Done", value: true }],
+    actions: [{ label: "Save image", keep: true, onClick: (dlg) => saveImage(dlg.querySelector('[data-dlg-act="0"]')) }, { label: "Done", value: true }],
     onOpen: async (dlg) => {
       const input = dlg.querySelector(".shr-link input"), copy = dlg.querySelector("[data-shr-copy]"), img = dlg.querySelector(".shr-pic img");
       roundImage(idx).then(({ url }) => { img.src = url; img.hidden = false; }).catch(() => {});
@@ -1914,10 +1924,8 @@ async function shareRound() {
         input.value = await makeShareLink(idx);
         copy.disabled = false;
       } catch (err) { input.value = err.message; }
-      copy.addEventListener("click", async () => {
-        try { await navigator.clipboard.writeText(input.value); } catch { input.select(); document.execCommand?.("copy"); }
-        copy.textContent = "Copied"; setTimeout(() => { copy.textContent = "Copy link"; }, 1600);
-      });
+      copy.addEventListener("click", () => doneInPlace(copy, () => copyText(input.value), {
+        done: "Copied", fail: () => { input.focus(); input.select(); toast("Couldn't copy. The link is selected, so press Ctrl+C or ⌘C."); } }));
       input.addEventListener("focus", () => input.select());
     },
   });

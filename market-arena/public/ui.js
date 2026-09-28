@@ -279,3 +279,39 @@ export const confirmBox = ({ ok = "Continue", cancel = "Cancel", ...rest }) =>
   ask({ ...rest, actions: [{ label: cancel, value: false }, { label: ok, value: true, kind: "primary" }] }).then((v) => v === true);
 export const promptBox = ({ label = "", value = "", placeholder = "", max, ok = "Save", cancel = "Cancel", ...rest }) =>
   ask({ ...rest, input: { label, value, placeholder, max }, actions: [{ label: cancel, value: null }, { label: ok, kind: "primary" }] });
+
+/* ---- Buttons that answer in place ---------------------------------------------
+   Copy link becomes "✓ Copied" on the button itself, Save image becomes "✓ Saved":
+   the answer shows up where the eye already is, not in a corner. The button keeps
+   its width so nothing beside it jumps, and a screen reader hears the same word.
+   work: an async function; if it throws, the button goes back and `fail` runs. */
+export async function doneInPlace(btn, work, { done = "Done", fail = null, ms = 1800 } = {}) {
+  if (!btn || btn.dataset.busy) return;
+  const was = btn.innerHTML, w = btn.getBoundingClientRect().width;
+  btn.dataset.busy = "1";
+  try {
+    await work();
+  } catch (err) {
+    delete btn.dataset.busy;
+    if (fail) fail(err);
+    return;
+  }
+  btn.style.minWidth = `${Math.ceil(w)}px`;
+  btn.innerHTML = `<span class="did">${ICON.check}${done}</span>`;
+  btn.classList.add("is-done");
+  btn.setAttribute("aria-live", "polite");
+  clearTimeout(btn._doneT);
+  btn._doneT = setTimeout(() => {
+    btn.innerHTML = was; btn.classList.remove("is-done"); btn.style.minWidth = "";
+    btn.removeAttribute("aria-live"); delete btn.dataset.busy;
+  }, ms);
+}
+export async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const t = Object.assign(document.createElement("textarea"), { value: text });
+    t.style.cssText = "position:fixed;opacity:0"; document.body.append(t); t.select();
+    const ok = document.execCommand?.("copy"); t.remove();
+    if (!ok) throw new Error("copy failed");
+  }
+}

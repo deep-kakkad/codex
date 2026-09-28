@@ -85,7 +85,7 @@ import { drawArena, liveArena } from "./arena.js";
 import { adMock } from "./ad-formats.js";
 import { clearPush } from "./ad-parts.js";
 import { initAccount, mountAccountBar } from "./account.js";
-import { ask, toast } from "./ui.js";
+import { ask, toast, doneInPlace, copyText } from "./ui.js";
 import { hintFor, hintHtml, dismissHint } from "./hints.js";
 import { snapshot, downloadBlob } from "./snapshot.js";
 
@@ -270,13 +270,12 @@ function render({ round, ad, panel: p, id }, { left = null, shared = false } = {
     ${left != null && !shared ? `<p class="rst-left">${left === 0 ? "That was your last free roast today." : `${left} free roast${left === 1 ? "" : "s"} left today.`} Full rounds are free with an account.</p>` : ""}
     <p class="rst-mark">Roasted with <a href="./">Market Arena</a>. Buyers are simulated.</p>`;
 
-  $("#rstCopy")?.addEventListener("click", async () => {
+  $("#rstCopy")?.addEventListener("click", (e) => {
     const url = `${location.origin}${location.pathname}?r=${id}`;
-    try { await navigator.clipboard.writeText(url); toast("Link copied. Anyone with it sees this roast."); }
-    catch { toast(`Share link: ${url}`, { sticky: true }); }
+    doneInPlace(e.currentTarget, () => copyText(url), { done: "Copied", fail: () => toast(`Share link: ${url}`, { sticky: true }) });
   });
   $("#rstBeat")?.addEventListener("click", () => beatIt(ad, p));
-  $("#rstImage").addEventListener("click", async () => {
+  $("#rstImage").addEventListener("click", (e) => doneInPlace(e.currentTarget, async () => {
     const people = [...round.customers].sort((a, c) => (a.purchase === "t1" ? 0 : 1) - (c.purchase === "t1" ? 0 : 1))
       .map((c) => ({ ...c, segIndex: round.segments.indexOf(c.segment), color: c.purchase === "t1" ? BUY : WALK, dashed: (c.margin ?? 1) < 0.1 }));
     const blob = await snapshot({
@@ -287,7 +286,7 @@ function render({ round, ad, panel: p, id }, { left = null, shared = false } = {
       legend: [{ label: "Would buy", color: BUY, count: buyers }, { label: "Walked away", color: WALK, count: n - buyers }],
     });
     downloadBlob(blob, "market-arena-roast.png");
-  });
+  }, { done: "Saved", fail: () => toast("Couldn't make the image. Try again.", { tone: "error" }) }));
   if (!reduced()) $("#rstResult").animate([{ opacity: 0, transform: "translateY(10px)" }, { opacity: 1, transform: "none" }], { duration: 380, easing: "cubic-bezier(.3,.7,.2,1)" });
 }
 
