@@ -85,7 +85,9 @@ export function workOf(b) {
   const top = ranked[0]?.v >= PULL_MIN ? ranked[0] : null;
   const second = top && ranked[1]?.v >= PULL_MIN ? ranked[1] : null;
   const cp = clearPush(b.push);
-  const push = cp ? { ...b.parts.find((p) => p.key === cp.key), v: cp.share } : null;
+  // Only a part the ad actually has: an old round can name one that's gone.
+  const pp = cp && b.parts.find((p) => p.key === cp.key);
+  const push = pp ? { ...pp, v: cp.share } : null;
   return { top, second, push };
 }
 const quoteOf = (t, n = 64) => `“${t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t}”`;

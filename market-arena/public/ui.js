@@ -148,7 +148,9 @@ addEventListener("scroll", (e) => {
    project saved, a round that could not run. Field problems stay on the field. */
 let host = null;
 
-export function toast(message, { tone = "info", timeout, sticky = false } = {}) {
+/* action: { label, onClick } adds a button, such as "Undo", that runs once and
+   dismisses the toast. A toast with an action stays up a little longer. */
+export function toast(message, { tone = "info", timeout, sticky = false, action = null } = {}) {
   if (!host || !host.isConnected) {
     host = document.createElement("div");
     host.className = "toasts";
@@ -161,7 +163,12 @@ export function toast(message, { tone = "info", timeout, sticky = false } = {}) 
   msg.className = "toast-msg"; msg.textContent = message;
   const x = document.createElement("button");
   x.className = "toast-x"; x.type = "button"; x.setAttribute("aria-label", "Dismiss"); x.textContent = "×";
-  t.append(msg, x);
+  let act = null;
+  if (action) {
+    act = document.createElement("button");
+    act.className = "toast-act"; act.type = "button"; act.textContent = action.label;
+  }
+  t.append(msg, ...(act ? [act] : []), x);
   let gone = false;
   const dismiss = () => {
     if (gone) return; gone = true;
@@ -169,9 +176,10 @@ export function toast(message, { tone = "info", timeout, sticky = false } = {}) 
     setTimeout(() => t.remove(), 160);
   };
   x.addEventListener("click", dismiss);
+  act?.addEventListener("click", () => { dismiss(); action.onClick?.(); });
   host.append(t);
   while (host.children.length > 3) host.firstElementChild.remove();
-  if (!sticky) setTimeout(dismiss, timeout ?? (tone === "error" ? 8000 : 3500));
+  if (!sticky) setTimeout(dismiss, timeout ?? (tone === "error" ? 8000 : action ? 7000 : 3500));
   return dismiss;
 }
 
@@ -193,10 +201,15 @@ const DLG_IC = {
   save: '<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>',
   image: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 16-5-5-9 9"/>',
   key: '<circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.2-8.2M16 7l2.5 2.5M14 9l1.5 1.5"/>',
+  link: '<path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4L12 5.6"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.2-1.2"/>',
+  download: '<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>',
 };
 const escHtml = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-export function ask({ title, body = "", icon = null, art = "", tone = "default", input = null, actions = [{ label: "Cancel", value: null }, { label: "OK", value: true, kind: "primary" }] }) {
+/* Also: an action with `keep: true` runs its `onClick(root)` without closing, and
+   `onOpen(root, close)` lets a dialog fill itself in after it opens (a share link
+   being made, a preview being drawn). close(value) closes it with that value. */
+export function ask({ title, body = "", icon = null, art = "", tone = "default", input = null, onOpen = null, wide = false, actions = [{ label: "Cancel", value: null }, { label: "OK", value: true, kind: "primary" }] }) {
   return new Promise((resolve) => {
     const before = document.activeElement;
     const id = `dlg${Date.now().toString(36)}`;
@@ -204,7 +217,7 @@ export function ask({ title, body = "", icon = null, art = "", tone = "default",
     wrap.className = `dlg-wrap${tone === "danger" ? " danger" : ""}`;
     wrap.innerHTML = `
       <div class="dlg-scrim" data-dlg-close></div>
-      <div class="dlg" role="${input ? "dialog" : "alertdialog"}" aria-modal="true" aria-labelledby="${id}-t"${body ? ` aria-describedby="${id}-b"` : ""}>
+      <div class="dlg${wide ? " dlg-wide" : ""}" role="${input || onOpen ? "dialog" : "alertdialog"}" aria-modal="true" aria-labelledby="${id}-t"${body ? ` aria-describedby="${id}-b"` : ""}>
         <button type="button" class="dlg-x" data-dlg-close aria-label="Close">×</button>
         ${icon && DLG_IC[icon] ? `<span class="dlg-ic" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${DLG_IC[icon]}</svg></span>` : ""}
         <h2 class="dlg-t" id="${id}-t">${escHtml(title)}</h2>
@@ -230,6 +243,7 @@ export function ask({ title, body = "", icon = null, art = "", tone = "default",
     };
     const choose = (i) => {
       const a = actions[i];
+      if (a.keep) return a.onClick?.(dlg);
       if (input && i === primary) {
         const v = field.value.trim();
         if (!v) { field.focus(); field.classList.add("dlg-shake"); setTimeout(() => field.classList.remove("dlg-shake"), 400); return; }
@@ -247,7 +261,7 @@ export function ask({ title, body = "", icon = null, art = "", tone = "default",
     function onKey(e) {
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); return finish(null); }
       if (e.key !== "Tab") return;
-      const f = [...dlg.querySelectorAll("button, input")];
+      const f = [...dlg.querySelectorAll("button:not([disabled]), input")];
       const i = f.indexOf(document.activeElement);
       if (e.shiftKey && i <= 0) { e.preventDefault(); f[f.length - 1].focus(); }
       else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
@@ -257,6 +271,7 @@ export function ask({ title, body = "", icon = null, art = "", tone = "default",
     const first = field || wrap.querySelector(`[data-dlg-act="${tone === "danger" && safe >= 0 ? safe : Math.max(primary, 0)}"]`);
     first?.focus({ preventScroll: true });
     if (field) field.select();
+    try { onOpen?.(dlg, finish); } catch {}
   });
 }
 // The two everyday shapes.

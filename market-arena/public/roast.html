@@ -223,7 +223,8 @@ function render({ round, ad, panel: p, id }, { left = null, shared = false } = {
   const pulls = (b.parts || []).map((x) => ({ ...x, v: b.pull?.[x.key] ?? 0 })).sort((x, y) => y.v - x.v);
   const top = pulls[0]?.v >= 0.15 ? pulls[0] : null;
   const cp = clearPush(b.push);
-  const push = cp ? { ...b.parts.find((x) => x.key === cp.key), v: cp.share } : null;
+  const pp = cp && (b.parts || []).find((x) => x.key === cp.key);
+  const push = pp ? { ...pp, v: cp.share } : null;
   const [objKey, objVal] = Object.entries(b.objections || {}).filter(([k]) => k !== "none").sort((x, y) => y[1] - x[1])[0] || ["none", 0];
   const q = (t) => `“${esc(t)}”`;
   const f = b.funnel || {};
@@ -295,24 +296,11 @@ function fixField() {
   if (!cp) return "headline";
   return cp.key === "price" ? "price" : /^body\d+$/.test(cp.key) ? "valueProp" : "headline";
 }
-// Into a project: this ad as version 1, an empty rewrite beside it, the same eight
-// buyers. An open project is saved first, so nothing is lost.
+// Into a project: this ad as version 1, a rewrite beside it, the same eight buyers.
 const SESSION_KEY = "market-arena-practice-session", SAVED_KEY = "market-arena-practice-saved";
 async function beatIt(ad, p) {
-  let open = null;
-  try { open = JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch {}
-  if (open?.personas?.length) {
-    const title = open.scenario?.title?.trim() || "Untitled project";
-    const ok = await ask({ icon: "save", title: "Save your open project first?",
-      body: `“${title}” is open in the builder. It goes to your saved projects, with its rounds, and this ad opens in its place.`,
-      actions: [{ label: "Cancel", value: null }, { label: "Save it and continue", value: true, kind: "primary" }] });
-    if (!ok) return;
-    try {
-      const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || "[]");
-      saved.unshift({ id: `sc${Date.now()}`, name: title, savedAt: Date.now(), ...open });
-      localStorage.setItem(SAVED_KEY, JSON.stringify(saved.slice(0, 20)));
-    } catch {}
-  }
+  // The builder saves projects as you work, so whatever was open is already in
+  // Your projects if you'd changed anything. This opens as a new project.
   const brand = ad.brand && ad.brand !== "This brand" ? ad.brand : "Your brand";
   const price = ad.price === "Not stated in the ad" ? "" : ad.price;
   const personas = (last?.round?.customers || []).map(({ id, name, segment, profile }) => ({ id, name, segment, profile }));
@@ -323,7 +311,7 @@ async function beatIt(ad, p) {
     // most (or the headline), so the two versions differ in exactly one place.
     teams: [{ slot: 0, brand, headline: ad.headline, valueProp: ad.valueProp, price },
             { slot: 1, brand: `${brand} rewrite`.slice(0, 30), headline: ad.headline, valueProp: ad.valueProp, price, [fixField()]: "" }],
-    rounds: [], step: 3,
+    rounds: [], step: 3, id: `pr${Date.now().toString(36)}`, edited: true,
   };
   try { localStorage.setItem(SESSION_KEY, JSON.stringify(state)); } catch {}
   location.href = "practice.html";

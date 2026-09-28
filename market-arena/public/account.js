@@ -232,14 +232,13 @@ export function mountAccountBar(host) {
          </button>`
       : `<button class="btn-quiet" type="button" data-signin>Sign in</button>`;
     const btn = host.querySelector(".acct-btn");
+    // The order every SaaS account menu uses: who you are, your account, billing, sign out.
     if (btn) menuButton(btn, () => [
       { heading: m.email },
-      { note: `${m.balance} credits left. Rounds are free; a question or research run costs ${m.costs?.ask ?? 10}.` },
-      ...((m.recent || []).length ? [{ heading: "Recent" },
-        ...m.recent.map((e) => ({ note: `${e.delta > 0 ? "+" : "−"}${Math.abs(e.delta)}  ${e.what}, ${ago(e.at)}` }))] : []),
+      { note: `${m.balance} credits left` },
       { separator: true },
-      { label: "Usage and billing", onSelect: () => { location.href = "account.html"; } },
-      { label: "Pricing", onSelect: () => { location.href = "pricing.html"; } },
+      { label: "Account", onSelect: () => { location.href = "account.html#account"; } },
+      { label: "Usage and billing", onSelect: () => { location.href = "account.html#usage"; } },
       { separator: true },
       { label: "Sign out", onSelect: signOut },
     ], { align: "end", label: "Account" });

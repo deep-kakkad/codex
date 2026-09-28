@@ -17,6 +17,7 @@
     <div class="tb-crumbs hidden" id="crumbs">
       <span class="tb-sep brand-sep" aria-hidden="true">/</span>
       <button class="tb-project" id="projectBtn" type="button" aria-label="Project menu"><span class="tb-label" id="projectName">Untitled project</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+      <span class="save-state" id="saveState" role="status" aria-live="polite"></span>
       <div class="roundtabs hidden" id="roundTabs"></div>
     </div>
     <div class="tb-spacer"></div>
@@ -429,24 +430,12 @@ function backToProject() {
 }
 $("#backToProject").addEventListener("click", backToProject);
 
-async function saveProject() {
-  const name = await promptBox({ icon: "save", title: "Save this project",
-    body: state.rounds.length ? `Saved in this browser with its buyers, versions and ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""}, so you can come back to it.` : "Saved in this browser with its buyers and versions, so you can come back to it.",
-    label: "Project name", value: state.scenario.title || "My project", max: 80, ok: "Save project" });
-  if (!name) return;
-  const saved = loadJSON(SAVED_KEY, []);
-  saved.unshift({ id: `sc${Date.now()}`, name, savedAt: Date.now(), scenario: { ...state.scenario }, personas: state.personas.map((p) => ({ ...p })), teams: state.teams.map((t) => ({ ...t })), rounds: state.rounds.map((r) => ({ ...r })), ...(state.research ? { research: state.research } : {}), ...(state.format ? { format: state.format } : {}), ...projectExtras(state) });
-  saveJSON(SAVED_KEY, saved.slice(0, 20));
-  toast(state.rounds.length ? `Saved “${name}” with ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""}.` : `Saved “${name}”.`);
-}
-
 async function openSaved(id) {
   const saved = loadJSON(SAVED_KEY, []);
   const p = saved.find((x) => x.id === id);
   if (!p) return;
-  if (state && inProject() && !(await confirmBox({ icon: "open", title: `Open “${p.name}”?`,
-    body: "It replaces the project you have open. Save that one first if you want it back.", ok: "Open project", cancel: "Stay here" }))) return;
-  loadScenario({ scenario: { ...p.scenario }, personas: p.personas.map((x) => ({ ...x })), teams: p.teams.map((t) => ({ ...t })), rounds: (p.rounds || []).map((r) => ({ ...r })), research: p.research || null, format: p.format || null, ...projectExtras(p) }, 3);
+  // No "save first?": the open project is already saved if you'd changed anything.
+  loadScenario({ id: p.id, scenario: { ...p.scenario }, personas: p.personas.map((x) => ({ ...x })), teams: p.teams.map((t) => ({ ...t })), rounds: (p.rounds || []).map((r) => ({ ...r })), research: p.research || null, format: p.format || null, ...projectExtras(p) }, 3);
 }
 // What else a project carries beyond its buyers and versions: the optional fields it
 // tests, the question it asked, and its creatives.
@@ -455,8 +444,10 @@ function projectExtras(x) {
 }
 
 async function startOver() {
-  if (!(await confirmBox({ icon: "restart", tone: "danger", title: "Start over?",
-    body: "This clears this project, its buyers and every round. Your saved projects stay put.", ok: "Start over", cancel: "Keep working" }))) return;
+  const name = state?.scenario.title?.trim() || "this project";
+  if (!(await confirmBox({ icon: "trash", tone: "danger", title: `Delete “${name}”?`,
+    body: `Its buyers, versions${state?.rounds?.length ? ` and ${state.rounds.length} round${state.rounds.length > 1 ? "s" : ""}` : ""} go with it. Your other projects stay put.`, ok: "Delete project", cancel: "Keep it" }))) return;
+  if (state?.id) saveJSON(SAVED_KEY, loadJSON(SAVED_KEY, []).filter((x) => x.id !== state.id));
   localStorage.removeItem(SESSION_KEY);
   state = null; view.resetOpen();
   showPicker();
@@ -483,7 +474,6 @@ menuButton($("#projectBtn"), () => {
   return [
     { heading: state?.scenario.title?.trim() || "This project" },
     { label: "Rename", onSelect: () => { if (!editorOpen()) collapseBuilder(false); goToStep(1); $("#scenTitle").focus(); $("#scenTitle").select(); } },
-    { label: "Save to your projects", onSelect: saveProject },
     // On a phone the round switcher leaves the top bar, so the rounds are listed here.
     ...(state?.rounds?.length > 1 ? [
       { separator: true, className: "m-only" },
@@ -507,12 +497,10 @@ menuButton($("#moreBtn"), () => {
     hasRounds ? { label: "Share results", className: "m-only", onSelect: shareRound } : null,
     hasRounds ? { label: editorOpen() ? "Hide editor" : "Edit versions", className: "m-only", onSelect: toggleEditor } : null,
     { label: $("#directory").classList.contains("open") ? "Hide the buyers" : "See all buyers", onSelect: toggleDirectory },
-    { label: "Save as image", disabled: !hasRounds, onSelect: saveImage },
-    { label: "Download CSV", disabled: !hasRounds, onSelect: () => exportCsv(state.rounds, "market-arena-results.csv") },
-    { label: "Download PDF", disabled: !hasRounds, onSelect: () => window.print() },
+    { label: "Export…", disabled: !hasRounds, onSelect: exportRound },
     { label: "Pricing", onSelect: () => { location.href = "pricing.html"; } },
     { separator: true },
-    { label: "Start over", danger: true, onSelect: startOver },
+    { label: "Delete this project", danger: true, onSelect: startOver },
   ];
 }, { align: "end", label: "More actions" });
 
@@ -523,7 +511,7 @@ async function saveImage() {
   const idx = view.viewedIndex(), r = state?.rounds?.[idx];
   if (!r) return;
   try {
-    const blob = await snapshot(roundCard(r, { title: state.scenario.title?.trim() || "", roundNo: idx + 1 }));
+    const { blob } = await roundImage(idx);
     downloadBlob(blob, `market-arena-round-${idx + 1}.png`);
     toast("Saved. The image says the buyers are simulated, so it travels honestly.");
   } catch { toast("Couldn't make the image. Try again.", { tone: "error" }); }
@@ -537,7 +525,10 @@ async function init() {
   renderSavedGrid();
   const session = loadJSON(SESSION_KEY, null);
   if (session?.personas?.length) {
-    state = session; showBuilder();
+    state = session;
+    if (!state.id) { state.id = `pr${Date.now().toString(36)}`; if (state.rounds?.length) state.edited = true; saveJSON(SESSION_KEY, state); }
+    if (state.edited) persistProject();
+    showBuilder();
     if (state.rounds.length) { view.renderResults(state.rounds, false); collapseBuilder(true); }
     else if (state.step) goToStep(state.step);
   }
@@ -604,17 +595,21 @@ async function openCaseFromLink() {
   history.replaceState(null, "", location.pathname);
   const t = TEMPLATES.find((x) => x.id === id && x.id !== "blank");
   if (!t) return;
-  if (state?.personas?.length && !(await confirmBox({ icon: "open", title: `Open the “${t.scenario.title}” case?`,
-    body: "It replaces the project you have open. Save that one first if you want it back.", ok: "Open the case", cancel: "Stay here" }))) return;
   openCase(t, 3);
 }
 function renderSavedGrid() {
   const saved = loadJSON(SAVED_KEY, []);
   $("#savedWrap").classList.toggle("hidden", !saved.length);
-  const when = (t) => new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  const when = (t) => {
+    const m = (Date.now() - t) / 60000;
+    if (m < 1) return "just now";
+    if (m < 60) return `${Math.round(m)} min ago`;
+    if (m < 1440) return `${Math.round(m / 60)} h ago`;
+    return new Date(t).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+  };
   $("#savedGrid").innerHTML = saved.map((s) => `
     <div class="picker-card saved" data-saved="${s.id}">
-      <span class="kicker">Saved ${when(s.savedAt)}${s.rounds?.length ? `, ${s.rounds.length} round${s.rounds.length > 1 ? "s" : ""}` : ""}</span>
+      <span class="kicker">Edited ${when(s.savedAt)}${s.rounds?.length ? ` · ${s.rounds.length} round${s.rounds.length > 1 ? "s" : ""}` : ""}${state?.id === s.id ? ` · <b>open now</b>` : ""}</span>
       <h3>${esc(s.name)}</h3>
       <p>${esc(s.scenario.brief || "")}</p>
       <div class="card-actions">
@@ -623,25 +618,30 @@ function renderSavedGrid() {
       </div>
     </div>`).join("");
   $("#savedGrid").onclick = async (e) => {
-    const loadId = e.target.dataset.load, delId = e.target.dataset.del;
+    const card = e.target.closest("[data-saved]");
+    const loadId = e.target.dataset.load || (card && !e.target.closest("button") ? card.dataset.saved : null), delId = e.target.dataset.del;
     if (loadId) openSaved(loadId);
     if (delId) {
       const gone = saved.find((x) => x.id === delId);
       if (!(await confirmBox({ icon: "trash", tone: "danger", title: `Delete “${gone?.name || "this project"}”?`,
         body: `Its buyers, versions${gone?.rounds?.length ? ` and ${gone.rounds.length} round${gone.rounds.length > 1 ? "s" : ""}` : ""} go with it. This can't be undone.`, ok: "Delete project", cancel: "Keep it" }))) return;
-      saveJSON(SAVED_KEY, saved.filter((x) => x.id !== delId)); renderSavedGrid();
+      saveJSON(SAVED_KEY, saved.filter((x) => x.id !== delId));
+      if (state?.id === delId) { localStorage.removeItem(SESSION_KEY); state = null; }
+      renderSavedGrid(); renderTopbar();
       toast("Project deleted.");
     }
   };
 }
 
 const DEFAULT_PANEL = 8;
-function loadScenario({ scenario, personas, teams, rounds, research, format, ...more }, startStep) {
-  state = { scenario, personas, teams, rounds: rounds || [], ...(research ? { research } : {}), ...(format ? { format } : {}), ...projectExtras(more) };
+function loadScenario({ scenario, personas, teams, rounds, research, format, id, ...more }, startStep) {
+  loadingProject = true;
+  state = { id: id || `pr${Date.now().toString(36)}`, scenario, personas, teams, rounds: rounds || [], ...(research ? { research } : {}), ...(format ? { format } : {}), ...projectExtras(more), ...(id ? { edited: true } : {}) };
   // Keep every buyer the case shipped with. Panels open at 8, and sizing back up
   // should hand back the written profiles rather than empty cards.
   state.personaPool = personas.map((p) => ({ ...p }));
   if (!rounds?.length && state.personas.length > DEFAULT_PANEL) resizePersonas(DEFAULT_PANEL);
+  loadingProject = false;
   saveJSON(SESSION_KEY, state);
   showBuilder();
   view.resetOpen();
@@ -734,7 +734,7 @@ function collapseBuilder(collapsed) {
 
 function goToStep(n) {
   // Remembered, so a reload (or a round trip through sign-in) comes back to this step.
-  if (state && state.step !== n) { state.step = n; save(); }
+  if (state && state.step !== n) { state.step = n; saveJSON(SESSION_KEY, state); }
   document.querySelectorAll("#builder .step").forEach((el) => el.classList.toggle("active", +el.dataset.step === n));
   document.querySelectorAll(".step-tab").forEach((el) => {
     const on = +el.dataset.step === n;
@@ -750,7 +750,45 @@ $("#builder").addEventListener("click", (e) => {
   goToStep(+btn.dataset.goto);
   $("#stepNav").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 });
-function save() { saveJSON(SESSION_KEY, state); }
+/* ---- Autosave ---------------------------------------------------------------
+   There's no Save button. The open project is kept as you work, and once you've
+   changed anything (or run a round) it's also in Your projects, updated in place,
+   most recent first. Opening a case you only look at doesn't add clutter.
+   The top bar says "Saving…" then "Saved". */
+let loadingProject = false, persistTimer = null, savedTimer = null;
+function save() {
+  if (state && !loadingProject) state.edited = true;
+  saveJSON(SESSION_KEY, state);
+  if (state?.edited && !loadingProject) queuePersist();
+}
+function queuePersist() {
+  const el = document.getElementById("saveState");
+  if (el) { el.textContent = "Saving…"; el.classList.add("on"); }
+  clearTimeout(persistTimer);
+  persistTimer = setTimeout(persistProject, 450);
+}
+function projectEntry(st) {
+  return { id: st.id, name: st.scenario.title?.trim() || "Untitled project", savedAt: Date.now(),
+    scenario: { ...st.scenario }, personas: st.personas, teams: st.teams, rounds: st.rounds,
+    ...(st.research ? { research: st.research } : {}), ...(st.format ? { format: st.format } : {}), ...projectExtras(st) };
+}
+function persistProject() {
+  if (!state?.id) return;
+  let list = loadJSON(SAVED_KEY, []).filter((x) => x.id !== state.id);
+  list.unshift(projectEntry(state));
+  list = list.slice(0, 20);
+  // If the browser's storage is full, let the oldest projects go before this one.
+  for (;;) {
+    try { localStorage.setItem(SAVED_KEY, JSON.stringify(list)); break; }
+    catch { if (list.length <= 1) break; list.pop(); }
+  }
+  const el = document.getElementById("saveState");
+  if (el) {
+    el.textContent = "Saved";
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => el.classList.remove("on"), 2200);
+  }
+}
 
 $("#scenTitle").addEventListener("input", (e) => { state.scenario.title = e.target.value; save(); renderDirectory(); renderTopbar(); });
 $("#scenBrief").addEventListener("input", (e) => { state.scenario.brief = e.target.value; save(); });
@@ -949,8 +987,13 @@ $("#personas").addEventListener("submit", (e) => {
 });
 $("#personas").addEventListener("click", (e) => {
   if (e.target.dataset.rm !== undefined) {
-    const gone = state.personas[+e.target.dataset.rm];
-    return reflowPersonas(() => state.personas.splice(state.personas.indexOf(gone), 1));
+    // No "are you sure?": it goes at once, and Undo puts them back where they were.
+    const gone = state.personas[+e.target.dataset.rm], at = state.personas.indexOf(gone);
+    reflowPersonas(() => state.personas.splice(at, 1));
+    return toast(`Removed ${gone.name || "a buyer"}.`, { action: { label: "Undo", onClick: () => {
+      if (state.personas.length >= PERSONA_LIMITS.maxPersonas || state.personas.includes(gone)) return;
+      reflowPersonas(() => state.personas.splice(Math.min(at, state.personas.length), 0, gone), { focusId: gone.id });
+    } } });
   }
   const add = e.target.closest("[data-add-to]");
   if (add) {
@@ -1414,7 +1457,14 @@ $("#brands").addEventListener("input", (e) => {
   state.teams[+el.dataset.i][el.dataset.f] = el.value; updateBrandCount(el); refreshTag(el); save(); renderPreview(); refreshWas(el); updateLoop(); refreshHint(el);
 });
 $("#brands").addEventListener("click", (e) => {
-  if (e.target.dataset.rm !== undefined) { state.teams.splice(+e.target.dataset.rm, 1); save(); renderBrands(); }
+  if (e.target.dataset.rm !== undefined) {
+    const at = +e.target.dataset.rm, gone = state.teams[at];
+    state.teams.splice(at, 1); save(); renderBrands();
+    toast(`Removed ${gone.brand || "a version"}.`, { action: { label: "Undo", onClick: () => {
+      if (state.teams.length >= LIMITS.maxTeams || state.teams.includes(gone) || state.teams.some((t) => t.slot === gone.slot)) return;
+      state.teams.splice(Math.min(at, state.teams.length), 0, gone); save(); renderBrands();
+    } } });
+  }
   if (e.target.id === "addBrand") {
     const used = new Set(state.teams.map((t) => t.slot));
     const slot = [0, 1, 2, 3].find((s) => !used.has(s));
@@ -1786,21 +1836,83 @@ document.addEventListener("click", (e) => {
 $("#run").addEventListener("click", runRound);
 $("#runBar").addEventListener("click", runRound);
 
+/* ---- Share and export -------------------------------------------------------
+   One box each. Share: a preview of the picture people will see, the link (made
+   once per round and kept), a copy button and exactly who can see what. Export:
+   the three ways to take a round away, each saying what it's for. */
+const shareLinks = {};   // project and round -> link, so sharing twice gives the same link
+const roundImageUrl = {};
+async function roundImage(idx) {
+  // Keyed by project too, so round 2 of one project never shows another's picture.
+  const key = `${state.id}:${idx}:${state.scenario.title || ""}`;
+  if (roundImageUrl[key]) return roundImageUrl[key];
+  const blob = await snapshot(roundCard(state.rounds[idx], { title: state.scenario.title?.trim() || "", roundNo: idx + 1 }));
+  roundImageUrl[key] = { blob, url: URL.createObjectURL(blob) };
+  return roundImageUrl[key];
+}
+async function makeShareLink(idx) {
+  const key = `${state.id}:${idx}`;
+  if (shareLinks[key]) return shareLinks[key];
+  // A shared round opens in the format the team is looking at now.
+  const round = { ...state.rounds[idx], format: formatOf(state.format) };
+  const res = await fetch("/api/share", { method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ round, meta: { title: state.scenario.title, brief: state.scenario.brief, round: idx + 1 } }) });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Couldn't make a share link. Try again in a moment.");
+  return (shareLinks[key] = `${location.origin}/shared.html?id=${data.id}`);
+}
 async function shareRound() {
-  const btn = $("#share");
-  btn.disabled = true;
-  try {
-    // A shared round opens in the format the team is looking at now.
-    const round = { ...state.rounds[state.rounds.length - 1], format: formatOf(state.format) };
-    const res = await fetch("/api/share", { method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ round, meta: { title: state.scenario.title, brief: state.scenario.brief, round: state.rounds.length } }) });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Couldn't make a share link. Try again in a moment.");
-    const url = `${location.origin}/shared.html?id=${data.id}`;
-    try { await navigator.clipboard.writeText(url); toast("Link copied. Anyone with it can see this round."); }
-    catch { toast(`Share link: ${url}`, { sticky: true }); }
-  } catch (err) { toast(err.message, { tone: "error" }); }
-  btn.disabled = false;
+  const idx = view.viewedIndex();
+  if (!state?.rounds?.[idx]) return;
+  const n = idx + 1;
+  await ask({
+    icon: "link", wide: true, title: `Share round ${n}`,
+    body: `Anyone with the link sees round ${n}'s report, read-only: the ads, the buyers and what they decided. Not your other rounds, and nobody can change anything.`,
+    art: `<div class="shr">
+      <div class="shr-pic"><img alt="What people will see: round ${n}'s verdict and the room of buyers" hidden></div>
+      <div class="shr-link"><input readonly value="Making a link…" aria-label="Share link"><button type="button" class="btn-primary" data-shr-copy disabled>Copy link</button></div>
+    </div>`,
+    actions: [{ label: "Save image", keep: true, onClick: () => saveImage() }, { label: "Done", value: true }],
+    onOpen: async (dlg) => {
+      const input = dlg.querySelector(".shr-link input"), copy = dlg.querySelector("[data-shr-copy]"), img = dlg.querySelector(".shr-pic img");
+      roundImage(idx).then(({ url }) => { img.src = url; img.hidden = false; }).catch(() => {});
+      try {
+        input.value = await makeShareLink(idx);
+        copy.disabled = false;
+      } catch (err) { input.value = err.message; }
+      copy.addEventListener("click", async () => {
+        try { await navigator.clipboard.writeText(input.value); } catch { input.select(); document.execCommand?.("copy"); }
+        copy.textContent = "Copied"; setTimeout(() => { copy.textContent = "Copy link"; }, 1600);
+      });
+      input.addEventListener("focus", () => input.select());
+    },
+  });
+}
+async function exportRound() {
+  const idx = view.viewedIndex();
+  if (!state?.rounds?.[idx]) return;
+  const opt = (k, title, what) => `<button type="button" class="exp-opt" data-exp="${k}"><b>${title}</b><span>${what}</span></button>`;
+  await ask({
+    icon: "download", wide: true, title: `Export round ${idx + 1}`,
+    art: `<div class="exp">
+      <div class="shr-pic"><img alt="Round ${idx + 1} as an image" hidden></div>
+      <div class="exp-opts">
+        ${opt("image", "Image", "The verdict and the room of buyers, for a slide or a post.")}
+        ${opt("pdf", "PDF", "The whole report, ready to print or send.")}
+        ${opt("csv", "CSV", "Every buyer's answers, for a spreadsheet. All rounds.")}
+      </div></div>`,
+    actions: [{ label: "Close", value: null }],
+    onOpen: (dlg, close) => {
+      roundImage(idx).then(({ url }) => { const img = dlg.querySelector(".shr-pic img"); img.src = url; img.hidden = false; }).catch(() => {});
+      dlg.querySelector(".exp-opts").addEventListener("click", (e) => {
+        const k = e.target.closest("[data-exp]")?.dataset.exp; if (!k) return;
+        close(k);
+        if (k === "image") saveImage();
+        if (k === "pdf") setTimeout(() => window.print(), 200);
+        if (k === "csv") exportCsv(state.rounds, "market-arena-results.csv");
+      });
+    },
+  });
 }
 $("#share").addEventListener("click", shareRound);
 

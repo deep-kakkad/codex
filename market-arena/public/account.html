@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wdth,wght@0,75..100,400..700;1,75..100,400..700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
-<title>Usage and billing | Market Arena</title>
+<title>Your account | Market Arena</title>
 <meta name="robots" content="noindex">
 </head>
 <body>
@@ -16,19 +16,26 @@
   <div class="wrap tb-inner">
     <a class="tb-brand" href="./" aria-label="Market Arena home"><span id="logoSlot"></span><span class="tb-name">Market Arena</span></a>
     <span class="tb-sep brand-sep" aria-hidden="true">/</span>
-    <span class="tb-here">Usage and billing</span>
+    <span class="tb-here">Your account</span>
     <div class="tb-spacer"></div>
     <div class="tb-actions"><div class="acct" id="acctBar"></div><a class="btn" href="practice.html">Back to your project</a></div>
   </div>
 </header>
 
 <main class="wrap page page-narrow">
-  <div class="page-head acct-head"><h1>Usage and billing</h1></div>
+  <div class="page-head acct-head"><h1>Your account</h1></div>
   <div id="signedOut" class="hidden empty">
     <p>Sign in to see your credits and what you've used them on.</p>
     <button class="btn-primary" type="button" data-signin-page>Sign in</button>
   </div>
   <div id="signedIn" class="hidden">
+    <section class="price-sec acct-me" id="account" aria-labelledby="meH">
+      <h2 class="group-h" id="meH">Account</h2>
+      <div class="acct-row"><span><span class="acct-k">Signed in as</span><b id="meEmail"></b></span>
+        <button class="btn" type="button" id="signOutBtn">Sign out</button></div>
+      <p class="sub acct-note">Your projects are saved in this browser as you work. Sign in on another device and you'll have your credits there, but not these projects yet.</p>
+    </section>
+    <h2 class="group-h acct-usage-h" id="usage">Usage and billing</h2>
     <section class="balance">
       <div><span class="bal-k">Credits left</span><span class="bal-v" id="bal">0</span></div>
       <p class="bal-note" id="balNote"></p>
@@ -47,7 +54,7 @@
 
 <script type="module">
 import { LOGO_MARK } from "./icons.js";
-import { initAccount, mountAccountBar, onAccountChange, open as openSignIn, account } from "./account.js";
+import { initAccount, mountAccountBar, onAccountChange, open as openSignIn, account, signOut } from "./account.js";
 import { packCard } from "./billing-ui.js";
 import { toast } from "./ui.js";
 const $ = (s) => document.querySelector(s);
@@ -69,7 +76,9 @@ async function load() {
   return d.balance;
 }
 
+$("#signOutBtn").addEventListener("click", signOut);
 onAccountChange((m) => {
+  if (m.signedIn) $("#meEmail").textContent = m.email || "";
   $("#signedOut").classList.toggle("hidden", m.signedIn);
   $("#signedIn").classList.toggle("hidden", !m.signedIn);
   if (!m.signedIn) return;
