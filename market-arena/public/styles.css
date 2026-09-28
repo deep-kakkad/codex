@@ -2001,3 +2001,14 @@ body.has-loopbar .toasts{bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 .ds-steps li.done{color:var(--muted)}
 .ds-steps li.done i{background:var(--good);box-shadow:none;color:#fff}
 .ds-steps li.done i::before{content:"";width:8px;height:5px;margin-top:-2px;border-left:1.8px solid #fff;border-bottom:1.8px solid #fff;transform:rotate(-45deg)}
+
+/* Common region: each group of buyers sits on its own soft tint of the group's
+   colour, so a group reads as one thing, in the builder and in the report. */
+.segblock{padding:14px 14px 16px;border-radius:var(--r-sheet);background:color-mix(in srgb,var(--seg) 6%,var(--canvas));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--seg) 14%,transparent)}
+.segblock .segname{padding:0 2px 10px;border-bottom:1px solid color-mix(in srgb,var(--seg) 18%,transparent)}
+.segblock .padd-seg{background:color-mix(in srgb,#fff 55%,transparent)}
+.segblocks{gap:16px}
+.seg{padding:12px 10px 12px;border-radius:var(--r-sheet);background:color-mix(in srgb,var(--seg) 6%,var(--canvas));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--seg) 14%,transparent)}
+.seg h3{display:flex;align-items:center;gap:8px;padding:0 4px 8px;border-bottom:1px solid color-mix(in srgb,var(--seg) 18%,transparent);color:var(--ink)}
+.seg h3 .segdot{width:8px;height:8px}
+@media print{.segblock,.seg{background:none;box-shadow:none}}

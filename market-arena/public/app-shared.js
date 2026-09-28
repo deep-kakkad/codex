@@ -943,8 +943,8 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     renderExplain(r, prev);
     renderPitches(r);
 
-    $("#segments").innerHTML = r.segments.map((s) => `
-      <div class="seg"><h3>${esc(s)}</h3><div class="people">
+    $("#segments").innerHTML = r.segments.map((s, si) => `
+      <div class="seg" style="--seg:${segmentTint(si)}"><h3><span class="segdot" aria-hidden="true"></span>${esc(s)}</h3><div class="people">
         ${r.customers.filter((c) => c.segment === s).map((c, k) => {
           const undecided = isTossup(c);
           // A card with the decision on the front and the person on the back: turning
