@@ -46,6 +46,9 @@ export function initDataSheet({ getState, apply, market }) {
     scrim.classList.remove("open"); el.classList.remove("open");
     lastFocus?.focus?.();
   }
+  // Where you are in the three steps, with the line between them filling as you go.
+  const steps = (at) => `<ol class="ds-steps" aria-label="Step ${at} of 3">${["Paste your notes", "Draft buyers", "Keep the ones you want"].map((t, i) =>
+    `<li class="${i + 1 < at ? "done" : i + 1 === at ? "now" : ""}"${i + 1 === at ? ' aria-current="step"' : ""}><i aria-hidden="true"></i><span>${t}</span></li>`).join("")}</ol>`;
   const head = (kick, title) => `<div class="drawer-head"><div class="dh"><span class="drawer-kick">${kick}</span><h3>${title}</h3></div><button class="drawer-x" type="button" data-ds-close aria-label="Close">×</button></div>`;
 
   function paintPaste(error = "") {
@@ -54,7 +57,7 @@ export function initDataSheet({ getState, apply, market }) {
     const me = account();
     const cost = me.costs?.ask ?? 10;
     el.innerHTML = `${head("Optional", "Turn your customer notes into buyers")}
-      <div class="drawer-body ds">
+      <div class="drawer-body ds">${steps(1)}
         <p class="drawer-lede">Paste what you already know about your customers: interview notes, reviews, survey answers, sales-call notes. We draft buyers from it. You check every one before they join.</p>
         <label class="ds-lab" for="dsText"><span>Your notes</span><span class="count" id="dsCount"></span></label>
         <textarea id="dsText" class="field ds-text" maxlength="${TEXT_MAX}" placeholder="Paste reviews, interview notes or survey answers here. The messier, the better.">${esc(text)}</textarea>
@@ -83,7 +86,7 @@ export function initDataSheet({ getState, apply, market }) {
     const st = getState();
     const segs = keepSegs ? [...new Set(st.personas.map((p) => p.segment).filter(Boolean))] : [];
     el.innerHTML = `${head("Drafting", `Reading your notes`)}
-      <div class="drawer-body ds"><div class="ds-pmark" id="dsPmark" aria-hidden="true"></div>
+      <div class="drawer-body ds">${steps(2)}<div class="ds-pmark" id="dsPmark" aria-hidden="true"></div>
         <p class="drawer-lede" role="status">Drafting ${count} buyers and checking every line they quote against your notes, word for word. Usually under ten seconds.</p>
         ${Array.from({ length: 3 }, () => `<div class="dsb dsb-skel"><span class="skel" style="width:44px;height:44px;border-radius:50%"></span><div><span class="skel" style="height:14px;width:40%;margin-bottom:10px"></span><span class="skel" style="height:10px;width:90%;margin-bottom:6px"></span><span class="skel" style="height:10px;width:70%"></span></div></div>`).join("")}</div>`;
     // While the buyers are drafted, a crowd of dots keeps gathering into the mark.
@@ -109,7 +112,7 @@ export function initDataSheet({ getState, apply, market }) {
     const canAdd = kept > 0 && st.personas.length + kept <= L.maxPersonas;
     const canReplace = kept >= L.minPersonas;
     el.innerHTML = `${head("Review", `${draft.buyers.length} buyers drafted`)}
-      <div class="drawer-body ds">
+      <div class="drawer-body ds">${steps(3)}
         <p class="drawer-lede">${esc(draft.summary || "Drafted from your notes.")} Every line under a buyer is copied straight from your text. Edit anything, and untick anyone you don't want.</p>
         ${draft.gaps ? `<p class="ds-gaps"><b>What your notes don't cover:</b> ${esc(draft.gaps)}</p>` : ""}
         ${draft.buyers.length < count ? `<p class="ds-note">You asked for ${count}. Your notes had ${draft.buyers.length} genuinely different people in them.</p>` : ""}

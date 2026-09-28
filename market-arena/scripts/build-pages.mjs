@@ -282,6 +282,8 @@ const CHANGES = [
     ["Projects save themselves", "No Save button. Once you change anything, the project is in Your projects, kept up to date as you work, with “Saved” next to its name."],
     ["Undo instead of “are you sure?”", "Removing a buyer or a version happens at once, with Undo to put it back where it was."],
     ["One place to share and export", "Share shows the picture people will see, the link and exactly who can see what. Export puts image, PDF and CSV in one box."],
+    ["See how far along you are", "The builder's steps tick when done and say “2 of 3 filled”. The round bar has a line that fills as you change each version. Buyers from your data shows its three steps."],
+    ["Each group's top pick, at a glance", "In the groups table, the number to read first in each row is marked."],
     ["Staying signed in", "You now stay signed in between visits and after closing the browser."],
     ["Rounds need a free account", "Rounds are still free. If you press Run while signed out, your project waits and the round runs the moment you're in."],
     ["Smaller things", "Case cards show each case's real ads. Paid extras are edged in gold. Our own dialogs replace the browser's. Buyers you can turn over to read their profile. A 3D room on the homepage. Use-case pages, and this changelog."],

@@ -982,7 +982,14 @@ export function createResultsView({ readOnly = false, onFormat = null, getFormat
     const heat = (v, c) => `background:color-mix(in srgb, ${c} ${Math.round(v * HEAT_MAX.seg)}%, var(--paper))`;
     $("#heatKey").innerHTML = heatKey("share", "share of that segment");
     $("#heat").innerHTML = `<thead><tr><th scope="col">Group</th>${r.brands.map((b) => `<th scope="col">${esc(b.brand)}</th>`).join("")}<th scope="col">Bought nothing</th></tr></thead><tbody>` +
-      r.segments.map((s, si) => `<tr><th scope="row">${esc(s)}</th>${r.brands.map((b, i) => `<td class="cell num probe" data-investigate="seg:${si}:${b.id}" role="button" tabindex="0" title="See these buyers" style="${heat(b.bySegment[s], HEX[r.slots[i]])}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell num probe" data-investigate="seg:${si}:none" role="button" tabindex="0" title="See these buyers" style="${heat(r.noPurchase.bySegment[s], "#8E8E95")}">${pct(r.noPurchase.bySegment[s])}</td></tr>`).join("") + "</tbody>";
+      r.segments.map((s, si) => {
+        // The number to read first in each row: whatever this group picked most,
+        // walking away included. Equal (to the percent) means both are marked.
+        const top = Math.max(...r.brands.map((b) => Math.round(b.bySegment[s] * 100)), Math.round(r.noPurchase.bySegment[s] * 100));
+        const isTop = (v) => Math.round(v * 100) === top;
+        const mark = (v, name) => (isTop(v) ? ` top" aria-label="${pct(v)}, ${esc(name)}, the top pick in this group` : "");
+        return `<tr><th scope="row">${esc(s)}</th>${r.brands.map((b, i) => `<td class="cell num probe${mark(b.bySegment[s], b.brand)}" data-investigate="seg:${si}:${b.id}" role="button" tabindex="0" title="See these buyers" style="${heat(b.bySegment[s], HEX[r.slots[i]])};--tc:${HEX[r.slots[i]]}">${pct(b.bySegment[s])}</td>`).join("")}<td class="cell num probe${mark(r.noPurchase.bySegment[s], "bought nothing")}" data-investigate="seg:${si}:none" role="button" tabindex="0" title="See these buyers" style="${heat(r.noPurchase.bySegment[s], "#8E8E95")};--tc:#8E8E95">${pct(r.noPurchase.bySegment[s])}</td></tr>`;
+      }).join("") + "</tbody>";
 
     const brandIds = r.brands.map((b) => b.id);
     $("#segInsights").innerHTML = `<ul class="seginsights">` + r.segments.map((s) => {

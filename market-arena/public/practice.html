@@ -56,9 +56,9 @@
   <div id="builder" class="hidden">
     <div class="wrap">
       <div class="steps" id="stepNav" role="tablist" aria-label="Set up your arena">
-        <button class="step-tab" data-step="1" role="tab"><span class="sn">1</span>Market</button>
-        <button class="step-tab" data-step="2" role="tab"><span class="sn">2</span>Buyers</button>
-        <button class="step-tab" data-step="3" role="tab"><span class="sn">3</span>Versions</button>
+        <button class="step-tab" data-step="1" role="tab"><span class="sn">1</span><span class="st-name">Market</span><span class="st-meta"></span></button>
+        <button class="step-tab" data-step="2" role="tab"><span class="sn">2</span><span class="st-name">Buyers</span><span class="st-meta"></span></button>
+        <button class="step-tab" data-step="3" role="tab"><span class="sn">3</span><span class="st-name">Versions</span><span class="st-meta"></span></button>
       </div>
     </div>
 
@@ -387,6 +387,7 @@ function setStatus(text, isError) {
 let running = false;
 let focusChange = null;   // { slot, field } the user chose from a change card (see the loop)
 let loopBar = null;       // the round bar, made on first use
+let lastProgress = null;  // where the round bar's progress line was last drawn
 const inProject = () => Boolean(state) && $("#pickerSection").classList.contains("hidden");
 const viewedRoundIndex = () => view.viewedIndex();
 const editorOpen = () => !$("#builder").classList.contains("collapsed");
@@ -667,6 +668,7 @@ function showBuilder() {
   renderPersonas();
   renderBrands();
   renderResearchCard();
+  renderStepTicks();
 }
 
 /* ---- Public research ------------------------------------------------------
@@ -741,6 +743,26 @@ function goToStep(n) {
     el.classList.toggle("active", on); el.setAttribute("aria-selected", String(on));
   });
 }
+// Each step says how far along it is: a tick when it's done, and on Versions how
+// many are written ("2 of 3 filled"), so the finish line is always in sight.
+function renderStepTicks() {
+  if (!state || !LIMITS) return;
+  const filled = (t) => ["brand", "headline", "valueProp", "price"].every((f) => String(t[f] || "").trim())
+    && extrasOn().every((k) => String(t.extras?.[k] || "").trim());
+  const done = {
+    1: Boolean(state.scenario.title?.trim()),
+    2: !findPersonaProblem(state.personas.map(({ id, name, segment, profile }) => ({ id, name, segment, profile }))),
+    3: state.teams.length >= LIMITS.minTeams && state.teams.every(filled),
+  };
+  const nFilled = state.teams.filter(filled).length;
+  document.querySelectorAll("#stepNav .step-tab").forEach((tab) => {
+    const n = +tab.dataset.step;
+    tab.classList.toggle("done", done[n]);
+    const meta = tab.querySelector(".st-meta");
+    meta.textContent = n === 3 && !done[3] ? `${nFilled} of ${state.teams.length} filled` : "";
+    tab.setAttribute("aria-label", `${tab.querySelector(".st-name").textContent}${done[n] ? ", done" : n === 3 ? `, ${nFilled} of ${state.teams.length} filled` : ""}`);
+  });
+}
 $("#stepNav").addEventListener("click", (e) => {
   const btn = e.target.closest("[data-step]"); if (!btn) return;
   goToStep(+btn.dataset.step);
@@ -758,6 +780,7 @@ $("#builder").addEventListener("click", (e) => {
 let loadingProject = false, persistTimer = null, savedTimer = null;
 function save() {
   if (state && !loadingProject) state.edited = true;
+  renderStepTicks();
   saveJSON(SESSION_KEY, state);
   if (state?.edited && !loadingProject) queuePersist();
 }
@@ -1787,17 +1810,28 @@ function updateLoop() {
     : step === 1 ? `<b>Round ${n} is in.</b><span>See what put buyers off, then pick one thing to change per version.</span>`
     : step === 2 ? `<b>Change one thing per version.</b><span>Nothing has changed since round ${n} yet.</span>`
     : `<b>Round ${next}: ${ls.count} change${ls.count === 1 ? "" : "s"}</b><span>${summary}</span>`;
+  // How close round N+1 is: a thin line under the steps that fills as you go, most
+  // of the way once there are changes, the rest as each version gets one.
+  const changedVersions = ls.versions.filter((v) => v.fields === null || v.fields.length).length;
+  const progress = running ? 100 : step === 1 ? 18 : step === 2 ? 48 : 70 + Math.round(28 * Math.min(1, changedVersions / Math.max(1, ls.versions.length)));
   loopBar.innerHTML = `<div class="lb-in">
+    <div class="lb-railwrap">
     <ol class="lb-rail" data-step="${step}" aria-label="Steps to round ${next}">
       <li class="${step > 1 ? "done" : "now"}"><i></i>Read round ${n}</li>
       <li class="${step > 2 ? "done" : step === 2 ? "now" : ""}"><i></i>Pick a change</li>
       <li class="${step === 3 ? "now" : ""}"><i></i>Run round ${next}</li>
     </ol>
+    <span class="lb-prog" role="progressbar" aria-label="Progress to round ${next}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><i style="width:${lastProgress ?? progress}%"></i></span>
+    </div>
     <div class="lb-msg">${msg}${warn.length && !running ? `<span class="lb-warn">${warn[0]}</span>` : ""}</div>
     ${step === 1 && !running
       ? `<button type="button" class="btn-primary lb-go" data-lb="pick">Pick a change</button>`
       : `<button type="button" class="${step === 3 ? "btn-primary" : "btn"} lb-go" data-lb="run"${running ? " disabled" : ""}>${running ? "Running…" : `Run round ${next}`}</button>`}
   </div>`;
+  // Glide from where the line was to where it is now.
+  const bar = loopBar.querySelector(".lb-prog i");
+  if (bar && lastProgress !== progress) requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.width = `${progress}%`; }));
+  lastProgress = progress;
   // The change cards in the report mirror what's been done.
   document.querySelectorAll("#loopCards .lc[data-lc-slot]").forEach((card) => {
     const v = ls.versions.find((x) => x.t.slot === +card.dataset.lcSlot);
