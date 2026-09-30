@@ -24,14 +24,7 @@ export type Block =
  * ai_allowed  any AI tool may be used; candidate submits the transcript and is graded on judgment
  * past_work   a real decision from their career, verified live on the call
  */
-export type StageKind =
-  | 'warmup'
-  | 'scenario'
-  | 'decision'
-  | 'branch'
-  | 'critique'
-  | 'ai_allowed'
-  | 'past_work';
+export type StageKind = 'warmup' | 'scenario' | 'decision' | 'branch' | 'critique' | 'ai_allowed' | 'past_work';
 
 export const STAGE_KIND_LABEL: Record<StageKind, string> = {
   warmup: 'Warm-up',

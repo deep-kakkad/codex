@@ -98,7 +98,6 @@ export function currentPhase(deps: FlowDeps, ctx: CandidateContext): CandidatePh
         next: {
           index,
           kind: stage.kind,
-          title: stage.title,
           timeLimitSec: scaledTimeLimit(stage, ctx.candidate.time_multiplier),
         },
       };
@@ -144,16 +143,24 @@ export function start(deps: FlowDeps, ctx: CandidateContext, idName: string): Ca
   return currentPhase(deps, ctx);
 }
 
-/** Reveals the next stage and starts its timer. Future stages are never sent early. */
-export function reveal(deps: FlowDeps, ctx: CandidateContext, stageId: string): CandidatePhase {
+/**
+ * Reveals the next stage and starts its timer. Candidates ask for a position,
+ * not a stage id, so nothing about upcoming questions is ever sent early.
+ */
+export function revealNext(deps: FlowDeps, ctx: CandidateContext, index: number): CandidatePhase {
   return transaction(deps.db, () => {
     const phase = currentPhase(deps, ctx);
-    if (phase.phase === 'stage' && phase.stage.id === stageId) return phase;
-    if (phase.phase !== 'ready') throw conflict('This question is not available');
-    const stage = ctx.family.stages[phase.next.index];
-    if (stage.id !== stageId) throw conflict('Questions have to be answered in order');
+    // Idempotent: a double click or a retry returns the already-open stage.
+    if (phase.phase === 'stage' && phase.stage.index === index) return phase;
+    if (phase.phase !== 'ready' || phase.next.index !== index) {
+      throw conflict('Questions have to be answered in order');
+    }
+    const stage = ctx.family.stages[index];
 
-    const previous = responsesFor(deps.db, ctx.candidate.id).map((r) => ({ stageId: r.stage_id, choiceId: r.choice_id }));
+    const previous = responsesFor(deps.db, ctx.candidate.id).map((r) => ({
+      stageId: r.stage_id,
+      choiceId: r.choice_id,
+    }));
     const stageCtx = buildContext(ctx.variant, ctx.assessment.currency, choicesFrom(previous));
     const view = renderStageForCandidate(stage, phase.next.index, stageCtx, ctx.candidate.time_multiplier);
     const now = deps.now();

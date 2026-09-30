@@ -11,13 +11,13 @@ import {
   currentPhase,
   loadByToken,
   renderBrief,
-  reveal,
+  revealNext,
   saveAudio,
   saveDraft,
   start,
   submit,
 } from '../candidateFlow';
-import { badRequest, str } from '../http';
+import { badRequest, jsonBody, str } from '../http';
 
 function session(deps: FlowDeps, ctx: CandidateContext, state: CandidatePhase): CandidateSession {
   const minutes = ctx.family.stages.map((stage) => scaledTimeLimit(stage, ctx.candidate.time_multiplier) / 60);
@@ -42,7 +42,7 @@ function session(deps: FlowDeps, ctx: CandidateContext, state: CandidatePhase): 
 
 export function candidateRoutes(deps: AppDeps) {
   const router = Router();
-  const json = express.json({ limit: '512kb' });
+  const json = jsonBody('512kb');
 
   router.get('/:token', (req, res) => {
     const ctx = loadByToken(deps.db, req.params.token);
@@ -56,14 +56,16 @@ export function candidateRoutes(deps: AppDeps) {
     res.json(session(deps, ctx, start(deps, ctx, idName)));
   });
 
-  router.post('/:token/stages/:stageId/reveal', (req, res) => {
+  router.post('/:token/next', json, (req, res) => {
     const ctx = loadByToken(deps.db, req.params.token);
-    res.json(session(deps, ctx, reveal(deps, ctx, req.params.stageId)));
+    const index = Number(req.body.index);
+    if (!Number.isInteger(index) || index < 0) throw badRequest('Question number is required');
+    res.json(session(deps, ctx, revealNext(deps, ctx, index)));
   });
 
   router.put('/:token/stages/:stageId/draft', json, (req, res) => {
     const ctx = loadByToken(deps.db, req.params.token);
-    saveDraft(deps, ctx, req.params.stageId, req.body ?? {});
+    saveDraft(deps, ctx, req.params.stageId, req.body);
     res.json({ ok: true, serverNow: deps.now() });
   });
 
@@ -79,7 +81,7 @@ export function candidateRoutes(deps: AppDeps) {
 
   router.post('/:token/stages/:stageId/submit', json, (req, res) => {
     const ctx = loadByToken(deps.db, req.params.token);
-    res.json(session(deps, ctx, submit(deps, ctx, req.params.stageId, req.body ?? {})));
+    res.json(session(deps, ctx, submit(deps, ctx, req.params.stageId, req.body)));
   });
 
   return router;

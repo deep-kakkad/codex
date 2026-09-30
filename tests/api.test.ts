@@ -55,17 +55,33 @@ async function answerCurrent(token: string, session: CandidateSession, extra: Re
     ...extra,
   };
   if (stage.choices && !body.choiceId) body.choiceId = stage.choices[0].id;
-  const res = await request(app).post(`${c(token)}/stages/${stage.id}/submit`).send(body).expect(200);
+  const res = await request(app)
+    .post(`${c(token)}/stages/${stage.id}/submit`)
+    .send(body)
+    .expect(200);
   return res.body as CandidateSession;
 }
 
 /** Reveals and answers every remaining stage. */
 async function completeAll(token: string, choices: Record<string, string> = {}) {
   let session = (await request(app).get(c(token)).expect(200)).body as CandidateSession;
-  const stageIds = ['warmup', 'first-read', 'budget-cut', 'two-weeks-later', 'agency-plan', 'founder-update', 'real-decision'];
+  const stageIds = [
+    'warmup',
+    'first-read',
+    'budget-cut',
+    'two-weeks-later',
+    'agency-plan',
+    'founder-update',
+    'real-decision',
+  ];
   for (const stageId of stageIds) {
     if (session.state.phase === 'done') break;
-    session = (await request(app).post(`${c(token)}/stages/${stageId}/reveal`).expect(200)).body;
+    session = (
+      await request(app)
+        .post(`${c(token)}/next`)
+        .send({ index: stageIds.indexOf(stageId) })
+        .expect(200)
+    ).body;
     session = await answerCurrent(token, session, choices[stageId] ? { choiceId: choices[stageId] } : {});
   }
   return session;
@@ -77,9 +93,18 @@ describe('auth', () => {
     const me = await agent.get('/api/auth/me').expect(200);
     expect(me.body.user).toMatchObject({ name: 'Maya', role: 'manager', orgName: 'Acme' });
 
-    await request(app).post('/api/auth/login').send({ email: 'maya@acme.test', password: 'wrong-password' }).expect(401);
+    await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'maya@acme.test', password: 'wrong-password' })
+      .expect(401);
     await request(app).post('/api/auth/login').send({ email: 'maya@acme.test', password: 'correct-horse' }).expect(200);
     await request(app).get('/api/assessments').expect(401);
+  });
+
+  it('answers malformed or non-JSON bodies with 400, not 500', async () => {
+    await request(app).post('/api/auth/login').type('form').send('email=a@b.co&password=x').expect(400);
+    await request(app).post('/api/auth/login').set('Content-Type', 'application/json').send('{bad json').expect(400);
+    await request(app).post('/api/auth/signup').send([1, 2]).expect(400);
   });
 
   it('rejects duplicate emails', async () => {
@@ -98,17 +123,33 @@ describe('candidate flow', () => {
     expect(intro.state.phase).toBe('intro');
     expect(intro.brief).toBeNull();
 
-    await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao' }).expect(400);
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao' })
+      .expect(400);
     const started = (
-      await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao', consent: true }).expect(200)
+      await request(app)
+        .post(`${c(candidate.token)}/start`)
+        .send({ idName: 'Asha Rao', consent: true })
+        .expect(200)
     ).body as CandidateSession;
     expect(started.state).toMatchObject({ phase: 'ready', next: { index: 0, kind: 'warmup' } });
+    // Nothing about an upcoming question is sent before it opens.
+    expect(JSON.stringify(started.state)).not.toMatch(/title|warm-?up question|prompt/i);
     expect(started.brief?.length).toBeGreaterThan(0);
 
     // Cannot skip ahead.
-    await request(app).post(`${c(candidate.token)}/stages/first-read/reveal`).expect(409);
+    await request(app)
+      .post(`${c(candidate.token)}/next`)
+      .send({ index: 1 })
+      .expect(409);
 
-    const warmup = (await request(app).post(`${c(candidate.token)}/stages/warmup/reveal`).expect(200)).body;
+    const warmup = (
+      await request(app)
+        .post(`${c(candidate.token)}/next`)
+        .send({ index: 0 })
+        .expect(200)
+    ).body;
     expect(warmup.state.phase).toBe('stage');
     const raw = JSON.stringify(warmup);
     expect(raw).not.toContain('reviewerGuide');
@@ -117,37 +158,69 @@ describe('candidate flow', () => {
 
     // Revealing the same stage twice is idempotent and keeps the deadline.
     clock += 5_000;
-    const again = (await request(app).post(`${c(candidate.token)}/stages/warmup/reveal`).expect(200)).body;
+    const again = (
+      await request(app)
+        .post(`${c(candidate.token)}/next`)
+        .send({ index: 0 })
+        .expect(200)
+    ).body;
     expect(again.state.deadlineAt).toBe(warmup.state.deadlineAt);
 
     // Empty answers are rejected unless time ran out.
-    await request(app).post(`${c(candidate.token)}/stages/warmup/submit`).send({}).expect(400);
+    await request(app)
+      .post(`${c(candidate.token)}/stages/warmup/submit`)
+      .send({})
+      .expect(400);
     const next = await answerCurrent(candidate.token, warmup);
     expect(next.state).toMatchObject({ phase: 'ready', next: { index: 1 } });
   });
 
   it('resolves the branch prompt from the earlier decision', async () => {
     const { candidate } = await setup();
-    await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao', consent: true });
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
     let session: CandidateSession | undefined;
-    for (const stageId of ['warmup', 'first-read', 'budget-cut']) {
-      session = (await request(app).post(`${c(candidate.token)}/stages/${stageId}/reveal`).expect(200)).body;
-      session = await answerCurrent(candidate.token, session!, stageId === 'budget-cut' ? { choiceId: 'influencers' } : {});
+    for (const [index, stageId] of ['warmup', 'first-read', 'budget-cut'].entries()) {
+      session = (
+        await request(app)
+          .post(`${c(candidate.token)}/next`)
+          .send({ index })
+          .expect(200)
+      ).body;
+      session = await answerCurrent(
+        candidate.token,
+        session!,
+        stageId === 'budget-cut' ? { choiceId: 'influencers' } : {},
+      );
     }
-    const branch = (await request(app).post(`${c(candidate.token)}/stages/two-weeks-later/reveal`).expect(200))
-      .body as CandidateSession;
+    const branch = (
+      await request(app)
+        .post(`${c(candidate.token)}/next`)
+        .send({ index: 3 })
+        .expect(200)
+    ).body as CandidateSession;
     if (branch.state.phase !== 'stage') throw new Error('expected stage');
     expect(JSON.stringify(branch.state.stage.prompt)).toContain('Cancel all the contracts');
   });
 
   it('requires a choice on decision stages', async () => {
     const { candidate } = await setup();
-    await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao', consent: true });
-    for (const stageId of ['warmup', 'first-read']) {
-      const s = (await request(app).post(`${c(candidate.token)}/stages/${stageId}/reveal`)).body;
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    for (const index of [0, 1]) {
+      const s = (
+        await request(app)
+          .post(`${c(candidate.token)}/next`)
+          .send({ index })
+      ).body;
       await answerCurrent(candidate.token, s);
     }
-    await request(app).post(`${c(candidate.token)}/stages/budget-cut/reveal`).expect(200);
+    await request(app)
+      .post(`${c(candidate.token)}/next`)
+      .send({ index: 2 })
+      .expect(200);
     await request(app)
       .post(`${c(candidate.token)}/stages/budget-cut/submit`)
       .send({ text: 'Cut Meta' })
@@ -160,14 +233,26 @@ describe('candidate flow', () => {
 
   it('closes a stage with the autosaved draft once time and grace run out', async () => {
     const { candidate, manager } = await setup();
-    await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao', consent: true });
-    const warmup = (await request(app).post(`${c(candidate.token)}/stages/warmup/reveal`)).body as CandidateSession;
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    const warmup = (
+      await request(app)
+        .post(`${c(candidate.token)}/next`)
+        .send({ index: 0 })
+    ).body as CandidateSession;
     if (warmup.state.phase !== 'stage') throw new Error('expected stage');
 
-    await request(app).put(`${c(candidate.token)}/stages/warmup/draft`).send({ text: 'half an answer' }).expect(200);
+    await request(app)
+      .put(`${c(candidate.token)}/stages/warmup/draft`)
+      .send({ text: 'half an answer' })
+      .expect(200);
 
     clock = warmup.state.deadlineAt + SUBMIT_GRACE_MS + 1;
-    await request(app).post(`${c(candidate.token)}/stages/warmup/submit`).send({ text: 'too late' }).expect(409);
+    await request(app)
+      .post(`${c(candidate.token)}/stages/warmup/submit`)
+      .send({ text: 'too late' })
+      .expect(409);
     const after = (await request(app).get(c(candidate.token))).body as CandidateSession;
     expect(after.state).toMatchObject({ phase: 'ready', next: { index: 1 } });
 
@@ -177,8 +262,14 @@ describe('candidate flow', () => {
 
   it('accepts a submission inside the grace window and records the overtime', async () => {
     const { candidate, manager } = await setup();
-    await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao', consent: true });
-    const warmup = (await request(app).post(`${c(candidate.token)}/stages/warmup/reveal`)).body as CandidateSession;
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    const warmup = (
+      await request(app)
+        .post(`${c(candidate.token)}/next`)
+        .send({ index: 0 })
+    ).body as CandidateSession;
     if (warmup.state.phase !== 'stage') throw new Error('expected stage');
     clock = warmup.state.deadlineAt + 20_000;
     await request(app)
@@ -195,16 +286,26 @@ describe('candidate flow', () => {
       .post(`/api/assessments/${assessmentId}/candidates`)
       .send({ name: 'Ravi', email: 'ravi@example.com', timeMultiplier: 1.5 })
       .expect(201);
-    await request(app).post(`${c(body.candidate.token)}/start`).send({ idName: 'Ravi', consent: true });
-    const s = (await request(app).post(`${c(body.candidate.token)}/stages/warmup/reveal`)).body;
+    await request(app)
+      .post(`${c(body.candidate.token)}/start`)
+      .send({ idName: 'Ravi', consent: true });
+    const s = (
+      await request(app)
+        .post(`${c(body.candidate.token)}/next`)
+        .send({ index: 0 })
+    ).body;
     expect(s.state.stage.timeLimitSec).toBe(180);
     expect(s.state.deadlineAt - s.serverNow).toBe(180_000);
   });
 
   it('stores voice notes and serves them only to the right org', async () => {
     const { candidate, manager } = await setup();
-    await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao', consent: true });
-    await request(app).post(`${c(candidate.token)}/stages/warmup/reveal`);
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    await request(app)
+      .post(`${c(candidate.token)}/next`)
+      .send({ index: 0 });
     await request(app)
       .post(`${c(candidate.token)}/stages/warmup/audio?seconds=12`)
       .set('Content-Type', 'audio/webm')
@@ -216,7 +317,10 @@ describe('candidate flow', () => {
       .send('nope')
       .expect(400);
     // A voice note alone is a valid answer.
-    await request(app).post(`${c(candidate.token)}/stages/warmup/submit`).send({}).expect(200);
+    await request(app)
+      .post(`${c(candidate.token)}/stages/warmup/submit`)
+      .send({})
+      .expect(200);
 
     const report = (await manager.get(`/api/candidates/${candidate.id}`)).body;
     expect(report.stages[0].response.audioSec).toBe(12);
@@ -230,7 +334,9 @@ describe('candidate flow', () => {
 
   it('marks the attempt submitted after the last stage', async () => {
     const { candidate, manager, assessmentId } = await setup();
-    await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao', consent: true });
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
     const final = await completeAll(candidate.token);
     expect(final.state.phase).toBe('done');
     const detail = (await manager.get(`/api/assessments/${assessmentId}`)).body;
@@ -249,7 +355,9 @@ describe('review and verification', () => {
 
   it('keeps reviews blind until you submit your own', async () => {
     const { candidate, manager } = await setup();
-    await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao', consent: true });
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
     await completeAll(candidate.token, { 'budget-cut': 'meta' });
 
     await manager
@@ -258,7 +366,10 @@ describe('review and verification', () => {
       .expect(201);
     const reviewer = request.agent(app);
     await reviewer.post('/api/auth/login').send({ email: 'rohan@acme.test', password: 'reviewer-pass' }).expect(200);
-    await reviewer.post('/api/assessments').send({ title: 'x', roleFamilyId: 'performance-marketing', currency: 'INR' }).expect(403);
+    await reviewer
+      .post('/api/assessments')
+      .send({ title: 'x', roleFamilyId: 'performance-marketing', currency: 'INR' })
+      .expect(403);
 
     const report = (await manager.get(`/api/candidates/${candidate.id}`)).body;
     await manager
@@ -293,13 +404,17 @@ describe('review and verification', () => {
     expect(reviewed.teamScore).toBe(3);
 
     await reviewer.put(`/api/candidates/${candidate.id}/decision`).send({ decision: 'advance' }).expect(403);
-    const decided = (await manager.put(`/api/candidates/${candidate.id}/decision`).send({ decision: 'advance' }).expect(200)).body;
+    const decided = (
+      await manager.put(`/api/candidates/${candidate.id}/decision`).send({ decision: 'advance' }).expect(200)
+    ).body;
     expect(decided.candidate).toMatchObject({ status: 'decided', decision: 'advance' });
   });
 
   it('builds a verification script from the candidate answers and records the outcome', async () => {
     const { candidate, manager } = await setup();
-    await request(app).post(`${c(candidate.token)}/start`).send({ idName: 'Asha Rao', consent: true });
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
     await completeAll(candidate.token, { 'budget-cut': 'search' });
 
     const report = (await manager.get(`/api/candidates/${candidate.id}`)).body;
@@ -310,10 +425,7 @@ describe('review and verification', () => {
     expect(cut.questions[0]).toContain('Google Search');
     expect(cut.answer.excerpt).toContain('My answer to The budget cut');
 
-    await manager
-      .put(`/api/candidates/${candidate.id}/verification`)
-      .send({ identity: 'bogus' })
-      .expect(400);
+    await manager.put(`/api/candidates/${candidate.id}/verification`).send({ identity: 'bogus' }).expect(400);
     const saved = (
       await manager
         .put(`/api/candidates/${candidate.id}/verification`)
@@ -335,7 +447,9 @@ describe('role library', () => {
     const { body } = await manager.get('/api/role-families').expect(200);
     expect(body.families.map((f: { id: string }) => f.id)).toEqual(['performance-marketing', 'customer-support-lead']);
 
-    const preview = (await manager.get('/api/role-families/customer-support-lead/preview?seed=5&currency=USD').expect(200)).body;
+    const preview = (
+      await manager.get('/api/role-families/customer-support-lead/preview?seed=5&currency=USD').expect(200)
+    ).body;
     expect(preview.seed).toBe(5);
     const branch = preview.stages.find((s: { id: string }) => s.id === 'midday');
     expect(branch.variants).toHaveLength(4);

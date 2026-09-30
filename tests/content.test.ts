@@ -118,3 +118,19 @@ describe('role family content', () => {
     }
   });
 });
+
+describe('client bundle boundary', () => {
+  it('never imports role family content (answer keys) into the web client', async () => {
+    const { readdirSync, readFileSync, statSync } = await import('node:fs');
+    const path = await import('node:path');
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((name) => {
+        const full = path.join(dir, name);
+        return statSync(full).isDirectory() ? walk(full) : [full];
+      });
+    const offenders = walk(path.resolve(__dirname, '../web/src')).filter((file) =>
+      /shared\/(roleFamilies|verification|variants|scoring)/.test(readFileSync(file, 'utf8')),
+    );
+    expect(offenders).toEqual([]);
+  });
+});

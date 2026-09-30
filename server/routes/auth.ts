@@ -3,6 +3,7 @@ import { Router } from 'express';
 import type { Me } from '../../shared/api';
 import type { AppDeps } from '../app';
 import {
+  DUMMY_PASSWORD_HASH,
   SESSION_COOKIE,
   createSession,
   createUser,
@@ -45,7 +46,8 @@ export function authRoutes({ db, now, secureCookies }: AppDeps) {
     const address = email(req.body.email);
     const password = str(req.body.password, 'Password', { max: 200 });
     const user = one<UserRow>(db, 'SELECT * FROM users WHERE email = ?', address);
-    if (!user || !verifyPassword(password, user.password_hash)) {
+    const valid = verifyPassword(password, user?.password_hash ?? DUMMY_PASSWORD_HASH);
+    if (!user || !valid) {
       throw new HttpError(401, 'Email or password is incorrect');
     }
     setSessionCookie(res, createSession(db, user.id, now()), secureCookies);

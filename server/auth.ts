@@ -21,6 +21,9 @@ export function hashPassword(password: string): string {
   return `scrypt$${salt.toString('base64')}$${hash.toString('base64')}`;
 }
 
+// Compared against when the email is unknown, so response time doesn't reveal which emails exist.
+export const DUMMY_PASSWORD_HASH = hashPassword(randomBytes(16).toString('hex'));
+
 export function verifyPassword(password: string, stored: string): boolean {
   const [scheme, saltB64, hashB64] = stored.split('$');
   if (scheme !== 'scrypt' || !saltB64 || !hashB64) return false;
@@ -38,6 +41,7 @@ const sha256 = (value: string) => createHash('sha256').update(value).digest('hex
 export function createSession(db: DB, userId: string, now: number): string {
   const token = randomToken(32);
   const expiresAt = now + SESSION_TTL_MS;
+  run(db, 'DELETE FROM sessions WHERE expires_at < ?', now);
   run(db, 'INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', sha256(token), userId, expiresAt);
   return token;
 }

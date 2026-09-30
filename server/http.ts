@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from 'express';
+import express, { type NextFunction, type Request, type RequestHandler, type Response } from 'express';
 
 export class HttpError extends Error {
   constructor(
@@ -7,6 +7,18 @@ export class HttpError extends Error {
   ) {
     super(message);
   }
+}
+
+/** JSON body parser that always leaves `req.body` as a plain object. */
+// `any` params: each route types its own params; a stricter type here would widen them.
+export function jsonBody(limit: string): RequestHandler<any> {
+  const parse = express.json({ limit });
+  return (req, res, next) =>
+    parse(req, res, (error?: unknown) => {
+      if (error) return next(error);
+      if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) req.body = {};
+      next();
+    });
 }
 
 export const badRequest = (message: string) => new HttpError(400, message);
@@ -18,7 +30,8 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
     res.status(error.status).json({ error: error.message });
     return;
   }
-  const status = (error as { status?: number; statusCode?: number })?.status ?? (error as { statusCode?: number })?.statusCode;
+  const status =
+    (error as { status?: number; statusCode?: number })?.status ?? (error as { statusCode?: number })?.statusCode;
   if (typeof status === 'number' && status >= 400 && status < 500) {
     // Body-parser errors (payload too large, malformed JSON) carry a status.
     res.status(status).json({ error: (error as Error).message });
@@ -33,7 +46,8 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
 export function str(value: unknown, field: string, { max = 200, min = 1 } = {}): string {
   if (typeof value !== 'string') throw badRequest(`${field} is required`);
   const trimmed = value.trim();
-  if (trimmed.length < min) throw badRequest(min <= 1 ? `${field} is required` : `${field} must be at least ${min} characters`);
+  if (trimmed.length < min)
+    throw badRequest(min <= 1 ? `${field} is required` : `${field} must be at least ${min} characters`);
   if (trimmed.length > max) throw badRequest(`${field} must be at most ${max} characters`);
   return trimmed;
 }

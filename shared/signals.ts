@@ -11,11 +11,7 @@ export interface SignalNote {
  * never trips them, and honest candidates switch tabs to find a calculator.
  * They are only used to decide what to probe on the live call.
  */
-export function describeSignals(
-  kind: StageKind,
-  signals: StageSignals | null,
-  answerChars: number,
-): SignalNote[] {
+export function describeSignals(kind: StageKind, signals: StageSignals | null, answerChars: number): SignalNote[] {
   const sig = { ...EMPTY_SIGNALS, ...(signals ?? {}) };
   const notes: SignalNote[] = [];
   const aiAllowed = kind === 'ai_allowed';

@@ -9,7 +9,7 @@ export interface CandidateDraft {
 
 export type CandidatePhaseView =
   | { phase: 'intro' }
-  | { phase: 'ready'; next: { index: number; kind: StageKind; title: string; timeLimitSec: number } }
+  | { phase: 'ready'; next: { index: number; kind: StageKind; timeLimitSec: number } }
   | {
       phase: 'stage';
       stage: CandidateStageView;

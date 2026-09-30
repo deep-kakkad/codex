@@ -56,9 +56,7 @@ export function managerRoutes(deps: AppDeps) {
         scored: stage.scored,
         choices: stage.choices,
         variants: options.map((choice) => {
-          const ctx = choice
-            ? buildContext(variant, currency, { [source!.id]: choice.id })
-            : baseCtx;
+          const ctx = choice ? buildContext(variant, currency, { [source!.id]: choice.id }) : baseCtx;
           return {
             label: choice ? `If they chose "${choice.label}"` : null,
             prompt: stage.prompt(ctx),
@@ -271,7 +269,12 @@ export function managerRoutes(deps: AppDeps) {
         'SELECT id FROM reviews WHERE candidate_id = ? AND submitted_at IS NOT NULL LIMIT 1',
         candidate.id,
       );
-      run(db, 'UPDATE candidates SET decision = NULL, status = ? WHERE id = ?', hasReview ? 'reviewed' : 'submitted', candidate.id);
+      run(
+        db,
+        'UPDATE candidates SET decision = NULL, status = ? WHERE id = ?',
+        hasReview ? 'reviewed' : 'submitted',
+        candidate.id,
+      );
     } else {
       const decision = oneOf(req.body.decision, 'Decision', ['advance', 'hold', 'reject'] as const);
       run(db, "UPDATE candidates SET decision = ?, status = 'decided' WHERE id = ?", decision, candidate.id);

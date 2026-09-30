@@ -235,7 +235,7 @@ export const customerSupport: RoleFamily = {
       reviewerGuide: () => [
         {
           type: 'p',
-          text: 'The proactive message is usually the strongest lever because it removes repeat contacts at the source, but any option can score well with sound reasoning. Look for an end-of-day estimate with a method, and awareness of each lever\'s downside: bulk-closing risks reopens and anger; overtime adds limited capacity and burns people out; borrowed staff give wrong information.',
+          text: "The proactive message is usually the strongest lever because it removes repeat contacts at the source, but any option can score well with sound reasoning. Look for an end-of-day estimate with a method, and awareness of each lever's downside: bulk-closing risks reopens and anger; overtime adds limited capacity and burns people out; borrowed staff give wrong information.",
         },
       ],
       rubric: [
@@ -327,7 +327,7 @@ export const customerSupport: RoleFamily = {
           proactive:
             'Two problems at once: a customer-harm issue (double charges need investigation and escalation to payments) and a process issue (Compliance). Strong answers separate them, escalate the double charges with a list of affected customers, send a correction if needed, and repair the relationship with Compliance with a pre-approved template for next time, without becoming defensive.',
           overtime:
-            'Tests whether they recognise overtime was capacity without leverage. Strong: stop or limit overtime, protect tomorrow\'s shift, switch to demand reduction (proactive message, merging duplicates), and speak honestly with the seniors. Weak: pushes harder.',
+            "Tests whether they recognise overtime was capacity without leverage. Strong: stop or limit overtime, protect tomorrow's shift, switch to demand reduction (proactive message, merging duplicates), and speak honestly with the seniors. Weak: pushes harder.",
           bulk: 'Tests damage control and ownership. Strong: stop the auto-close, reopen the affected tickets with a personal follow-up, reply publicly and briefly on X, fix the macro, and own the mistake with their manager. Weak: blames the macro wording only, or goes silent.',
           borrow:
             'Tests speed of correction. Strong: pause borrowed staff or restrict them to scripted replies, send a correction to affected customers before the 24 hours run out, add QA, and set expectations honestly. Weak: leaves the wrong promise standing.',

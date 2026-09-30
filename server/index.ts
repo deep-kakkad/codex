@@ -16,10 +16,7 @@ const db = openDb(path.join(dataDir, 'proofwork.db'));
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY ?? 'loopback');
-app.use(
-  '/api',
-  createApi({ db, uploadDir, secureCookies: isProduction && process.env.INSECURE_COOKIES !== '1' }),
-);
+app.use('/api', createApi({ db, uploadDir, secureCookies: isProduction && process.env.INSECURE_COOKIES !== '1' }));
 
 if (isProduction) {
   const webDir = path.join(root, 'dist', 'web');

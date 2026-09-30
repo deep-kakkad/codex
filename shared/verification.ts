@@ -87,7 +87,7 @@ export function buildVerificationScript(
     const said = answer.hasVoice
       ? 'Listen to their warm-up voice note before the call; the voice on the call should match.'
       : answer.hasText
-        ? `Their warm-up answer: "${answer.excerpt}".`
+        ? `Their warm-up answer: "${answer.excerpt}"`
         : 'They skipped the warm-up.';
     identity.push(`${said} Ask one spontaneous question about it.`);
   }

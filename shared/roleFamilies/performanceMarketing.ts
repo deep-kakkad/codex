@@ -121,6 +121,7 @@ export const performanceMarketing: RoleFamily = {
       const orders = n(v, ordersKey);
       return [label, fmt.money(spend), fmt.num(orders), fmt.money(spend / orders), roas(ctx, orders, spend)];
     };
+    const bold = (cells: string[]) => cells.map((cell) => `**${cell}**`);
     return [
       {
         type: 'p',
@@ -135,7 +136,7 @@ export const performanceMarketing: RoleFamily = {
           row('Meta – retargeting', 'rtSpend', 'rtOrders'),
           row('Google Search (brand + generic)', 'searchSpend', 'searchOrders'),
           row('Influencers (tracked by discount code)', 'inflSpend', 'inflOrders'),
-          row('Total (sum of dashboards)', 'spend', 'reportedOrders'),
+          bold(row('Total (sum of dashboards)', 'spend', 'reportedOrders')),
         ],
       },
       { type: 'h', text: 'Same month, from the store backend' },
@@ -395,7 +396,10 @@ export const performanceMarketing: RoleFamily = {
         };
         const choice = ctx.choices['budget-cut'] ?? 'even';
         return [
-          { type: 'p', text: `They chose **${CUT_CHOICES.find((c) => c.id === choice)?.label ?? choice}** in the previous question.` },
+          {
+            type: 'p',
+            text: `They chose **${CUT_CHOICES.find((c) => c.id === choice)?.label ?? choice}** in the previous question.`,
+          },
           { type: 'p', text: guides[choice] ?? guides.even },
         ];
       },
@@ -483,7 +487,7 @@ export const performanceMarketing: RoleFamily = {
               `**#2 Target ROAS is below break-even.** At ${fmt.pct(n(v, 'marginPct'))} margin, first-order break-even ROAS is ${n(v, 'breakEvenRoas').toFixed(2)}x, so a ${fmt.x(n(v, 'agencyRoas'))} target loses money on every attributed order, and more once you allow for platform over-claiming. The strongest expertise signal: generic AI critiques miss it unless given the margin.`,
               `**#3 Summing platform ROAS double-counts.** Dashboards over-claim by about ${fmt.pct(n(v, 'overclaimPct'))} against store orders. Judge on blended CPA or MER against store orders.`,
               `**#5 The discount destroys margin.** A ${fmt.pct(n(v, 'discountPct'))} discount cuts gross profit per order by about ${fmt.pct(n(v, 'gpDropPct'))} (${fmt.pct(n(v, 'discountPct'))} ÷ ${fmt.pct(n(v, 'marginPct'))}), and the goal is flat volume, not growth.`,
-              '**#1 Awareness spend won\'t pay back next month**, while the budget is being cut and orders must hold.',
+              "**#1 Awareness spend won't pay back next month**, while the budget is being cut and orders must hold.",
             ],
           },
           { type: 'p', text: '#4 is reasonable. Ranking it as a top-three problem is a negative signal.' },
@@ -509,7 +513,7 @@ export const performanceMarketing: RoleFamily = {
             'No ranking, or ranks #4 highly.',
             'Ranking present but unexplained.',
             'Sensible ranking with reasons.',
-            'Ranking tied explicitly to next month\'s goal and the budget cut.',
+            "Ranking tied explicitly to next month's goal and the budget cut.",
           ],
         },
         {

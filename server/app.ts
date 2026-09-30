@@ -1,6 +1,6 @@
 import express from 'express';
 import type { DB } from './db';
-import { errorHandler, notFound } from './http';
+import { errorHandler, jsonBody, notFound } from './http';
 import { authRoutes } from './routes/auth';
 import { candidateRoutes } from './routes/candidate';
 import { managerRoutes } from './routes/manager';
@@ -33,9 +33,9 @@ export function createApi(options: AppOptions) {
     res.set('Cache-Control', 'no-store');
     next();
   });
-  api.use('/auth', express.json({ limit: '32kb' }), authRoutes(deps));
+  api.use('/auth', jsonBody('32kb'), authRoutes(deps));
   api.use('/c', candidateRoutes(deps));
-  api.use(express.json({ limit: '256kb' }), managerRoutes(deps));
+  api.use(jsonBody('256kb'), managerRoutes(deps));
   api.use(() => {
     throw notFound('Unknown API route');
   });
