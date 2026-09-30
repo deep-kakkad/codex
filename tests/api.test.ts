@@ -323,12 +323,12 @@ describe('candidate flow', () => {
       .expect(200);
 
     const report = (await manager.get(`/api/candidates/${candidate.id}`)).body;
-    expect(report.stages[0].response.audioSec).toBe(12);
-    const audio = await manager.get(report.stages[0].response.audioUrl).expect(200);
+    expect(report.stages[0].response.audio[0].sec).toBe(12);
+    const audio = await manager.get(report.stages[0].response.audio[0].url).expect(200);
     expect(audio.headers['content-type']).toContain('audio/webm');
 
     const outsider = await signup('Other Co', 'eve@other.test');
-    await outsider.get(report.stages[0].response.audioUrl).expect(404);
+    await outsider.get(report.stages[0].response.audio[0].url).expect(404);
     await outsider.get(`/api/candidates/${candidate.id}`).expect(404);
   });
 
@@ -341,6 +341,151 @@ describe('candidate flow', () => {
     expect(final.state.phase).toBe('done');
     const detail = (await manager.get(`/api/assessments/${assessmentId}`)).body;
     expect(detail.candidates[0].status).toBe('submitted');
+  });
+});
+
+describe('think-aloud', () => {
+  /** Starts the candidate and opens the first think-aloud question (first-read). */
+  async function openThinkAloud() {
+    const ctx = await setup();
+    const token = ctx.candidate.token;
+    await request(app)
+      .post(`${c(token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    const warmup = (
+      await request(app)
+        .post(`${c(token)}/next`)
+        .send({ index: 0 })
+    ).body;
+    await answerCurrent(token, warmup);
+    const stage = (
+      await request(app)
+        .post(`${c(token)}/next`)
+        .send({ index: 1 })
+        .expect(200)
+    ).body as CandidateSession;
+    return { ...ctx, token, stage };
+  }
+
+  const chunk = (token: string, query: string, body: string, stageId = 'first-read') =>
+    request(app)
+      .post(`${c(token)}/stages/${stageId}/stream?${query}`)
+      .set('Content-Type', 'audio/webm;codecs=opus')
+      .send(Buffer.from(body));
+
+  it('is flagged on the stage and announced before the question opens', async () => {
+    const { token, stage } = await openThinkAloud();
+    if (stage.state.phase !== 'stage') throw new Error('expected stage');
+    expect(stage.state.stage.thinkAloud).toBe(true);
+    expect(stage.assessment.outline.filter((s) => s.thinkAloud)).toHaveLength(3);
+    const ready = (await request(app).get(c(token))).body;
+    expect(ready.assessment.outline[1].thinkAloud).toBe(true);
+  });
+
+  it('appends chunks in order, accepts retries and refuses gaps', async () => {
+    const { token, candidate, manager } = await openThinkAloud();
+    await chunk(token, 'part=0&seq=1&startMs=900&sec=4', 'late').expect(409);
+    await chunk(token, 'part=0&seq=0&startMs=900&sec=4', 'AAA').expect(200);
+    await chunk(token, 'part=0&seq=0&startMs=900&sec=4', 'AAA').expect(200); // retry
+    await chunk(token, 'part=0&seq=2&startMs=900&sec=12', 'CCC').expect(409); // gap
+    await chunk(token, 'part=0&seq=1&startMs=900&sec=8', 'BBB').expect(200);
+    await chunk(token, 'part=2&seq=0&startMs=0&sec=1', 'X').expect(409); // must be part 1 next
+    await request(app)
+      .post(`${c(token)}/stages/first-read/stream?part=0&seq=2&sec=9`)
+      .set('Content-Type', 'text/plain')
+      .send('nope')
+      .expect(400);
+
+    // A reload mid-question reports the saved audio and continues as part 1.
+    const reloaded = (await request(app).get(c(token))).body as CandidateSession;
+    if (reloaded.state.phase !== 'stage') throw new Error('expected stage');
+    expect(reloaded.state.audio).toEqual({ sec: 8, parts: 1 });
+    await chunk(token, 'part=1&seq=0&startMs=30000&sec=3', 'DDD').expect(200);
+
+    // Audio alone is a valid think-aloud answer.
+    await request(app)
+      .post(`${c(token)}/stages/first-read/submit`)
+      .send({})
+      .expect(200);
+
+    const report = (await manager.get(`/api/candidates/${candidate.id}`)).body;
+    const response = report.stages[1].response;
+    expect(report.stages[1].thinkAloud).toBe(true);
+    expect(response.audio).toEqual([
+      { url: `/api/candidates/${candidate.id}/audio/first-read?part=0`, startMs: 900, sec: 8 },
+      { url: `/api/candidates/${candidate.id}/audio/first-read?part=1`, startMs: 30000, sec: 3 },
+    ]);
+    const first = await manager.get(response.audio[0].url).buffer(true).expect(200);
+    expect(first.body.toString()).toBe('AAABBB');
+    expect(first.headers['content-type']).toContain('audio/webm');
+  });
+
+  it('only streams on think-aloud questions, and only while the question is open', async () => {
+    const { token, stage } = await openThinkAloud();
+    await chunk(token, 'part=0&seq=0&startMs=0&sec=1', 'A', 'warmup').expect(400);
+    await request(app)
+      .post(`${c(token)}/stages/first-read/audio?seconds=3`)
+      .set('Content-Type', 'audio/webm')
+      .send(Buffer.from('x'))
+      .expect(400);
+    if (stage.state.phase !== 'stage') throw new Error('expected stage');
+    clock = stage.state.deadlineAt + SUBMIT_GRACE_MS + 1;
+    await chunk(token, 'part=0&seq=0&startMs=0&sec=1', 'A').expect(409);
+  });
+
+  it('keeps the scratchpad timeline, including when time runs out', async () => {
+    const { token, candidate, manager } = await openThinkAloud();
+    const scratch = [
+      { t: 20_000, text: 'AOV x margin' },
+      { t: 5_000, text: 'reported' },
+      { t: -5, text: 'clamped' },
+      { t: 'bad', text: 'dropped' },
+    ];
+    await request(app)
+      .put(`${c(token)}/stages/first-read/draft`)
+      .send({ text: 'AOV x margin', scratch })
+      .expect(200);
+    const s = (await request(app).get(c(token))).body as CandidateSession;
+    if (s.state.phase !== 'stage') throw new Error('expected stage');
+    clock = s.state.deadlineAt + SUBMIT_GRACE_MS + 1;
+    await request(app).get(c(token)).expect(200); // closes the stage from the draft
+
+    const report = (await manager.get(`/api/candidates/${candidate.id}`)).body;
+    expect(report.stages[1].response.closedReason).toBe('timeout');
+    expect(report.stages[1].response.scratch).toEqual([
+      { t: 0, text: 'clamped' },
+      { t: 5_000, text: 'reported' },
+      { t: 20_000, text: 'AOV x margin' },
+    ]);
+  });
+
+  it('asks for audio or typed working before submitting', async () => {
+    const { token } = await openThinkAloud();
+    const res = await request(app)
+      .post(`${c(token)}/stages/first-read/submit`)
+      .send({})
+      .expect(400);
+    expect(res.body.error).toMatch(/Talk through your answer/);
+  });
+
+  it("turns a reviewer's delivery concern into a priority probe on the call", async () => {
+    const { candidate, manager } = await setup();
+    await request(app)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    await completeAll(candidate.token);
+
+    const saved = (
+      await manager
+        .put(`/api/candidates/${candidate.id}/review`)
+        .send({ scores: {}, observations: { 'agency-plan': 'read', 'first-read': 'natural', warmup: 'read' } })
+        .expect(200)
+    ).body;
+    // Only think-aloud stages keep an observation.
+    expect(saved.myReview.observations).toEqual({ 'agency-plan': 'read', 'first-read': 'natural' });
+    const probe = saved.verification.script.probes[0];
+    expect(probe.stageId).toBe('agency-plan');
+    expect(probe.reasons.join(' ')).toMatch(/read or rehearsed/);
   });
 });
 

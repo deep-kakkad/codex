@@ -3,7 +3,7 @@ import { formatClock } from '../hooks';
 
 const PREFERRED_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
 
-function pickMimeType() {
+export function pickMimeType() {
   if (typeof MediaRecorder === 'undefined') return null;
   return PREFERRED_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) ?? '';
 }

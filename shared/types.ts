@@ -83,6 +83,12 @@ export interface StageDef {
   timeLimitSec: number;
   voiceMaxSec: number;
   preferVoice: boolean;
+  /**
+   * Think-aloud: audio records from the moment the question opens until it is
+   * submitted, next to a scratchpad. Reviewers hear the working, not a
+   * rehearsed answer.
+   */
+  thinkAloud?: boolean;
   scored: boolean;
   choices?: Choice[];
   /** For branch stages: the decision stage whose answer changes this prompt. */
@@ -125,6 +131,7 @@ export interface CandidateStageView {
   timeLimitSec: number;
   voiceMaxSec: number;
   preferVoice: boolean;
+  thinkAloud: boolean;
   choices?: Choice[];
   prompt: Block[];
   material: Block[];
@@ -151,6 +158,15 @@ export const EMPTY_SIGNALS: StageSignals = {
 
 /** stageId -> criterionId -> score (1..4) */
 export type ReviewScores = Record<string, Record<string, number>>;
+
+/** A scratchpad state, `t` ms after the question opened. */
+export interface ScratchSnapshot {
+  t: number;
+  text: string;
+}
+
+/** A reviewer's read of how a think-aloud recording sounded. */
+export type Delivery = 'natural' | 'unsure' | 'read';
 
 export type Recommendation = 'advance' | 'hold' | 'reject';
 export type CandidateStatus = 'invited' | 'in_progress' | 'submitted' | 'reviewed' | 'decided';

@@ -1,13 +1,24 @@
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { getRoleFamily } from '../shared/roleFamilies';
 import { choicesFrom, renderStageForCandidate, scaledTimeLimit } from '../shared/render';
+import { sanitizeScratch } from '../shared/scratch';
 import { sanitizeSignals } from '../shared/signals';
 import type { CandidateDraft, CandidatePhaseView } from '../shared/candidateApi';
-import type { Block, CandidateStageView, RoleFamily, Variant } from '../shared/types';
+import type { Block, CandidateStageView, RoleFamily, StageDef, Variant } from '../shared/types';
 import { buildContext } from '../shared/variants';
-import { type AssessmentRow, type CandidateRow, type DB, all, one, run, type ResponseRow, transaction } from './db';
+import {
+  type AssessmentRow,
+  type AudioPartRow,
+  type CandidateRow,
+  type DB,
+  all,
+  one,
+  run,
+  type ResponseRow,
+  transaction,
+} from './db';
 import { HttpError, badRequest, conflict, notFound, optionalText } from './http';
 
 /** Accept a submission this long after the timer hits zero (slow uploads, flaky networks). */
@@ -18,6 +29,10 @@ export const LIMITS = {
   aiTranscript: 100_000,
   reflection: 5_000,
   audioBytes: 20 * 1024 * 1024,
+  /** Per think-aloud part, across all its chunks. */
+  streamBytes: 40 * 1024 * 1024,
+  /** Reloads mid-question start a new part; cap them. */
+  streamParts: 10,
 };
 
 export interface FlowDeps {
@@ -66,14 +81,26 @@ function closeAsTimeout(db: DB, response: ResponseRow) {
     db,
     `UPDATE responses
         SET closed_reason = 'timeout', submitted_at = deadline_at,
-            text = ?, choice_id = ?, ai_transcript = ?, reflection = ?
+            text = ?, choice_id = ?, ai_transcript = ?, reflection = ?, scratch_json = ?
       WHERE id = ? AND closed_reason IS NULL`,
     draft.text ?? null,
     draft.choiceId ?? null,
     draft.aiTranscript ?? null,
     draft.reflection ?? null,
+    draft.scratch?.length ? JSON.stringify(draft.scratch) : null,
     response.id,
   );
+}
+
+export function audioParts(db: DB, responseId: string): AudioPartRow[] {
+  return all<AudioPartRow>(db, 'SELECT * FROM audio_parts WHERE response_id = ? ORDER BY part', responseId);
+}
+
+function audioSummary(db: DB, response: ResponseRow) {
+  if (response.audio_path) return { sec: response.audio_sec, parts: 1 };
+  const parts = audioParts(db, response.id);
+  if (!parts.length) return null;
+  return { sec: parts.reduce((sum, p) => sum + (p.sec ?? 0), 0), parts: parts.length };
 }
 
 /**
@@ -99,6 +126,7 @@ export function currentPhase(deps: FlowDeps, ctx: CandidateContext): CandidatePh
           index,
           kind: stage.kind,
           timeLimitSec: scaledTimeLimit(stage, ctx.candidate.time_multiplier),
+          thinkAloud: Boolean(stage.thinkAloud),
         },
       };
     }
@@ -112,7 +140,7 @@ export function currentPhase(deps: FlowDeps, ctx: CandidateContext): CandidatePh
       stage: JSON.parse(response.prompt_json) as CandidateStageView,
       deadlineAt: response.deadline_at,
       draft: parseDraft(response.draft_json),
-      audio: response.audio_path ? { sec: response.audio_sec } : null,
+      audio: audioSummary(db, response),
     };
   }
 
@@ -199,6 +227,11 @@ function stageDef(ctx: CandidateContext, stageId: string) {
   return stage;
 }
 
+/** Latest moment a stage can still accept input, in ms after it opened. */
+function stageWindowMs(ctx: CandidateContext, stage: StageDef) {
+  return scaledTimeLimit(stage, ctx.candidate.time_multiplier) * 1000 + SUBMIT_GRACE_MS;
+}
+
 function cleanDraft(ctx: CandidateContext, stageId: string, input: Record<string, unknown>): Draft {
   const stage = stageDef(ctx, stageId);
   const choiceId = optionalText(input.choiceId, 'Choice', 100) ?? undefined;
@@ -208,6 +241,7 @@ function cleanDraft(ctx: CandidateContext, stageId: string, input: Record<string
     choiceId,
     aiTranscript: optionalText(input.aiTranscript, 'AI conversation', LIMITS.aiTranscript) ?? undefined,
     reflection: optionalText(input.reflection, 'Reflection', LIMITS.reflection) ?? undefined,
+    scratch: stage.thinkAloud ? sanitizeScratch(input.scratch, stageWindowMs(ctx, stage)) : undefined,
   };
 }
 
@@ -235,9 +269,9 @@ export function saveAudio(
 ) {
   const stage = stageDef(ctx, stageId);
   if (stage.voiceMaxSec <= 0) throw badRequest('This question takes a written answer');
-  const mime = (contentType ?? '').split(';')[0].trim().toLowerCase();
+  if (stage.thinkAloud) throw badRequest('This question records continuously; use the stream endpoint');
+  const mime = audioMime(contentType);
   const extension = AUDIO_TYPES[mime];
-  if (!extension) throw badRequest('Unsupported audio format');
   if (!Buffer.isBuffer(body) || body.length === 0) throw badRequest('The recording is empty');
   const response = openResponse(deps, ctx, stageId);
 
@@ -256,6 +290,90 @@ export function saveAudio(
   );
 }
 
+function audioMime(contentType: string | undefined) {
+  const mime = (contentType ?? '').split(';')[0].trim().toLowerCase();
+  if (!AUDIO_TYPES[mime]) throw badRequest('Unsupported audio format');
+  return mime;
+}
+
+export interface StreamChunk {
+  part: number;
+  seq: number;
+  /** When recording started, in ms after the question opened. */
+  startMs: number;
+  /** Seconds recorded so far in this part. */
+  sec: number;
+}
+
+/**
+ * Appends one chunk of a think-aloud recording. Chunks are uploaded every few
+ * seconds while the candidate talks, so a crash or reload loses almost
+ * nothing. Retried chunks are accepted idempotently; gaps are refused.
+ */
+export function appendAudioChunk(
+  deps: FlowDeps,
+  ctx: CandidateContext,
+  stageId: string,
+  body: Buffer,
+  contentType: string | undefined,
+  chunk: StreamChunk,
+): { part: number; chunks: number } {
+  const stage = stageDef(ctx, stageId);
+  if (!stage.thinkAloud) throw badRequest('This question does not record continuously');
+  const mime = audioMime(contentType);
+  if (!Buffer.isBuffer(body) || body.length === 0) throw badRequest('The audio chunk is empty');
+  const { part, seq } = chunk;
+  if (!Number.isInteger(part) || part < 0 || part >= LIMITS.streamParts) throw badRequest('Invalid recording part');
+  if (!Number.isInteger(seq) || seq < 0) throw badRequest('Invalid chunk number');
+  const response = openResponse(deps, ctx, stageId);
+  const windowMs = stageWindowMs(ctx, stage);
+  const sec = Number.isFinite(chunk.sec) && chunk.sec > 0 ? Math.min(chunk.sec, windowMs / 1000) : null;
+
+  return transaction(deps.db, () => {
+    const parts = audioParts(deps.db, response.id);
+    const existing = parts.find((p) => p.part === part);
+    const dir = path.join(deps.uploadDir, ctx.candidate.id);
+
+    if (!existing) {
+      if (seq !== 0) throw conflict('Recording part not started');
+      if (part !== parts.length) throw conflict(`Next recording part is ${parts.length}`);
+      mkdirSync(dir, { recursive: true });
+      const relative = path.join(ctx.candidate.id, `${stageId}.part${part}.${AUDIO_TYPES[mime]}`);
+      writeFileSync(path.join(deps.uploadDir, relative), body);
+      const startMs = Number.isFinite(chunk.startMs) ? Math.min(Math.max(Math.round(chunk.startMs), 0), windowMs) : 0;
+      run(
+        deps.db,
+        `INSERT INTO audio_parts (response_id, part, path, mime, bytes, chunks, start_ms, sec)
+         VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+        response.id,
+        part,
+        relative,
+        mime,
+        body.length,
+        startMs,
+        sec,
+      );
+      return { part, chunks: 1 };
+    }
+
+    if (seq < existing.chunks) return { part, chunks: existing.chunks }; // a retry we already have
+    if (seq > existing.chunks) throw conflict(`Missing audio chunk ${existing.chunks}`);
+    if (mime !== existing.mime) throw badRequest('Audio format changed mid-recording');
+    if (existing.bytes + body.length > LIMITS.streamBytes) throw badRequest('The recording is too large');
+    appendFileSync(path.join(deps.uploadDir, existing.path), body);
+    run(
+      deps.db,
+      `UPDATE audio_parts SET bytes = bytes + ?, chunks = chunks + 1, sec = MAX(COALESCE(sec, 0), COALESCE(?, 0))
+        WHERE response_id = ? AND part = ?`,
+      body.length,
+      sec,
+      response.id,
+      part,
+    );
+    return { part, chunks: existing.chunks + 1 };
+  });
+}
+
 export function submit(
   deps: FlowDeps,
   ctx: CandidateContext,
@@ -267,24 +385,31 @@ export function submit(
   const answer = cleanDraft(ctx, stageId, input);
   const timedOut = input.timedOut === true;
   const hasText = Boolean(answer.text?.trim());
-  const hasAudio = Boolean(response.audio_path);
+  const hasAudio = Boolean(response.audio_path) || audioParts(deps.db, response.id).length > 0;
 
   if (!timedOut) {
     if (stage.kind === 'decision' && !answer.choiceId) throw badRequest('Choose an option before submitting');
     if (stage.kind === 'ai_allowed' && !hasText) throw badRequest('Paste your final answer before submitting');
-    if (!hasText && !hasAudio) throw badRequest('Record a voice note or type an answer before submitting');
+    if (!hasText && !hasAudio) {
+      throw badRequest(
+        stage.thinkAloud
+          ? 'Talk through your answer, or type it if your microphone is not working'
+          : 'Record a voice note or type an answer before submitting',
+      );
+    }
   }
 
   run(
     deps.db,
     `UPDATE responses
-        SET text = ?, choice_id = ?, ai_transcript = ?, reflection = ?, signals_json = ?,
+        SET text = ?, choice_id = ?, ai_transcript = ?, reflection = ?, scratch_json = ?, signals_json = ?,
             submitted_at = ?, closed_reason = ?
       WHERE id = ? AND closed_reason IS NULL`,
     answer.text ?? null,
     answer.choiceId ?? null,
     answer.aiTranscript ?? null,
     answer.reflection ?? null,
+    answer.scratch?.length ? JSON.stringify(answer.scratch) : null,
     JSON.stringify(sanitizeSignals(input.signals)),
     deps.now(),
     timedOut ? 'timeout' : 'submitted',

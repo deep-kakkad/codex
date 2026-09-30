@@ -71,6 +71,11 @@ describe('role family content', () => {
       for (const stage of family.stages) {
         if (stage.scored) expect(stage.rubric.length).toBeGreaterThan(0);
         if (stage.kind === 'decision') expect(stage.choices?.length).toBeGreaterThan(1);
+        // Think-aloud is for scored reasoning questions; the AI-allowed task keeps its transcript instead.
+        if (stage.thinkAloud) {
+          expect(stage.scored).toBe(true);
+          expect(stage.kind).not.toBe('ai_allowed');
+        }
         if (stage.dependsOn) {
           const sourceIndex = ids.indexOf(stage.dependsOn);
           expect(sourceIndex).toBeGreaterThanOrEqual(0);

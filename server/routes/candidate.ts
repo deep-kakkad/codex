@@ -7,6 +7,7 @@ import {
   type CandidateContext,
   type CandidatePhase,
   LIMITS,
+  appendAudioChunk,
   type FlowDeps,
   currentPhase,
   loadByToken,
@@ -33,7 +34,11 @@ function session(deps: FlowDeps, ctx: CandidateContext, state: CandidatePhase): 
       orgName: ctx.orgName,
       roleFamilyName: ctx.family.name,
       totalMinutes: Math.round(minutes.reduce((a, b) => a + b, 0)),
-      outline: ctx.family.stages.map((stage, i) => ({ kind: stage.kind, minutes: Math.round(minutes[i] * 10) / 10 })),
+      outline: ctx.family.stages.map((stage, i) => ({
+        kind: stage.kind,
+        minutes: Math.round(minutes[i] * 10) / 10,
+        thinkAloud: Boolean(stage.thinkAloud),
+      })),
     },
     brief: state.phase === 'intro' ? null : renderBrief(ctx),
     state,
@@ -78,6 +83,18 @@ export function candidateRoutes(deps: AppDeps) {
       res.json({ ok: true });
     },
   );
+
+  // Think-aloud audio, a few seconds at a time, appended in order.
+  router.post('/:token/stages/:stageId/stream', express.raw({ type: ['audio/*'], limit: '4mb' }), (req, res) => {
+    const ctx = loadByToken(deps.db, req.params.token);
+    const result = appendAudioChunk(deps, ctx, req.params.stageId, req.body, req.headers['content-type'], {
+      part: Number(req.query.part),
+      seq: Number(req.query.seq),
+      startMs: Number(req.query.startMs),
+      sec: Number(req.query.sec),
+    });
+    res.json({ ok: true, ...result });
+  });
 
   router.post('/:token/stages/:stageId/submit', json, (req, res) => {
     const ctx = loadByToken(deps.db, req.params.token);

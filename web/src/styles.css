@@ -317,6 +317,10 @@ legend {
   background: var(--accent-soft);
   color: var(--accent);
 }
+.badge-think {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
 .chip {
   display: inline-block;
   border: 1px solid var(--border);
@@ -1245,6 +1249,40 @@ blockquote cite {
   margin-right: auto;
 }
 
+.think-aloud-panel {
+  border: 1px solid var(--accent);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 1rem;
+}
+.think-aloud-panel.unavailable {
+  border-color: var(--warn);
+  background: var(--warn-soft);
+}
+.think-aloud-panel p {
+  margin: 0.4rem 0 0;
+}
+.think-aloud-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.rec-dot.live {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+.level.small-level {
+  width: 120px;
+  height: 8px;
+  background: var(--surface);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rec-dot.live {
+    animation: none;
+  }
+}
+
 /* Review ------------------------------------------------------------------- */
 
 .tabs {
@@ -1453,6 +1491,31 @@ blockquote cite {
 }
 .choice-preview {
   font-weight: 500;
+}
+
+.think-aloud-review {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 0.9rem;
+  margin-bottom: 0.75rem;
+}
+.think-aloud-review .answer-audio {
+  margin: 0.4rem 0;
+}
+.scratch-timeline {
+  margin-top: 0.9rem;
+}
+.scratch-timeline .row-gap {
+  margin: 0.4rem 0;
+}
+.scratch-text {
+  margin-top: 0.4rem;
+}
+.listen-for ul {
+  margin: 0.3rem 0 0.6rem;
+}
+.delivery {
+  margin: 0.75rem 0 0;
 }
 
 /* Responsive --------------------------------------------------------------- */

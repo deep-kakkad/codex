@@ -78,6 +78,20 @@ CREATE TABLE IF NOT EXISTS responses (
   UNIQUE (candidate_id, stage_id)
 );
 
+-- Think-aloud audio arrives as sequential chunks appended to one file per
+-- part. A new part starts if the candidate reloads mid-question.
+CREATE TABLE IF NOT EXISTS audio_parts (
+  response_id TEXT NOT NULL REFERENCES responses(id) ON DELETE CASCADE,
+  part INTEGER NOT NULL,
+  path TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  bytes INTEGER NOT NULL,
+  chunks INTEGER NOT NULL,
+  start_ms INTEGER NOT NULL,
+  sec REAL,
+  PRIMARY KEY (response_id, part)
+);
+
 CREATE TABLE IF NOT EXISTS reviews (
   id TEXT PRIMARY KEY,
   candidate_id TEXT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
@@ -105,7 +119,15 @@ export function openDb(file: string): DB {
   db.exec('PRAGMA foreign_keys = ON;');
   if (file !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
   db.exec(SCHEMA);
+  // Columns added after the first release.
+  addColumn(db, 'responses', 'scratch_json', 'TEXT');
+  addColumn(db, 'reviews', 'observations_json', "TEXT NOT NULL DEFAULT '{}'");
   return db;
+}
+
+function addColumn(db: DB, table: string, column: string, definition: string) {
+  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!columns.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
 }
 
 export type Params = SQLInputValue[];
@@ -195,6 +217,18 @@ export interface ResponseRow {
   audio_sec: number | null;
   draft_json: string | null;
   signals_json: string | null;
+  scratch_json: string | null;
+}
+
+export interface AudioPartRow {
+  response_id: string;
+  part: number;
+  path: string;
+  mime: string;
+  bytes: number;
+  chunks: number;
+  start_ms: number;
+  sec: number | null;
 }
 
 export interface ReviewRow {
@@ -206,6 +240,7 @@ export interface ReviewRow {
   recommendation: string | null;
   submitted_at: number | null;
   updated_at: number;
+  observations_json: string;
 }
 
 export interface VerificationRow {

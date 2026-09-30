@@ -16,14 +16,17 @@ import type {
   CandidateStageView,
   CandidateStatus,
   Decision,
+  Delivery,
   Recommendation,
   ReviewScores,
   RoleFamily,
+  ScratchSnapshot,
   StageSignals,
 } from '../shared/types';
 import { buildVerificationScript, type ResponseForScript } from '../shared/verification';
 import { buildContext } from '../shared/variants';
 import type { SessionUser } from './auth';
+import { audioParts } from './candidateFlow';
 import {
   type AssessmentRow,
   type CandidateRow,
@@ -105,7 +108,18 @@ function toReviewView(family: RoleFamily, row: ReviewRow & { reviewer_name: stri
     submittedAt: row.submitted_at,
     overall: summary.overall,
     byStage: summary.byStage,
+    observations: JSON.parse(row.observations_json || '{}') as Record<string, Delivery>,
   };
+}
+
+function audioFor(db: DB, candidateId: string, stageId: string, response: ResponseRow) {
+  const base = `/api/candidates/${candidateId}/audio/${stageId}`;
+  if (response.audio_path) return [{ url: base, startMs: null, sec: response.audio_sec }];
+  return audioParts(db, response.id).map((p) => ({ url: `${base}?part=${p.part}`, startMs: p.start_ms, sec: p.sec }));
+}
+
+function parseScratch(json: string | null): ScratchSnapshot[] {
+  return json ? (JSON.parse(json) as ScratchSnapshot[]) : [];
 }
 
 function reviewsFor(db: DB, family: RoleFamily, candidateId: string): ReviewView[] {
@@ -194,6 +208,7 @@ export function candidateReport(db: DB, user: SessionUser, candidate: CandidateR
       kind: stage.kind,
       title: stage.title,
       scored: stage.scored,
+      thinkAloud: Boolean(stage.thinkAloud),
       timeLimitSec: scaledTimeLimit(stage, candidate.time_multiplier),
       shown,
       reviewerGuide: stage.reviewerGuide(ctx),
@@ -215,8 +230,8 @@ export function candidateReport(db: DB, user: SessionUser, candidate: CandidateR
             choiceLabel: stage.choices?.find((c) => c.id === response.choice_id)?.label ?? null,
             aiTranscript: response.ai_transcript,
             reflection: response.reflection,
-            audioUrl: response.audio_path ? `/api/candidates/${candidate.id}/audio/${stage.id}` : null,
-            audioSec: response.audio_sec,
+            audio: audioFor(db, candidate.id, stage.id, response),
+            scratch: parseScratch(response.scratch_json),
             signals,
             signalNotes: response.closed_reason ? describeSignals(stage.kind, signals, answerChars(response)) : [],
           }
@@ -232,17 +247,33 @@ export function candidateReport(db: DB, user: SessionUser, candidate: CandidateR
   const canSeeOthers = myReview?.submittedAt != null;
   const submittedOveralls = reviews.filter((r) => r.submittedAt !== null).map((r) => r.overall);
 
-  const scriptResponses: ResponseForScript[] = responses.map((r) => ({
-    stageId: r.stage_id,
-    text: r.text,
-    choiceId: r.choice_id,
-    aiTranscript: r.ai_transcript,
-    reflection: r.reflection,
-    hasVoice: Boolean(r.audio_path),
-    voiceSec: r.audio_sec,
-    closedReason: r.closed_reason,
-    signals: parseSignals(r.signals_json),
-  }));
+  const scriptResponses: ResponseForScript[] = stages.flatMap((stage) => {
+    const r = byStage.get(stage.id);
+    if (!r || !stage.response) return [];
+    const audio = stage.response.audio;
+    return [
+      {
+        stageId: r.stage_id,
+        text: r.text,
+        choiceId: r.choice_id,
+        aiTranscript: r.ai_transcript,
+        reflection: r.reflection,
+        hasVoice: audio.length > 0,
+        voiceSec: audio.length ? audio.reduce((sum, a) => sum + (a.sec ?? 0), 0) : null,
+        closedReason: r.closed_reason,
+        signals: parseSignals(r.signals_json),
+      },
+    ];
+  });
+  // Think-aloud concerns from your own review and submitted ones (drafts by
+  // others stay private, like their scores).
+  const concerns: Record<string, Delivery> = {};
+  for (const review of reviews) {
+    if (review.reviewerId !== user.id && review.submittedAt === null) continue;
+    for (const [stageId, delivery] of Object.entries(review.observations)) {
+      if (delivery === 'read' || (delivery === 'unsure' && concerns[stageId] !== 'read')) concerns[stageId] = delivery;
+    }
+  }
   const verificationRow = one<VerificationRow & { interviewer_name: string }>(
     db,
     `SELECT v.*, u.name AS interviewer_name FROM verifications v JOIN users u ON u.id = v.interviewer_id
@@ -288,6 +319,7 @@ export function candidateReport(db: DB, user: SessionUser, candidate: CandidateR
         ctx,
         { name: candidate.name, idName: candidate.id_name },
         scriptResponses,
+        concerns,
       ),
       record,
     },

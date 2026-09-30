@@ -1,21 +1,24 @@
-import type { Block, CandidateStageView, CandidateStatus, StageKind } from './types';
+import type { Block, CandidateStageView, CandidateStatus, ScratchSnapshot, StageKind } from './types';
 
 export interface CandidateDraft {
   text?: string;
   choiceId?: string;
   aiTranscript?: string;
   reflection?: string;
+  /** Think-aloud scratchpad history. */
+  scratch?: ScratchSnapshot[];
 }
 
 export type CandidatePhaseView =
   | { phase: 'intro' }
-  | { phase: 'ready'; next: { index: number; kind: StageKind; timeLimitSec: number } }
+  | { phase: 'ready'; next: { index: number; kind: StageKind; timeLimitSec: number; thinkAloud: boolean } }
   | {
       phase: 'stage';
       stage: CandidateStageView;
       deadlineAt: number;
       draft: CandidateDraft | null;
-      audio: { sec: number | null } | null;
+      /** Audio the server already has: a voice note, or think-aloud parts recorded so far. */
+      audio: { sec: number | null; parts: number } | null;
     }
   | { phase: 'done' };
 
@@ -27,7 +30,7 @@ export interface CandidateSession {
     orgName: string;
     roleFamilyName: string;
     totalMinutes: number;
-    outline: { kind: StageKind; minutes: number }[];
+    outline: { kind: StageKind; minutes: number; thinkAloud: boolean }[];
   };
   /** Only sent once the candidate has started. */
   brief: Block[] | null;

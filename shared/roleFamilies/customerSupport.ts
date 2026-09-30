@@ -146,6 +146,7 @@ export const customerSupport: RoleFamily = {
       timeLimitSec: 300,
       voiceMaxSec: 120,
       preferVoice: true,
+      thinkAloud: true,
       scored: true,
       prompt: () => [
         {
@@ -220,6 +221,7 @@ export const customerSupport: RoleFamily = {
       timeLimitSec: 360,
       voiceMaxSec: 150,
       preferVoice: true,
+      thinkAloud: true,
       scored: true,
       choices: LEVERS,
       prompt: (ctx) => [
@@ -385,6 +387,7 @@ export const customerSupport: RoleFamily = {
       timeLimitSec: 420,
       voiceMaxSec: 180,
       preferVoice: false,
+      thinkAloud: true,
       scored: true,
       prompt: () => [
         {

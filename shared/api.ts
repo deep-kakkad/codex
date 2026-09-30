@@ -8,8 +8,10 @@ import type {
   Criterion,
   Currency,
   Decision,
+  Delivery,
   Recommendation,
   ReviewScores,
+  ScratchSnapshot,
   StageKind,
   StageSignals,
 } from './types';
@@ -112,8 +114,10 @@ export interface StageResponseView {
   choiceLabel: string | null;
   aiTranscript: string | null;
   reflection: string | null;
-  audioUrl: string | null;
-  audioSec: number | null;
+  /** One entry for a voice note; one per part for a think-aloud recording. */
+  audio: { url: string; startMs: number | null; sec: number | null }[];
+  /** Think-aloud scratchpad history. */
+  scratch: ScratchSnapshot[];
   signals: StageSignals | null;
   signalNotes: SignalNote[];
 }
@@ -124,6 +128,7 @@ export interface ReportStage {
   kind: StageKind;
   title: string;
   scored: boolean;
+  thinkAloud: boolean;
   timeLimitSec: number;
   shown: CandidateStageView | null;
   reviewerGuide: Block[];
@@ -140,6 +145,8 @@ export interface ReviewView {
   submittedAt: number | null;
   overall: number | null;
   byStage: Record<string, number | null>;
+  /** How each think-aloud recording sounded to this reviewer. */
+  observations: Record<string, Delivery>;
 }
 
 export interface VerificationRecord {

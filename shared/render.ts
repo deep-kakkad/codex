@@ -19,6 +19,7 @@ export function renderStageForCandidate(
     timeLimitSec: scaledTimeLimit(stage, timeMultiplier),
     voiceMaxSec: stage.voiceMaxSec,
     preferVoice: stage.preferVoice,
+    thinkAloud: Boolean(stage.thinkAloud),
     choices: stage.choices,
     prompt: stage.prompt(ctx),
     material: stage.material?.(ctx) ?? [],

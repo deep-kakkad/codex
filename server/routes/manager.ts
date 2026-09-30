@@ -4,9 +4,10 @@ import { Router } from 'express';
 import type { PreviewStage, RoleFamilyPreview, TeamMember } from '../../shared/api';
 import { getRoleFamily } from '../../shared/roleFamilies';
 import { computeScore, sanitizeScores } from '../../shared/scoring';
-import type { Currency } from '../../shared/types';
+import type { Currency, Delivery, RoleFamily } from '../../shared/types';
 import { buildContext, generateVariant, randomSeed } from '../../shared/variants';
 import type { AppDeps } from '../app';
+import { audioParts } from '../candidateFlow';
 import { createUser, currentUser, randomToken, requireManager, requireUser } from '../auth';
 import { type AssessmentRow, all, one, run, type ResponseRow, type ReviewRow } from '../db';
 import { badRequest, conflict, email, notFound, oneOf, optionalText, str } from '../http';
@@ -24,6 +25,18 @@ import {
 const CURRENCIES = ['INR', 'USD'] as const;
 const TIME_MULTIPLIERS = [1, 1.25, 1.5, 2];
 const REVIEWABLE = ['submitted', 'reviewed', 'decided'];
+const DELIVERIES: Delivery[] = ['natural', 'unsure', 'read'];
+
+/** Keeps delivery reads only for think-aloud stages. */
+function sanitizeObservations(family: RoleFamily, input: unknown): Record<string, Delivery> {
+  const result: Record<string, Delivery> = {};
+  if (!input || typeof input !== 'object') return result;
+  for (const stage of family.stages) {
+    const value = (input as Record<string, unknown>)[stage.id];
+    if (stage.thinkAloud && DELIVERIES.includes(value as Delivery)) result[stage.id] = value as Delivery;
+  }
+  return result;
+}
 
 export function managerRoutes(deps: AppDeps) {
   const { db, now } = deps;
@@ -170,9 +183,17 @@ export function managerRoutes(deps: AppDeps) {
       candidate.id,
       req.params.stageId,
     );
-    if (!response?.audio_path) throw notFound('No recording for this question');
-    res.type(response.audio_mime ?? 'application/octet-stream');
-    res.sendFile(path.resolve(deps.uploadDir, response.audio_path));
+    if (!response) throw notFound('No recording for this question');
+    let file = response.audio_path;
+    let mime = response.audio_mime;
+    if (req.query.part !== undefined) {
+      const part = audioParts(db, response.id).find((p) => p.part === Number(req.query.part));
+      file = part?.path ?? null;
+      mime = part?.mime ?? null;
+    }
+    if (!file) throw notFound('No recording for this question');
+    res.type(mime ?? 'application/octet-stream');
+    res.sendFile(path.resolve(deps.uploadDir, file));
   });
 
   router.put('/candidates/:id/review', (req, res) => {
@@ -188,6 +209,7 @@ export function managerRoutes(deps: AppDeps) {
         ? null
         : oneOf(req.body.recommendation, 'Recommendation', ['advance', 'hold', 'reject'] as const);
     const submitting = req.body.submit === true;
+    const observations = sanitizeObservations(family, req.body.observations);
 
     const existing = one<ReviewRow>(
       db,
@@ -203,10 +225,12 @@ export function managerRoutes(deps: AppDeps) {
 
     run(
       db,
-      `INSERT INTO reviews (id, candidate_id, reviewer_id, scores_json, notes, recommendation, submitted_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO reviews
+         (id, candidate_id, reviewer_id, scores_json, observations_json, notes, recommendation, submitted_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT (candidate_id, reviewer_id) DO UPDATE SET
          scores_json = excluded.scores_json,
+         observations_json = excluded.observations_json,
          notes = excluded.notes,
          recommendation = excluded.recommendation,
          submitted_at = excluded.submitted_at,
@@ -215,6 +239,7 @@ export function managerRoutes(deps: AppDeps) {
       candidate.id,
       user.id,
       JSON.stringify(scores),
+      JSON.stringify(observations),
       notes,
       recommendation,
       submittedAt,

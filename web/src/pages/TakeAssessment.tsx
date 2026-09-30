@@ -1,12 +1,13 @@
 import { type ClipboardEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import type { CandidatePhaseView, CandidateSession } from '../../../shared/candidateApi';
-import type { Block, CandidateStageView, StageSignals } from '../../../shared/types';
+import type { Block, CandidateStageView, ScratchSnapshot, StageSignals } from '../../../shared/types';
 import { EMPTY_SIGNALS, STAGE_KIND_LABEL } from '../../../shared/types';
 import { ApiError, api, errorMessage } from '../api';
 import { Blocks } from '../components/Blocks';
 import { Logo } from '../components/Logo';
 import { Collapsible, ErrorNote, KindBadge } from '../components/ui';
+import { ThinkAloudPanel, useThinkAloud } from '../components/ThinkAloud';
 import { VoiceRecorder, voiceSupported } from '../components/VoiceRecorder';
 import { formatClock, formatMinutes, useCountdown, useLatest } from '../hooks';
 
@@ -123,6 +124,7 @@ function Intro({
   const [error, setError] = useState<string | null>(null);
   const { assessment, candidate } = session;
   const aiAllowed = assessment.outline.some((s) => s.kind === 'ai_allowed');
+  const thinkAloudCount = assessment.outline.filter((s) => s.thinkAloud).length;
 
   async function start(event: React.FormEvent) {
     event.preventDefault();
@@ -151,8 +153,18 @@ function Intro({
             has its own timer, and you can take a break between questions.
           </li>
           <li>Questions appear one at a time, and you can't go back, so finish each one before moving on.</li>
+          {thinkAloudCount > 0 && (
+            <li>
+              <strong>
+                {thinkAloudCount} question{thinkAloudCount === 1 ? '' : 's'} record you thinking out loud
+              </strong>{' '}
+              from the moment they open, next to a scratchpad. No preparation needed: we want to hear how you work it
+              out, including sums, doubts and corrections. It's audio only, never video.
+            </li>
+          )}
           <li>
-            Most questions work best as a short voice note, like explaining to a colleague. You can always type instead.
+            Other questions work best as a short voice note, like explaining to a colleague. You can always type
+            instead.
           </li>
           <li>The company is fictional. Your version of the numbers is unique to you. A calculator is fine.</li>
         </ul>
@@ -160,7 +172,8 @@ function Intro({
           {assessment.outline.map((step, i) => (
             <span key={i} className="outline-step">
               <span className="outline-num">{i + 1}</span>
-              {STAGE_KIND_LABEL[step.kind]} · {formatMinutes(step.minutes * 60)}
+              {STAGE_KIND_LABEL[step.kind]}
+              {step.thinkAloud && ' · think aloud'} · {formatMinutes(step.minutes * 60)}
             </span>
           ))}
         </div>
@@ -210,7 +223,7 @@ function Intro({
         <p className="muted small">Need extra time or a different format? Ask {assessment.orgName} before you start.</p>
       </section>
 
-      <MicCheck />
+      <MicCheck recommended={thinkAloudCount > 0} />
 
       <form className="card start-form" onSubmit={start}>
         <label className="field">
@@ -237,7 +250,7 @@ function Intro({
   );
 }
 
-function MicCheck() {
+function MicCheck({ recommended }: { recommended: boolean }) {
   const [level, setLevel] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const stopRef = useRef<() => void>(() => {});
@@ -280,7 +293,7 @@ function MicCheck() {
   return (
     <section className="card mic-check">
       <div>
-        <h2>Check your microphone (optional)</h2>
+        <h2>Check your microphone {recommended ? '(recommended)' : '(optional)'}</h2>
         <p className="muted small">Say a few words. The bar should move.</p>
       </div>
       {level === null ? (
@@ -344,7 +357,18 @@ function Ready({
           <KindBadge kind={next.kind} />
         </div>
         <h2>{formatMinutes(next.timeLimitSec)} on the clock</h2>
-        {next.kind === 'ai_allowed' ? (
+        {next.thinkAloud ? (
+          <>
+            <p>
+              <strong>This question records audio from the moment you open it.</strong> Think out loud as you work: read
+              the numbers, do the sums, change your mind. There's a scratchpad for notes. Finish by saying your answer,
+              then submit.
+            </p>
+            <p className="small muted">
+              Your browser will ask to use the microphone. If you can't use one, you can type your working instead.
+            </p>
+          </>
+        ) : next.kind === 'ai_allowed' ? (
           <p>
             AI tools are <strong>allowed</strong> on this one. Have your preferred tool open, and be ready to paste your
             conversation.
@@ -394,6 +418,17 @@ function StageScreen({
   const [aiTranscript, setAiTranscript] = useState(draft.aiTranscript ?? '');
   const [reflection, setReflection] = useState(draft.reflection ?? '');
   const [hasAudio, setHasAudio] = useState(Boolean(state.audio));
+  const [scratch, setScratch] = useState<ScratchSnapshot[]>(draft.scratch ?? []);
+  // Fixed at mount: a later session refresh must not restart the recorder.
+  const [openedAt] = useState(() => state.deadlineAt - stage.timeLimitSec * 1000 - offset);
+  const [existingParts] = useState(() => (stage.thinkAloud ? (state.audio?.parts ?? 0) : 0));
+  const thinkAloud = useThinkAloud({
+    enabled: stage.thinkAloud,
+    url: `${base}/stages/${stage.id}/stream`,
+    existingParts,
+    openedAt,
+    onClosed: onStale,
+  });
   const voiceAllowed = stage.voiceMaxSec > 0 && voiceSupported();
   const [mode, setMode] = useState<'voice' | 'text'>(
     voiceAllowed && stage.preferVoice && !draft.text ? 'voice' : 'text',
@@ -433,7 +468,25 @@ function StageScreen({
     signals.current.keystrokes += 1;
   };
 
-  const values = { text, choiceId: choiceId || undefined, aiTranscript, reflection };
+  /** Scratchpad edits become timestamped snapshots so reviewers can line them up with the audio. */
+  const updateScratchpad = (value: string) => {
+    setText(value);
+    const t = Date.now() - openedAt;
+    setScratch((prev) => {
+      const last = prev[prev.length - 1];
+      // One snapshot per ~8 seconds of editing keeps the timeline readable.
+      if (last && t - last.t < 8000) return [...prev.slice(0, -1), { t, text: value }];
+      return prev.length >= 200 ? [...prev.slice(0, -1), { t, text: value }] : [...prev, { t, text: value }];
+    });
+  };
+
+  const values = {
+    text,
+    choiceId: choiceId || undefined,
+    aiTranscript,
+    reflection,
+    scratch: stage.thinkAloud ? scratch : undefined,
+  };
   const latest = useLatest(values);
   const lastSaved = useRef(JSON.stringify(values));
 
@@ -460,8 +513,9 @@ function StageScreen({
       submittingRef.current = true;
       setSubmitting(true);
       setError(null);
-      // Never race a voice note that is still uploading.
+      // Never race audio that is still uploading.
       if (uploadRef.current) await uploadRef.current.catch(() => undefined);
+      await thinkAloud.finish();
       if (hiddenSince.current) {
         signals.current.hiddenMs += Date.now() - hiddenSince.current;
         hiddenSince.current = Date.now();
@@ -485,7 +539,7 @@ function StageScreen({
         setConfirming(false);
       }
     },
-    [base, stage.id, latest, onSession, onStale],
+    [base, stage.id, latest, onSession, onStale, thinkAloud.finish],
   );
 
   // Submit whatever is there when the clock runs out.
@@ -499,7 +553,8 @@ function StageScreen({
 
   const hasText = text.trim().length > 0;
   const canSubmit =
-    (stage.kind !== 'decision' || Boolean(choiceId)) && (stage.kind === 'ai_allowed' ? hasText : hasText || hasAudio);
+    (stage.kind !== 'decision' || Boolean(choiceId)) &&
+    (stage.kind === 'ai_allowed' ? hasText : hasText || hasAudio || thinkAloud.hasAudio);
   const timeUp = remaining === 0;
   const urgency = remaining === null ? '' : remaining < 20_000 ? 'danger' : remaining < 60_000 ? 'warn' : '';
 
@@ -511,6 +566,7 @@ function StageScreen({
             Question {stage.index + 1} of {total}
           </span>
           <KindBadge kind={stage.kind} />
+          {stage.thinkAloud && <span className="badge badge-think">Think aloud</span>}
         </div>
         <div className="timer" role="timer" aria-live={urgency ? 'polite' : 'off'}>
           {timeUp ? "Time's up, submitting…" : formatClock(remaining ?? 0)}
@@ -553,6 +609,15 @@ function StageScreen({
           </div>
 
           <div className="card answer-card">
+            {stage.thinkAloud && (
+              <ThinkAloudPanel
+                status={thinkAloud.status}
+                elapsed={thinkAloud.elapsed}
+                level={thinkAloud.level}
+                uploadError={thinkAloud.uploadError}
+                existingParts={existingParts}
+              />
+            )}
             {stage.choices && (
               <fieldset className="choices" disabled={timeUp}>
                 <legend>Your choice</legend>
@@ -604,6 +669,23 @@ function StageScreen({
                   />
                 </label>
               </>
+            ) : stage.thinkAloud ? (
+              <label className="field">
+                <span>
+                  {thinkAloud.status === 'unavailable'
+                    ? 'Your working and your answer'
+                    : 'Scratchpad (optional): jot numbers and working as you go'}
+                </span>
+                <textarea
+                  value={text}
+                  onChange={(e) => updateScratchpad(e.target.value)}
+                  onPaste={onPaste}
+                  onKeyDown={onKeyDown}
+                  rows={thinkAloud.status === 'unavailable' ? 9 : 6}
+                  maxLength={20000}
+                  disabled={timeUp}
+                />
+              </label>
             ) : (
               <>
                 {voiceAllowed && (
@@ -699,7 +781,9 @@ function StageScreen({
                   ? 'Choose an option, then explain your reasoning.'
                   : stage.kind === 'ai_allowed'
                     ? 'Paste your final answer to continue.'
-                    : 'Record a voice note or type an answer to continue.'}
+                    : stage.thinkAloud
+                      ? 'Start talking through it; you can submit once some of your recording is saved.'
+                      : 'Record a voice note or type an answer to continue.'}
               </p>
             )}
           </div>

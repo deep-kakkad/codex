@@ -29,6 +29,7 @@ Or skip the seed and create a workspace at `/signup`.
 
 - **Role library.** Two role families to start with: _Performance Marketing_ and _Customer Support Leadership_. Each has 7 stages: a warm-up, a scenario question, a decision, a branch that changes the situation based on that decision, a critique of a flawed plan, an AI-allowed task and a past-work story. The preview shows every branch and its answer key.
 - **Assessments and invites.** Create an assessment, invite a candidate and copy their private link. Extra time can be set per candidate.
+- **Think-aloud review.** On think-aloud questions the reviewer gets the recording (with 1–2× speed), the candidate's scratchpad as a timeline (click a moment to hear what they were saying then), a "what to listen for" checklist, and a delivery flag (natural / not sure / sounded read). "Not sure" or "read" moves that question to the top of the verification call.
 - **Review.** For each question the reviewer sees what the candidate saw, their answer (voice note, text, choice, AI transcript), time taken and weak integrity signals. Next to it are the reviewer guide and anchored 1–4 rubrics. Reviews stay blind until you submit yours. Managers record the decision.
 - **Verification call.** A printable script with an ID check, then follow-ups built from the candidate's own answers (priority first), and an outcome form.
 - **Team.** Add reviewers and other hiring managers.
@@ -37,7 +38,8 @@ Or skip the seed and create a workspace at `/signup`.
 
 - A clear intro explaining what's recorded and what isn't, how AI may be used, and what happens next.
 - An untimed scenario brief, then one question at a time. Timers are enforced by the server, drafts autosave, and there are breaks between questions.
-- Voice notes (with a microphone check) or typed answers.
+- **Think-aloud questions** (three per role family: the first read, the decision and the critique). Audio records from the moment the question opens until it's submitted, next to a scratchpad, so reviewers hear the working rather than a prepared answer. It's audio only. Chunks upload every 4 seconds, so a crash or reload loses at most a few seconds, and the recording continues as a new part. Candidates without a microphone type their working instead.
+- Voice notes (with a microphone check) or typed answers on the other questions.
 
 ## Scripts
 
@@ -89,4 +91,5 @@ Create `shared/roleFamilies/<name>.ts` exporting a `RoleFamily`, then register i
 - No password reset, SSO or login rate limiting.
 - SQLite on one node, and voice notes on local disk. Move both to managed storage before running multiple instances.
 - No data-retention or deletion tooling for candidate data yet.
+- No speech-to-text yet: reviewers listen to think-aloud recordings rather than skimming a transcript. A timestamped transcript is the obvious next step.
 - Integrity signals are client-reported and can be spoofed. By design they are only hints for the live call.

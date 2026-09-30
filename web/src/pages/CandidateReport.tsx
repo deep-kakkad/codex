@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { CandidateReport, ReportStage, VerificationRecord } from '../../../shared/api';
 import { formatDuration } from '../../../shared/signals';
-import type { Decision, Recommendation, ReviewScores } from '../../../shared/types';
+import type { Decision, Delivery, Recommendation, ReviewScores } from '../../../shared/types';
 import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Blocks } from '../components/Blocks';
+import { ThinkAloudReview } from '../components/ThinkAloudReview';
 import {
   Collapsible,
   CopyButton,
@@ -134,6 +135,7 @@ function AnswersTab({
 }) {
   const [scores, setScores] = useState<ReviewScores>(report.myReview?.scores ?? {});
   const [notes, setNotes] = useState(report.myReview?.notes ?? '');
+  const [observations, setObservations] = useState<Record<string, Delivery>>(report.myReview?.observations ?? {});
   const [recommendation, setRecommendation] = useState<Recommendation | null>(report.myReview?.recommendation ?? null);
   const [dirty, setDirty] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -160,6 +162,7 @@ function AnswersTab({
     try {
       const next = await api.put<CandidateReport>(`/api/candidates/${report.candidate.id}/review`, {
         scores,
+        observations,
         notes,
         recommendation,
         submit,
@@ -192,6 +195,11 @@ function AnswersTab({
             stageScore={summary.byStage[stage.id] ?? null}
             canScore={finished}
             onScore={(criterionId, value) => setScore(stage.id, criterionId, value)}
+            delivery={observations[stage.id]}
+            onDelivery={(value) => {
+              setObservations((prev) => ({ ...prev, [stage.id]: value }));
+              setDirty(true);
+            }}
           />
         ))}
       </div>
@@ -281,12 +289,16 @@ function StageReview({
   stageScore,
   canScore,
   onScore,
+  delivery,
+  onDelivery,
 }: {
   stage: ReportStage;
   scores: Record<string, number>;
   stageScore: number | null;
   canScore: boolean;
   onScore: (criterionId: string, value: number) => void;
+  delivery: Delivery | undefined;
+  onDelivery: (value: Delivery) => void;
 }) {
   const r = stage.response;
   return (
@@ -295,6 +307,7 @@ function StageReview({
         <div>
           <span className="muted small">Q{stage.index + 1}</span> <strong>{stage.title}</strong>{' '}
           <KindBadge kind={stage.kind} />
+          {stage.thinkAloud && <span className="badge badge-think">Think aloud</span>}
         </div>
         {stage.scored ? <Score value={stageScore} /> : <span className="small muted">Not scored</span>}
       </header>
@@ -336,16 +349,28 @@ function StageReview({
                 <strong>{r.choiceLabel}</strong>
               </p>
             )}
-            {r.audioUrl && (
-              <div className="answer-audio">
-                <span className="small muted">Voice note{r.audioSec ? ` (${formatDuration(r.audioSec)})` : ''}</span>
-                <audio controls preload="none" src={r.audioUrl} className="audio" />
-              </div>
+            {stage.thinkAloud ? (
+              <ThinkAloudReview response={r} delivery={delivery} canObserve={canScore} onDelivery={onDelivery} />
+            ) : (
+              r.audio.map((a) => (
+                <div key={a.url} className="answer-audio">
+                  <span className="small muted">Voice note{a.sec ? ` (${formatDuration(a.sec)})` : ''}</span>
+                  <audio controls preload="none" src={a.url} className="audio" />
+                </div>
+              ))
             )}
-            {r.text ? (
+            {stage.thinkAloud ? (
+              r.text &&
+              !r.scratch.length && (
+                <div>
+                  <div className="small muted">{r.audio.length ? 'Scratchpad' : 'Typed working'}</div>
+                  <div className="answer-text">{r.text}</div>
+                </div>
+              )
+            ) : r.text ? (
               <div className="answer-text">{r.text}</div>
             ) : (
-              !r.audioUrl && r.closedReason && <p className="muted">No answer.</p>
+              !r.audio.length && r.closedReason && <p className="muted">No answer.</p>
             )}
             {stage.kind === 'ai_allowed' && (
               <>

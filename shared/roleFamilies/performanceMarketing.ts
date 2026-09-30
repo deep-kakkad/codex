@@ -185,6 +185,7 @@ export const performanceMarketing: RoleFamily = {
       timeLimitSec: 300,
       voiceMaxSec: 120,
       preferVoice: true,
+      thinkAloud: true,
       scored: true,
       prompt: (ctx) => [
         {
@@ -264,6 +265,7 @@ export const performanceMarketing: RoleFamily = {
       timeLimitSec: 360,
       voiceMaxSec: 150,
       preferVoice: true,
+      thinkAloud: true,
       scored: true,
       choices: CUT_CHOICES,
       prompt: (ctx) => [
@@ -450,6 +452,7 @@ export const performanceMarketing: RoleFamily = {
       timeLimitSec: 420,
       voiceMaxSec: 180,
       preferVoice: false,
+      thinkAloud: true,
       scored: true,
       prompt: (ctx) => [
         {

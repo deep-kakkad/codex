@@ -1,5 +1,5 @@
 import { hasNotableSignals } from './signals';
-import type { AnswerSummary, RoleFamily, StageContext, StageDef, StageSignals } from './types';
+import type { AnswerSummary, Delivery, RoleFamily, StageContext, StageDef, StageSignals } from './types';
 
 export interface ResponseForScript {
   stageId: string;
@@ -68,6 +68,8 @@ export function buildVerificationScript(
   ctx: StageContext,
   candidate: { name: string; idName: string | null },
   responses: ResponseForScript[],
+  /** Reviewer reads of think-aloud recordings, by stage. */
+  concerns: Record<string, Delivery> = {},
 ): VerificationScript {
   const byStage = new Map(responses.map((r) => [r.stageId, r]));
 
@@ -104,6 +106,11 @@ export function buildVerificationScript(
     }
     if (answer.timedOut && !answer.hasText && !answer.hasVoice) {
       reasons.push('They ran out of time without answering: give them a second chance live.');
+    }
+    if (concerns[stage.id] === 'read') {
+      reasons.push('A reviewer thought the think-aloud sounded read or rehearsed: have them redo the key step live.');
+    } else if (concerns[stage.id] === 'unsure') {
+      reasons.push('A reviewer was unsure about the think-aloud: ask them to walk through the working again.');
     }
     if (stage.kind === 'past_work') {
       reasons.push('Past-work stories are easy to fabricate asynchronously: dig into specifics.');
