@@ -33,19 +33,29 @@ export function RolePreview() {
             ← Role library
           </Link>
           <h1>{data?.family.name ?? 'Preview'}</h1>
-          <p className="muted">
-            One sample version of the scenario. Every candidate gets different names and numbers; the answer key adapts.
-          </p>
+          {data?.family.generated ? (
+            <p className="muted">
+              Written by AI from your description; every candidate sees this exact version. Check the numbers, the
+              planted flaws and the answer key before you use it: the AI scores candidates against this key.
+            </p>
+          ) : (
+            <p className="muted">
+              One sample version of the scenario. Every candidate gets different names and numbers; the answer key
+              adapts.
+            </p>
+          )}
         </div>
-        <div className="row-gap">
-          <select value={currency} onChange={(e) => setCurrency(e.target.value)} aria-label="Currency">
-            <option value="INR">₹ INR</option>
-            <option value="USD">$ USD</option>
-          </select>
-          <button className="btn btn-secondary" onClick={regenerate} disabled={loading}>
-            Generate another version
-          </button>
-        </div>
+        {data && !data.family.generated && (
+          <div className="row-gap">
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)} aria-label="Currency">
+              <option value="INR">₹ INR</option>
+              <option value="USD">$ USD</option>
+            </select>
+            <button className="btn btn-secondary" onClick={regenerate} disabled={loading}>
+              Generate another version
+            </button>
+          </div>
+        )}
       </div>
       <ErrorNote error={error} />
       {data && (

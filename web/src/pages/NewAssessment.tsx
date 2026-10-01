@@ -1,10 +1,11 @@
-import { type FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { type FormEvent, useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { RoleFamilySummary, StageOutline } from '../../../shared/api';
 import type { Currency } from '../../../shared/types';
 import { api, errorMessage } from '../api';
 import { ErrorNote, KindBadge } from '../components/ui';
 import { formatMinutes, useApi } from '../hooks';
+import { GeneratedBadge } from './RoleLibrary';
 
 /** Adds an activity's prerequisite; removing a prerequisite removes what needs it. */
 function toggle(stages: StageOutline[], selected: Set<string>, id: string): Set<string> {
@@ -22,6 +23,7 @@ function toggle(stages: StageOutline[], selected: Set<string>, id: string): Set<
 
 export function NewAssessment() {
   const navigate = useNavigate();
+  const [params] = useSearchParams();
   const { data, error: loadError } = useApi<{ families: RoleFamilySummary[] }>('/api/role-families');
   const [familyId, setFamilyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -38,7 +40,15 @@ export function NewAssessment() {
     setFamilyId(f.id);
     setSelected(new Set(f.stages.map((s) => s.id)));
     setTitle(f.roles[0]);
+    if (f.fixedCurrency) setCurrency(f.fixedCurrency);
   }
+
+  // Arriving from "Use it" on a generated scenario.
+  const preselect = params.get('family');
+  useEffect(() => {
+    const f = data?.families.find((x) => x.id === preselect);
+    if (f && !familyId) pickRole(f);
+  }, [data, preselect]);
 
   async function create(event: FormEvent) {
     event.preventDefault();
@@ -82,11 +92,15 @@ export function NewAssessment() {
               <input type="radio" name="family" checked={familyId === f.id} onChange={() => pickRole(f)} />
               <span>{f.name}</span>
             </label>
+            {f.generated && <GeneratedBadge />}
             <div className="small">For: {f.roles.join(', ')}</div>
             <p className="muted">{f.summary}</p>
           </div>
         ))}
       </div>
+      <p className="small muted">
+        Not listed? <Link to="/app/library#generate">Have AI write a scenario for any role</Link>.
+      </p>
 
       {family && (
         <>
@@ -134,13 +148,22 @@ export function NewAssessment() {
               <span>Job title candidates will see</span>
               <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={120} />
             </label>
-            <label className="field">
-              <span>Currency used in the scenario</span>
-              <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
-                <option value="INR">Indian rupee (₹)</option>
-                <option value="USD">US dollar ($)</option>
-              </select>
-            </label>
+            {family.fixedCurrency ? (
+              <p className="small muted">This scenario's amounts are written in {family.fixedCurrency}.</p>
+            ) : (
+              <label className="field">
+                <span>Currency used in the scenario</span>
+                <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
+                  <option value="INR">Indian rupee (₹)</option>
+                  <option value="USD">US dollar ($)</option>
+                </select>
+              </label>
+            )}
+            {family.generated && (
+              <p className="small muted">
+                AI wrote this scenario. Check the preview and answer key before inviting candidates.
+              </p>
+            )}
             {!hasScored && <p className="small error-text">Pick at least one scored activity.</p>}
             <ErrorNote error={error} />
             <button className="btn btn-primary" disabled={busy || !title.trim() || !hasScored}>

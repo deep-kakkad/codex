@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { exampleSpec } from '../server/ai/generateFamily';
 import { ROLE_FAMILIES } from '../shared/roleFamilies';
+import { SpecError, familyFromSpec, parseFamilySpec } from '../shared/roleFamilies/custom';
 import type { Block, Currency, RoleFamily } from '../shared/types';
 import { buildContext, createRng, generateVariant, n } from '../shared/variants';
 
@@ -174,6 +176,59 @@ describe('role family content', () => {
         expect(n(v, 'unfollowPct')).toBeGreaterThan(50);
       }
     }
+  });
+});
+
+describe('AI-generated role families', () => {
+  /** What a model would send: the spec as JSON, without the currency we set ourselves. */
+  const asModelOutput = (familyIndex = 1) => {
+    const { currency: _currency, ...spec } = exampleSpec(ROLE_FAMILIES[familyIndex], 'USD');
+    return JSON.parse(JSON.stringify(spec));
+  };
+
+  it('accepts every practitioner-written family in spec form and renders every path', () => {
+    for (let i = 0; i < ROLE_FAMILIES.length; i++) {
+      const spec = parseFamilySpec(asModelOutput(i), 'USD');
+      const family = familyFromSpec('gen-test', spec);
+      expect(family.fixedCurrency).toBe('USD');
+      expect(family.stages[0].id).toBe('warmup');
+      expect(family.stages.at(-1)!.id).toBe('past-work');
+      for (const seed of SEEDS.slice(0, 3)) {
+        expect(renderAll(family, seed, 'USD')).not.toMatch(/undefined|NaN|Infinity|\[object Object\]/);
+      }
+    }
+  });
+
+  it('shows each branch the situation for the option chosen', () => {
+    const family = familyFromSpec('gen-test', parseFamilySpec(asModelOutput(), 'USD'));
+    const branch = family.stages.find((s) => s.kind === 'branch')!;
+    const decision = family.stages.find((s) => s.id === branch.dependsOn)!;
+    const [a, b] = decision.choices!;
+    const variant = generateVariant(family, 1, 'USD');
+    const text = (choice: string) => blockText(branch.prompt(buildContext(variant, 'USD', { [decision.id]: choice })));
+    expect(text(a.id)).not.toBe(text(b.id));
+  });
+
+  it('rejects specs that would break the candidate flow, listing every problem', () => {
+    const spec = asModelOutput();
+    const branch = spec.stages.find((s: { kind: string }) => s.kind === 'branch');
+    delete branch.branches[Object.keys(branch.branches)[0]];
+    spec.stages.find((s: { kind: string }) => s.kind === 'critique').material = [];
+    spec.brief[0] = { type: 'html', text: '<script>' };
+    spec.stages.push({ ...spec.stages[0] });
+    try {
+      parseFamilySpec(spec, 'USD');
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(SpecError);
+      const issues = (error as SpecError).issues.join('\n');
+      expect(issues).toMatch(/branches\.\w[\w-]* is missing/);
+      expect(issues).toMatch(/material must be a list/);
+      expect(issues).toMatch(/brief\[0\]\.type/);
+      expect(issues).toMatch(/is repeated/);
+    }
+    expect(() => parseFamilySpec({ ...asModelOutput(), stages: [] }, 'USD')).toThrow(SpecError);
+    expect(() => parseFamilySpec('not an object', 'USD')).toThrow(SpecError);
   });
 });
 

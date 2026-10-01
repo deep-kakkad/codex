@@ -122,6 +122,10 @@ export interface RoleFamily {
   stages: StageDef[];
   /** Warm-up prompts; one is picked per candidate. */
   warmups?: string[];
+  /** Written by AI for one organisation rather than by practitioners. */
+  generated?: boolean;
+  /** Generated scenarios have their amounts written in one currency. */
+  fixedCurrency?: Currency;
 }
 
 /** What a candidate is allowed to see for a stage. */

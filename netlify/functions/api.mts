@@ -1,10 +1,11 @@
 import type { Config } from '@netlify/functions';
 import serverless from 'serverless-http';
+import { backgroundGenerationQueue } from '../../server/ai/generateFamily';
 import { backgroundFunctionQueue } from '../../server/ai/queue';
 import { createApp } from '../../server/app';
 import { DEMO_ORG_ID } from '../../server/demo';
 import { one } from '../../server/db';
-import { REVIEW_PATH, runtime, siteUrl } from '../lib/runtime';
+import { GENERATE_PATH, REVIEW_PATH, runtime, siteUrl } from '../lib/runtime';
 
 // The Express API as a Netlify function on /api/*. serverless-http speaks the
 // Lambda event format, so the web Request is translated to that and back.
@@ -30,6 +31,7 @@ async function init(): Promise<LambdaHandler> {
     secureCookies: true,
     trustProxy: true,
     queue: (deps) => backgroundFunctionQueue(deps, `${siteUrl()}${REVIEW_PATH}`),
+    generationQueue: (deps) => backgroundGenerationQueue(deps, `${siteUrl()}${GENERATE_PATH}`),
   });
   // DEMO_SEED=1: if the demo workspace doesn't exist yet, a background function creates it.
   if (process.env.DEMO_SEED === '1' && !(await one(db, 'SELECT id FROM orgs WHERE id = ?', DEMO_ORG_ID))) {

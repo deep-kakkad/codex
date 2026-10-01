@@ -27,6 +27,8 @@ The first role families are **performance marketing** (the gap the research name
 | SEO             | Organic revenue drop after a site migration, with a Google update as red herring | Audit would block the new category pages in robots.txt, canonicalise them to the home page, delay redirects |
 | Social Media    | Engagement "up" because of a giveaway whose followers leave                      | Public reply to a viral complaint exposes the customer's address, blames them, overpromises, hides comments |
 
+For any other role, a recruiter can have AI write a scenario in the same format. It is the long tail, not the product: generated scenarios are clearly marked, private to the organisation, the same for every candidate, and need the recruiter to read the answer key, because the AI later scores candidates against it. Practitioner-written families stay the default and the quality bar.
+
 ## Anti-AI methods: what we built and what we skipped
 
 | Method (research verdict)                                    | In the MVP                                                                                                                                                                                                                                                                                  | Where                                                        |
@@ -75,4 +77,5 @@ From the Greenhouse data (38% withdrew from a process because of an AI interview
 2. Does the verification call change any decisions, and how often does it catch an inconsistency?
 3. Candidate completion rate and drop-off by stage, especially at voice-first questions.
 4. Demand for the AI-allowed stage as a standalone "AI fluency for non-tech roles" product (TestGorilla survey: the top cause of bad AI hires is not being able to define AI fluency for non-technical roles).
-5. Whether expert reviewers-as-a-service, like BarRaiser but for marketing, is the business rather than the software.
+5. How often recruiters use AI-written scenarios, and whether they are good enough without edits: have a practitioner rate a sample against the hand-written families.
+6. Whether expert reviewers-as-a-service, like BarRaiser but for marketing, is the business rather than the software.

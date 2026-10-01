@@ -57,7 +57,7 @@ export async function loadByToken(db: DB, token: string): Promise<CandidateConte
   const candidate = await one<CandidateRow>(db, 'SELECT * FROM candidates WHERE token = ?', token);
   if (!candidate) throw notFound('This assessment link is not valid');
   const assessment = (await one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id))!;
-  const family = familyFor(assessment);
+  const family = await familyFor(db, assessment);
   const org = (await one<{ name: string }>(db, 'SELECT name FROM orgs WHERE id = ?', candidate.org_id))!;
   return { candidate, assessment, family, orgName: org.name, variant: JSON.parse(candidate.variant_json) };
 }

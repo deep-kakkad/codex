@@ -7,6 +7,9 @@ import { netlifyBlobStore } from '../../server/files';
 /** Path of the background function that runs one AI review (must match its config). */
 export const REVIEW_PATH = '/internal/review';
 
+/** Path of the background function that writes one AI-generated scenario. */
+export const GENERATE_PATH = '/internal/generate-family';
+
 /** The site's own URL, so functions can start the review background function. */
 export function siteUrl() {
   return process.env.URL || process.env.DEPLOY_PRIME_URL || process.env.DEPLOY_URL || '';

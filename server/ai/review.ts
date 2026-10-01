@@ -268,7 +268,7 @@ export async function reviewCandidate(deps: ReviewDeps, candidateId: string): Pr
     'SELECT * FROM assessments WHERE id = ?',
     candidate.assessment_id,
   ))!;
-  const family = familyFor(assessment);
+  const family = await familyFor(deps.db, assessment);
   const variant = JSON.parse(candidate.variant_json) as Variant;
   const responses = await all<ResponseRow>(
     deps.db,

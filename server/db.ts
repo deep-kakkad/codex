@@ -180,6 +180,22 @@ export interface TranscriptRow {
   created_at: number;
 }
 
+export interface CustomFamilyRow {
+  id: string;
+  org_id: string;
+  created_by: string;
+  role_title: string;
+  description: string;
+  currency: 'INR' | 'USD';
+  status: 'pending' | 'running' | 'done' | 'failed';
+  attempts: number;
+  spec_json: string | null;
+  error: string | null;
+  model: string | null;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface VerificationRow {
   candidate_id: string;
   interviewer_id: string;

@@ -15,7 +15,7 @@ function median(values: number[]): number | null {
 
 /** Where candidates stop: how many reach, finish and run out of time on each question. */
 export async function assessmentFunnel(db: DB, assessment: AssessmentRow, now: number): Promise<AssessmentFunnel> {
-  const family = familyFor(assessment);
+  const family = await familyFor(db, assessment);
   const candidates = await all<CandidateRow>(db, 'SELECT * FROM candidates WHERE assessment_id = ?', assessment.id);
   const responses = await all<{
     candidate_id: string;

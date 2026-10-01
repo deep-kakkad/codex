@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CandidateSession } from '../shared/candidateApi';
 import type { AiConfig, ChatRequest } from '../server/ai/client';
 import type { ReviewQueue } from '../server/ai/queue';
+import { type GenerationQueue, exampleSpec } from '../server/ai/generateFamily';
+import { contentBrand } from '../shared/roleFamilies/contentBrand';
 import { createApp } from '../server/app';
 import { SUBMIT_GRACE_MS } from '../server/candidateFlow';
 import { localFileStore } from '../server/files';
@@ -26,7 +28,7 @@ async function testDb(): Promise<DB> {
   }
   await sharedPg.query(
     `TRUNCATE orgs, users, sessions, candidate_accounts, candidate_sessions, assessments, candidates,
-       responses, audio_parts, ai_reviews, transcripts, verifications CASCADE`,
+       responses, audio_parts, ai_reviews, transcripts, verifications, custom_families CASCADE`,
   );
   return sharedPg;
 }
@@ -35,6 +37,7 @@ let clock = 1_750_000_000_000;
 let uploadDir: string;
 let app: ReturnType<typeof createApp>['app'];
 let reviews: ReviewQueue;
+let generations: GenerationQueue;
 let ai: FakeAi;
 
 /** Stands in for OpenRouter: deterministic replies, and a record of every call. */
@@ -43,6 +46,16 @@ interface FakeAi extends AiConfig {
   delivery: 'natural' | 'unsure' | 'read';
   score: number;
   brokenJsonOnce: boolean;
+  /** Scenario writer replies that are invalid before a valid one. */
+  invalidSpecs: number;
+  /** What the scenario checker reports on the first draft. */
+  specIssues: string[];
+}
+
+/** A valid scenario as the model would write it, for a made-up role. */
+function generatedSpec(name: string) {
+  const { currency: _currency, ...spec } = exampleSpec(contentBrand, 'USD');
+  return { ...spec, name, roles: ['Field Sales Executive'] };
 }
 
 function createFakeAi(): FakeAi {
@@ -53,6 +66,8 @@ function createFakeAi(): FakeAi {
     delivery: 'natural',
     score: 3,
     brokenJsonOnce: false,
+    invalidSpecs: 0,
+    specIssues: [],
     client: {
       async chat(req) {
         fake.calls.push(req);
@@ -68,6 +83,17 @@ function createFakeAi(): FakeAi {
             delivery: fake.delivery,
             reasons: 'Test delivery.',
           });
+        }
+        if (system.startsWith('You write assessment scenarios')) {
+          if (fake.invalidSpecs > 0) {
+            fake.invalidSpecs--;
+            return JSON.stringify({ ...generatedSpec('Broken'), stages: [] });
+          }
+          const revised = req.messages.some((m) => String(m.content).startsWith('A reviewer found'));
+          return JSON.stringify(generatedSpec(revised ? 'Field Sales (revised)' : 'Field Sales'));
+        }
+        if (system.startsWith('You check assessment scenarios')) {
+          return JSON.stringify({ issues: fake.specIssues });
         }
         if (system.startsWith('You write the overall')) {
           return (
@@ -100,12 +126,18 @@ beforeEach(async () => {
   clock = 1_750_000_000_000;
   uploadDir = mkdtempSync(path.join(tmpdir(), 'proofwork-test-'));
   ai = createFakeAi();
-  ({ app, reviews } = createApp({ db: await testDb(), files: localFileStore(uploadDir), now: () => clock, ai }));
+  ({ app, reviews, generations } = createApp({
+    db: await testDb(),
+    files: localFileStore(uploadDir),
+    now: () => clock,
+    ai,
+  }));
   agents.clear();
 });
 
 afterEach(async () => {
   await reviews.idle();
+  await generations.idle();
   rmSync(uploadDir, { recursive: true, force: true });
 });
 
@@ -990,5 +1022,116 @@ describe('role library', () => {
     const critique = preview.stages.find((s: { id: string }) => s.id === 'draft-reply');
     expect(JSON.stringify(critique.material)).toContain('$');
     expect(JSON.stringify(critique.material)).not.toContain('₹');
+  });
+});
+
+describe('AI-generated scenarios', () => {
+  const describeRole =
+    'Field sales for a B2B payments startup. They visit 8–10 small merchants a day, pitch card machines and need to read a territory report.';
+
+  async function generate(manager: ReturnType<typeof request.agent>, currency = 'USD') {
+    const { body } = await manager
+      .post('/api/generations')
+      .send({ roleTitle: 'Field Sales Executive', description: describeRole, currency })
+      .expect(201);
+    await generations.idle();
+    return body.id as string;
+  }
+
+  it('writes a scenario that the organisation can preview, hire with and review', async () => {
+    const manager = await signup();
+    const id = await generate(manager);
+    const { body: status } = await manager.get(`/api/generations/${id}`).expect(200);
+    expect(status).toMatchObject({ status: 'done', name: 'Field Sales', error: null, currency: 'USD' });
+
+    const { body: library } = await manager.get('/api/role-families').expect(200);
+    const family = library.families.find((f: { id: string }) => f.id === id);
+    expect(family).toMatchObject({ generated: true, fixedCurrency: 'USD', name: 'Field Sales' });
+    expect(family.stages[0].id).toBe('warmup');
+    expect(family.stages.at(-1).id).toBe('past-work');
+
+    // The preview ignores a requested currency: the amounts are written in USD.
+    const { body: preview } = await manager.get(`/api/role-families/${id}/preview?currency=INR`).expect(200);
+    expect(preview.currency).toBe('USD');
+    expect(preview.stages.find((s: { kind: string }) => s.kind === 'branch').variants.length).toBeGreaterThan(1);
+
+    const { body: created } = await manager
+      .post('/api/assessments')
+      .send({ title: 'Field Sales, Pune', roleFamilyId: id, currency: 'INR' })
+      .expect(201);
+    const { body: detail } = await manager.get(`/api/assessments/${created.id}`).expect(200);
+    expect(detail.assessment).toMatchObject({ currency: 'USD', roleFamilyName: 'Field Sales' });
+
+    const { body: invited } = await manager
+      .post(`/api/assessments/${created.id}/candidates`)
+      .send({ name: 'Ravi', email: 'ravi@example.com' })
+      .expect(201);
+    const token = invited.candidate.token;
+    await candidateAccount(token, 'ravi@example.com', 'Ravi');
+    await as(token)
+      .post(`${c(token)}/start`)
+      .send({ idName: 'Ravi', consent: true })
+      .expect(200);
+    const done = await completeAll(token);
+    expect(done.state.phase).toBe('done');
+    await reviews.idle();
+    const { body: report } = await manager.get(`/api/candidates/${invited.candidate.id}`).expect(200);
+    expect(report.aiReview.status).toBe('done');
+
+    // In use, so it can't be deleted.
+    await manager.delete(`/api/generations/${id}`).expect(409);
+  });
+
+  it('is private to the organisation that generated it', async () => {
+    const id = await generate(await signup());
+    const other = await signup('Other', 'lee@other.test');
+    await other.get(`/api/role-families/${id}/preview`).expect(404);
+    await other.get(`/api/generations/${id}`).expect(404);
+    const { body } = await other.get('/api/role-families').expect(200);
+    expect(body.families.some((f: { id: string }) => f.id === id)).toBe(false);
+    await other.post('/api/assessments').send({ title: 'X', roleFamilyId: id, currency: 'USD' }).expect(400);
+  });
+
+  it('repairs invalid output once and revises the draft when the check finds problems', async () => {
+    const manager = await signup();
+    ai.invalidSpecs = 1;
+    ai.specIssues = ['The critique decoy is actually wrong.'];
+    const id = await generate(manager);
+    const { body } = await manager.get(`/api/generations/${id}`).expect(200);
+    expect(body).toMatchObject({ status: 'done', name: 'Field Sales (revised)' });
+    const writerCalls = ai.calls.filter((call) => String(call.messages[0].content).startsWith('You write assessment'));
+    expect(writerCalls).toHaveLength(3);
+    expect(String(writerCalls[1].messages.at(-1)!.content)).toMatch(/stages must be a list/);
+  });
+
+  it('records a failure clearly, can be retried, and can be deleted', async () => {
+    const manager = await signup();
+    ai.invalidSpecs = 2;
+    const id = await generate(manager);
+    const { body: failed } = await manager.get(`/api/generations/${id}`).expect(200);
+    expect(failed.status).toBe('failed');
+    expect(failed.error).toMatch(/invalid/);
+    const { body: library } = await manager.get('/api/role-families').expect(200);
+    expect(library.families.some((f: { id: string }) => f.id === id)).toBe(false);
+
+    await manager.post(`/api/generations/${id}/retry`).expect(200);
+    await generations.idle();
+    expect((await manager.get(`/api/generations/${id}`).expect(200)).body.status).toBe('done');
+    await manager.post(`/api/generations/${id}/retry`).expect(409);
+
+    await manager.delete(`/api/generations/${id}`).expect(200);
+    await manager.get(`/api/generations/${id}`).expect(404);
+  });
+
+  it('validates the request', async () => {
+    const manager = await signup();
+    await manager
+      .post('/api/generations')
+      .send({ roleTitle: 'Field Sales', description: 'Too short', currency: 'USD' })
+      .expect(400);
+    await manager
+      .post('/api/generations')
+      .send({ roleTitle: 'Field Sales', description: describeRole, currency: 'EUR' })
+      .expect(400);
   });
 });

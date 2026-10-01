@@ -8,9 +8,12 @@
 [functions]
   node_bundler = "esbuild"
 
-# Background functions (up to 15 minutes): AI reviews and the demo seed.
+# Background functions (up to 15 minutes): AI reviews, scenario generation and the demo seed.
 # Also declared in code; listed here so every tool agrees.
 [functions.review]
+  background = true
+
+[functions.generate-family]
   background = true
 
 [functions.seed-demo]

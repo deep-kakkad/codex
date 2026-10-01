@@ -45,6 +45,26 @@ export interface RoleFamilySummary {
   summary: string;
   totalMinutes: number;
   stages: StageOutline[];
+  /** Written by AI for this organisation. */
+  generated?: boolean;
+  /** Generated scenarios are written in one currency. */
+  fixedCurrency?: Currency;
+}
+
+/** A recruiter's request for an AI-written scenario, and how it is going. */
+export interface GenerationView {
+  id: string;
+  roleTitle: string;
+  description: string;
+  currency: Currency;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  error: string | null;
+  /** The family name once it is written. */
+  name: string | null;
+  createdAt: number;
+  updatedAt: number;
+  /** Assessments using it; a generation in use can't be deleted. */
+  assessmentCount: number;
 }
 
 export interface PreviewStage {

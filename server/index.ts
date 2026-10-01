@@ -32,7 +32,7 @@ app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY ?? 'loopback');
 const ai = aiConfigFromEnv();
 if (!ai.client) console.warn('OPENROUTER_API_KEY is not set: AI reviews will fail until it is.');
-const { router, reviews } = createApi({
+const { router, reviews, generations } = createApi({
   db,
   files,
   ai,
@@ -40,6 +40,7 @@ const { router, reviews } = createApi({
 });
 app.use('/api', router);
 await reviews.resume();
+await generations.resume();
 
 if (isProduction) {
   const webDir = path.join(root, 'dist', 'web');

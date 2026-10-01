@@ -1,5 +1,6 @@
 import express from 'express';
 import type { AiConfig } from './ai/client';
+import { type GenerationDeps, type GenerationQueue, inProcessGenerationQueue } from './ai/generateFamily';
 import { type ReviewQueue, inProcessQueue } from './ai/queue';
 import type { ReviewDeps } from './ai/review';
 import type { DB } from './db';
@@ -18,6 +19,8 @@ export interface AppOptions {
   secureCookies?: boolean;
   /** How reviews run: in this process (default) or handed to a background function. */
   queue?: (deps: ReviewDeps) => ReviewQueue;
+  /** How AI scenario generation runs, likewise. */
+  generationQueue?: (deps: GenerationDeps) => GenerationQueue;
 }
 
 export interface AppDeps {
@@ -27,6 +30,7 @@ export interface AppDeps {
   secureCookies: boolean;
   ai: AiConfig;
   reviews: ReviewQueue;
+  generations: GenerationQueue;
   onSubmitted: (candidateId: string) => Promise<void>;
 }
 
@@ -35,6 +39,7 @@ export function createApi(options: AppOptions) {
   const now = options.now ?? Date.now;
   const reviewDeps: ReviewDeps = { db: options.db, files: options.files, now, ai: options.ai };
   const reviews = (options.queue ?? inProcessQueue)(reviewDeps);
+  const generations = (options.generationQueue ?? inProcessGenerationQueue)({ db: options.db, ai: options.ai, now });
   const deps: AppDeps = {
     db: options.db,
     files: options.files,
@@ -42,6 +47,7 @@ export function createApi(options: AppOptions) {
     secureCookies: options.secureCookies ?? false,
     ai: options.ai,
     reviews,
+    generations,
     onSubmitted: (candidateId) => reviews.enqueue(candidateId),
   };
 
@@ -58,14 +64,14 @@ export function createApi(options: AppOptions) {
     throw notFound('Unknown API route');
   });
   router.use(errorHandler);
-  return { router, reviews };
+  return { router, reviews, generations };
 }
 
 export function createApp(options: AppOptions & { trustProxy?: boolean | string }) {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', options.trustProxy ?? 'loopback');
-  const { router, reviews } = createApi(options);
+  const { router, reviews, generations } = createApi(options);
   app.use('/api', router);
-  return { app, reviews };
+  return { app, reviews, generations };
 }

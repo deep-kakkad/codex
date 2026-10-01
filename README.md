@@ -29,6 +29,7 @@ The seed leaves two candidates submitted; with the key set, the server reviews t
 **Recruiters**
 
 - **Role and activities.** Pick the role you're hiring for (Performance Marketing, Content & Brand, SEO, Social Media or Customer Support Leadership for now), then choose activities from its scenario: a warm-up, think-aloud questions, a decision, a situation change that follows it, a critique with planted flaws, an AI-allowed task and a real story from their career. A preview shows every branch and the answer key.
+- **AI-written scenarios for any other role.** Describe the role and what good looks like; AI writes a scenario in the same format (brief with numbers, think-aloud questions, a decision with situation changes, a critique with planted flaws, an AI-allowed task, answer key and rubrics). It runs in the background for a few minutes, then appears in the role library, private to the organisation, marked AI-generated. Every candidate gets the same numbers, and the recruiter should read the answer key before using it.
 - **Invites.** Add a candidate by name and email and send them the private link. Extra time can be set per candidate.
 - **AI review.** For every answer: what the candidate saw, their recording (with speed control and a scratchpad timeline that seeks the audio), the transcript, the AI's read of the delivery, and each rubric criterion with the anchor it chose, a verbatim quote and its reasoning. Plus an overall score, recommendation, strengths, concerns and how they worked with versus without AI. Failed reviews show why and can be re-run.
 - **Decision.** Advance, hold or reject. The AI recommends; the recruiter decides.
@@ -53,6 +54,16 @@ Runs in the background after a candidate submits (one review at a time; interrup
 
 The overall score is the weighted rubric average computed by the app, not by the model; the recommendation follows it (≥3.0 advance, ≥2.3 hold).
 
+## AI-written scenarios
+
+`server/ai/generateFamily.ts`, with the review model:
+
+1. **Write.** The prompt sets the rules (consistent numbers, answers that depend on the data, planted flaws only visible with the brief plus a decoy, an AI-allowed task where the default AI answer goes wrong) and gives a practitioner-written family, rendered as JSON, as the worked example.
+2. **Validate.** `shared/roleFamilies/custom.ts` checks the JSON strictly (block types, a branch for every option, four anchors per criterion, time limits, required stage kinds). Invalid output goes back to the model once with the list of problems.
+3. **Check.** A second call looks for arithmetic errors, unsupported planted flaws, answer keys that miss the point and unsafe content. If it finds any, the model revises once; if the revision is invalid, the valid first draft is kept.
+
+The spec is stored per organisation (`custom_families`) and turned into a role family at runtime, with the shared warm-up and past-work questions added.
+
 ## Deploying to Netlify
 
 The app is built for Netlify:
@@ -64,6 +75,7 @@ The app is built for Netlify:
 | Database   | Netlify Database (Postgres), migrations in `netlify/database/migrations/` applied on every deploy                    |
 | Recordings | Netlify Blobs (`recordings` store)                                                                                   |
 | AI reviews | Background function (`/internal/review`, up to 15 minutes) plus a sweep every 10 minutes for stuck or missed reviews |
+| Scenarios  | Background function (`/internal/generate-family`) for AI-written scenarios, covered by the same sweep                |
 | Demo data  | Background function (`/internal/seed-demo`), run once when `DEMO_SEED=1`                                             |
 
 Steps:
@@ -99,7 +111,7 @@ shared/                 domain code used by the server (and types used by the cl
 server/
   ai/                   OpenRouter client, review pipeline and queues (in-process or background function)
   candidateFlow.ts      sequential reveal, server-side timers, drafts, audio uploads
-  families.ts           activity selection per assessment
+  families.ts           built-in and generated role families, activity selection per assessment
   report.ts             recruiter report assembly
   routes/               recruiter auth, candidate accounts, candidate flow, recruiter APIs
   db.ts                 async Postgres helpers (Netlify Database in production, PGlite locally)
@@ -129,4 +141,5 @@ Create `shared/roleFamilies/<name>.ts` exporting a `RoleFamily`, then register i
 - The local server runs AI reviews in-process; on Netlify they run in background functions. There is no dead-letter alerting yet: failed reviews show in the recruiter's view with a re-run button.
 - No data-retention or deletion tooling for candidate data and recordings yet.
 - AI review quality should be checked against expert human scores on a sample of real candidates before relying on it, and AI-assisted hiring is regulated in some places (for example NYC Local Law 144 and the EU AI Act). Candidates are told that AI reviews their answers and people decide.
+- AI-written scenarios are not varied per candidate and can't be edited yet; a recruiter can only preview, use or delete them. Their quality depends on the model and has not been checked against practitioner-written ones.
 - Integrity signals are client-reported and can be spoofed. By design they are only hints for the call.

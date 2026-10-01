@@ -1,7 +1,43 @@
-import { getRoleFamily } from '../shared/roleFamilies';
+import { ROLE_FAMILIES, getRoleFamily } from '../shared/roleFamilies';
+import { type FamilySpec, familyFromSpec } from '../shared/roleFamilies/custom';
 import type { RoleFamily } from '../shared/types';
-import type { AssessmentRow } from './db';
+import { type AssessmentRow, type CustomFamilyRow, type DB, all, one } from './db';
 import { HttpError, badRequest } from './http';
+
+/** A finished spec never changes, so its parsed family can be kept for the container's lifetime. */
+const generatedCache = new Map<string, RoleFamily>();
+
+function fromRow(row: CustomFamilyRow): RoleFamily {
+  let family = generatedCache.get(row.id);
+  if (!family) {
+    family = familyFromSpec(row.id, JSON.parse(row.spec_json!) as FamilySpec);
+    generatedCache.set(row.id, family);
+  }
+  return family;
+}
+
+/** A practitioner-written family, or one generated for this organisation. */
+export async function loadFamily(db: DB, orgId: string, id: string): Promise<RoleFamily | undefined> {
+  const builtIn = getRoleFamily(id);
+  if (builtIn) return builtIn;
+  const row = await one<CustomFamilyRow>(
+    db,
+    "SELECT * FROM custom_families WHERE id = ? AND org_id = ? AND status = 'done'",
+    id,
+    orgId,
+  );
+  return row ? fromRow(row) : undefined;
+}
+
+/** Every family this organisation can hire with: built-in first, then its generated ones, newest first. */
+export async function orgFamilies(db: DB, orgId: string): Promise<RoleFamily[]> {
+  const rows = await all<CustomFamilyRow>(
+    db,
+    "SELECT * FROM custom_families WHERE org_id = ? AND status = 'done' ORDER BY created_at DESC",
+    orgId,
+  );
+  return [...ROLE_FAMILIES, ...rows.map(fromRow)];
+}
 
 /**
  * Validates the activities a recruiter picked: unknown ids are refused, a
@@ -28,8 +64,8 @@ export function resolveSelection(family: RoleFamily, requested: unknown): string
 }
 
 /** The role family as this assessment uses it: only the chosen activities. */
-export function familyFor(assessment: AssessmentRow): RoleFamily {
-  const family = getRoleFamily(assessment.role_family_id);
+export async function familyFor(db: DB, assessment: AssessmentRow): Promise<RoleFamily> {
+  const family = await loadFamily(db, assessment.org_id, assessment.role_family_id);
   if (!family) throw new HttpError(500, `Role family ${assessment.role_family_id} is missing`);
   if (!assessment.stage_ids_json) return family;
   const ids = new Set(JSON.parse(assessment.stage_ids_json) as string[]);

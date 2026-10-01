@@ -317,6 +317,23 @@ legend {
   background: var(--accent-soft);
   color: var(--accent);
 }
+.badge-generated {
+  background: var(--info-soft);
+  color: var(--info);
+}
+.generation-pending,
+.generation-running {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+.generation-done {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.generation-failed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
 .badge-think {
   background: var(--danger-soft);
   color: var(--danger);
@@ -1787,5 +1804,35 @@ blockquote cite {
 @media (max-width: 560px) {
   .funnel-bar-cell {
     width: 30%;
+  }
+}
+
+/* AI-generated scenarios ---------------------------------------------------- */
+
+.generate-card {
+  margin-top: 1.5rem;
+}
+.generate-form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 44rem;
+}
+.generation-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+.generation {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border);
+}
+@media (max-width: 640px) {
+  .generation {
+    flex-direction: column;
   }
 }

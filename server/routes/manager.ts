@@ -1,16 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
-import type { PreviewStage, RoleFamilyPreview, TeamMember } from '../../shared/api';
-import { getRoleFamily } from '../../shared/roleFamilies';
+import type { GenerationView, PreviewStage, RoleFamilyPreview, TeamMember } from '../../shared/api';
 import type { Currency } from '../../shared/types';
 import { buildContext, generateVariant, randomSeed } from '../../shared/variants';
 import type { AppDeps } from '../app';
 import { audioParts } from '../candidateFlow';
 import { createUser, currentUser, randomToken, requireManager, requireUser } from '../auth';
-import { type AssessmentRow, all, one, run, type ResponseRow } from '../db';
+import { type AssessmentRow, type CustomFamilyRow, type DB, all, one, run, type ResponseRow } from '../db';
+import { createGeneration } from '../ai/generateFamily';
 import { aiReviewView } from '../ai/queue';
 import { assessmentFunnel } from '../analytics';
-import { familyFor, resolveSelection } from '../families';
+import { familyFor, loadFamily, orgFamilies, resolveSelection } from '../families';
 import { readChunks } from '../files';
 import { badRequest, conflict, email, notFound, oneOf, optionalText, str } from '../http';
 import {
@@ -18,7 +18,6 @@ import {
   candidateList,
   candidateReport,
   familySummary,
-  listFamilies,
   loadAssessment,
   loadCandidate,
 } from '../report';
@@ -26,6 +25,28 @@ import {
 const CURRENCIES = ['INR', 'USD'] as const;
 const TIME_MULTIPLIERS = [1, 1.25, 1.5, 2];
 const REVIEWABLE = ['submitted', 'reviewed', 'decided'];
+/** Generations an organisation can have in flight at once (each is several long AI calls). */
+const MAX_ACTIVE_GENERATIONS = 3;
+
+async function generationView(db: DB, row: CustomFamilyRow): Promise<GenerationView> {
+  const used = await one<{ count: number }>(
+    db,
+    'SELECT COUNT(*)::int AS count FROM assessments WHERE role_family_id = ?',
+    row.id,
+  );
+  return {
+    id: row.id,
+    roleTitle: row.role_title,
+    description: row.description,
+    currency: row.currency,
+    status: row.status,
+    error: row.error,
+    name: row.spec_json ? (JSON.parse(row.spec_json) as { name: string }).name : null,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    assessmentCount: used?.count ?? 0,
+  };
+}
 export function managerRoutes(deps: AppDeps) {
   const { db, now } = deps;
   const router = Router();
@@ -34,13 +55,15 @@ export function managerRoutes(deps: AppDeps) {
   // Role library ----------------------------------------------------------
 
   router.get('/role-families', async (_req, res) => {
-    res.json({ families: listFamilies() });
+    const user = currentUser(res);
+    res.json({ families: (await orgFamilies(db, user.orgId)).map(familySummary) });
   });
 
   router.get('/role-families/:id/preview', async (req, res) => {
-    const family = getRoleFamily(req.params.id);
+    const user = currentUser(res);
+    const family = await loadFamily(db, user.orgId, req.params.id);
     if (!family) throw notFound('Role family not found');
-    const currency: Currency = req.query.currency === 'USD' ? 'USD' : 'INR';
+    const currency: Currency = family.fixedCurrency ?? (req.query.currency === 'USD' ? 'USD' : 'INR');
     const requestedSeed = Number(req.query.seed);
     const seed = Number.isInteger(requestedSeed) && requestedSeed >= 0 ? requestedSeed : randomSeed();
     const variant = generateVariant(family, seed, currency);
@@ -79,6 +102,72 @@ export function managerRoutes(deps: AppDeps) {
     res.json(preview);
   });
 
+  // AI-generated scenarios ------------------------------------------------
+
+  router.get('/generations', async (_req, res) => {
+    const user = currentUser(res);
+    const rows = await all<CustomFamilyRow>(
+      db,
+      'SELECT * FROM custom_families WHERE org_id = ? ORDER BY created_at DESC',
+      user.orgId,
+    );
+    res.json({ generations: await Promise.all(rows.map((row) => generationView(db, row))) });
+  });
+
+  router.post('/generations', async (req, res) => {
+    const user = requireManager(res);
+    const roleTitle = str(req.body.roleTitle, 'Role title', { max: 120 });
+    const description = str(req.body.description, 'Role description', { min: 40, max: 4000 });
+    const currency = oneOf(req.body.currency, 'Currency', CURRENCIES);
+    if (!deps.ai.client) throw conflict('AI is not configured on this server, so scenarios cannot be generated');
+    const active = await one<{ count: number }>(
+      db,
+      "SELECT COUNT(*)::int AS count FROM custom_families WHERE org_id = ? AND status IN ('pending', 'running')",
+      user.orgId,
+    );
+    if ((active?.count ?? 0) >= MAX_ACTIVE_GENERATIONS) {
+      throw conflict(`Wait for one of the ${MAX_ACTIVE_GENERATIONS} scenarios being written to finish`);
+    }
+    const id = await createGeneration(db, now(), user.orgId, user.id, { roleTitle, description, currency });
+    await deps.generations.enqueue(id);
+    res.status(201).json({ id });
+  });
+
+  const loadGeneration = async (orgId: string, id: string) => {
+    const row = await one<CustomFamilyRow>(db, 'SELECT * FROM custom_families WHERE id = ? AND org_id = ?', id, orgId);
+    if (!row) throw notFound('Scenario not found');
+    return row;
+  };
+
+  router.get('/generations/:id', async (req, res) => {
+    const user = currentUser(res);
+    res.json(await generationView(db, await loadGeneration(user.orgId, req.params.id)));
+  });
+
+  router.post('/generations/:id/retry', async (req, res) => {
+    const user = requireManager(res);
+    const row = await loadGeneration(user.orgId, req.params.id);
+    if (row.status !== 'failed') throw conflict('Only a failed scenario can be retried');
+    await run(
+      db,
+      "UPDATE custom_families SET status = 'pending', attempts = 0, error = NULL, updated_at = ? WHERE id = ?",
+      now(),
+      row.id,
+    );
+    await deps.generations.enqueue(row.id);
+    res.json({ ok: true });
+  });
+
+  router.delete('/generations/:id', async (req, res) => {
+    const user = requireManager(res);
+    const row = await loadGeneration(user.orgId, req.params.id);
+    if (row.status === 'running') throw conflict('This scenario is still being written');
+    const view = await generationView(db, row);
+    if (view.assessmentCount) throw conflict('Assessments use this scenario, so it cannot be deleted');
+    await run(db, 'DELETE FROM custom_families WHERE id = ?', row.id);
+    res.json({ ok: true });
+  });
+
   // Assessments -------------------------------------------------------------
 
   router.get('/assessments', async (_req, res) => {
@@ -93,10 +182,11 @@ export function managerRoutes(deps: AppDeps) {
 
   router.post('/assessments', async (req, res) => {
     const user = requireManager(res);
-    const family = getRoleFamily(str(req.body.roleFamilyId, 'Role family'));
+    const family = await loadFamily(db, user.orgId, str(req.body.roleFamilyId, 'Role family'));
     if (!family) throw badRequest('Unknown role family');
     const title = str(req.body.title, 'Title', { max: 120 });
-    const currency = oneOf(req.body.currency, 'Currency', CURRENCIES);
+    // A generated scenario's amounts are written in one currency.
+    const currency = family.fixedCurrency ?? oneOf(req.body.currency, 'Currency', CURRENCIES);
     const stageIds = resolveSelection(family, req.body.stageIds);
     const id = randomUUID();
     await run(
@@ -122,7 +212,7 @@ export function managerRoutes(deps: AppDeps) {
     const assessment = await loadAssessment(db, user, req.params.id);
     res.json({
       assessment: await assessmentSummary(db, assessment),
-      family: familySummary(familyFor(assessment)),
+      family: familySummary(await familyFor(db, assessment)),
       candidates: await candidateList(db, assessment),
     });
   });
@@ -135,7 +225,7 @@ export function managerRoutes(deps: AppDeps) {
   router.post('/assessments/:id/candidates', async (req, res) => {
     const user = requireManager(res);
     const assessment = await loadAssessment(db, user, req.params.id);
-    const family = familyFor(assessment);
+    const family = await familyFor(db, assessment);
     const name = str(req.body.name, 'Candidate name', { max: 120 });
     const address = email(req.body.email, 'Candidate email');
     const multiplier = req.body.timeMultiplier === undefined ? 1 : Number(req.body.timeMultiplier);
@@ -198,7 +288,7 @@ export function managerRoutes(deps: AppDeps) {
   router.put('/candidates/:id/overrides', async (req, res) => {
     const user = currentUser(res);
     const candidate = await loadCandidate(db, user, req.params.id);
-    const family = familyFor(await loadAssessment(db, user, candidate.assessment_id));
+    const family = await familyFor(db, await loadAssessment(db, user, candidate.assessment_id));
     const stageId = str(req.body.stageId, 'Question');
     const criterionId = str(req.body.criterionId, 'Criterion');
     const stage = family.stages.find((s) => s.id === stageId);

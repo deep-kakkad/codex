@@ -7,7 +7,7 @@ import type {
   StatusCounts,
   VerificationRecord,
 } from '../shared/api';
-import { ROLE_FAMILIES, totalTimeSec } from '../shared/roleFamilies';
+import { totalTimeSec } from '../shared/roleFamilies';
 import { choicesFrom, scaledTimeLimit, stageOutline } from '../shared/render';
 import { describeSignals, hasNotableSignals } from '../shared/signals';
 import type {
@@ -37,11 +37,9 @@ export function familySummary(family: RoleFamily): RoleFamilySummary {
     summary: family.summary,
     totalMinutes: Math.round(totalTimeSec(family) / 60),
     stages: stageOutline(family),
+    ...(family.generated ? { generated: true } : {}),
+    ...(family.fixedCurrency ? { fixedCurrency: family.fixedCurrency } : {}),
   };
-}
-
-export function listFamilies(): RoleFamilySummary[] {
-  return ROLE_FAMILIES.map(familySummary);
 }
 
 export async function loadAssessment(db: DB, user: SessionUser, id: string): Promise<AssessmentRow> {
@@ -64,7 +62,7 @@ export async function loadCandidate(db: DB, user: SessionUser, id: string): Prom
 const EMPTY_COUNTS: StatusCounts = { invited: 0, in_progress: 0, submitted: 0, reviewed: 0, decided: 0 };
 
 export async function assessmentSummary(db: DB, assessment: AssessmentRow): Promise<AssessmentSummary> {
-  const family = familyFor(assessment);
+  const family = await familyFor(db, assessment);
   const counts = { ...EMPTY_COUNTS };
   for (const row of await all<{ status: CandidateStatus; count: number }>(
     db,
@@ -108,7 +106,7 @@ function answerChars(response: ResponseRow) {
 }
 
 export async function candidateList(db: DB, assessment: AssessmentRow): Promise<CandidateListItem[]> {
-  const family = familyFor(assessment);
+  const family = await familyFor(db, assessment);
   const kindOf = new Map(family.stages.map((s) => [s.id, s.kind]));
   const candidates = await all<CandidateRow>(
     db,
@@ -151,7 +149,7 @@ export async function candidateList(db: DB, assessment: AssessmentRow): Promise<
 
 export async function candidateReport(db: DB, candidate: CandidateRow): Promise<CandidateReport> {
   const assessment = (await one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id))!;
-  const family = familyFor(assessment);
+  const family = await familyFor(db, assessment);
   const variant = JSON.parse(candidate.variant_json);
   const responses = await all<ResponseRow>(
     db,

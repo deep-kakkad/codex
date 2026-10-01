@@ -1,10 +1,26 @@
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import type { RoleFamilySummary } from '../../../shared/api';
+import { useAuth } from '../auth';
+import { GenerateScenario } from '../components/GenerateScenario';
 import { ErrorNote, KindBadge } from '../components/ui';
 import { formatMinutes, useApi } from '../hooks';
 
+export function GeneratedBadge() {
+  return (
+    <span className="badge badge-generated" title="Written by AI for your team; not checked by a practitioner">
+      AI-generated
+    </span>
+  );
+}
+
 export function RoleLibrary() {
-  const { data, error } = useApi<{ families: RoleFamilySummary[] }>('/api/role-families');
+  const { user } = useAuth();
+  const { data, error, reload } = useApi<{ families: RoleFamilySummary[] }>('/api/role-families');
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (data && hash === '#generate') document.getElementById('generate')?.scrollIntoView();
+  }, [data, hash]);
   return (
     <>
       <div className="page-head">
@@ -21,7 +37,9 @@ export function RoleLibrary() {
         {data?.families.map((f) => (
           <div key={f.id} className="card">
             <div className="card-select-head">
-              <h3>{f.name}</h3>
+              <h3>
+                {f.name} {f.generated && <GeneratedBadge />}
+              </h3>
               <span className="small muted">~{f.totalMinutes} min</span>
             </div>
             <p className="muted">{f.summary}</p>
@@ -39,6 +57,7 @@ export function RoleLibrary() {
           </div>
         ))}
       </div>
+      <GenerateScenario canCreate={user?.role === 'manager'} onReady={reload} />
     </>
   );
 }

@@ -11,6 +11,13 @@ export interface ChatRequest {
   messages: ChatMessage[];
   maxTokens: number;
   temperature?: number;
+  /** Per attempt; defaults to three minutes. Writing a whole scenario takes longer. */
+  timeoutMs?: number;
+  /**
+   * Cap on hidden reasoning tokens, which count against maxTokens. Models that
+   * think by default can otherwise spend the whole budget before answering.
+   */
+  reasoningTokens?: number;
 }
 
 export interface AiClient {
@@ -36,7 +43,7 @@ export class AiError extends Error {}
 /** OpenRouter's OpenAI-compatible chat API, with a timeout and retries on transient failures. */
 export function openRouterClient(apiKey: string, appUrl = 'https://proofwork.local'): AiClient {
   return {
-    async chat({ model, messages, maxTokens, temperature = 0.2 }) {
+    async chat({ model, messages, maxTokens, temperature = 0.2, timeoutMs = TIMEOUT_MS, reasoningTokens }) {
       let lastError: unknown;
       for (let attempt = 0; attempt < RETRIES; attempt++) {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 2000 * 2 ** (attempt - 1)));
@@ -49,11 +56,17 @@ export function openRouterClient(apiKey: string, appUrl = 'https://proofwork.loc
               'HTTP-Referer': appUrl,
               'X-Title': 'Proofwork',
             },
-            body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature }),
-            signal: AbortSignal.timeout(TIMEOUT_MS),
+            body: JSON.stringify({
+              model,
+              messages,
+              max_tokens: maxTokens,
+              temperature,
+              ...(reasoningTokens ? { reasoning: { max_tokens: reasoningTokens } } : {}),
+            }),
+            signal: AbortSignal.timeout(timeoutMs),
           });
           const body = (await res.json().catch(() => ({}))) as {
-            choices?: { message?: { content?: string } }[];
+            choices?: { message?: { content?: string }; finish_reason?: string }[];
             error?: { message?: string };
           };
           if (!res.ok) {
@@ -66,6 +79,10 @@ export function openRouterClient(apiKey: string, appUrl = 'https://proofwork.loc
             throw new AiError(message);
           }
           const content = body.choices?.[0]?.message?.content;
+          // A reply cut off at the token limit would be cut off again; say so instead of retrying.
+          if (body.choices?.[0]?.finish_reason === 'length') {
+            throw new AiError(`${model}: the reply was cut off at the ${maxTokens}-token limit`);
+          }
           if (!content) {
             lastError = new AiError(`${model}: empty response`);
             continue;
