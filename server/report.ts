@@ -137,7 +137,8 @@ export async function candidateList(db: DB, assessment: AssessmentRow): Promise<
         aiScore: ai?.result?.overall ?? null,
         aiStatus: ai?.status ?? null,
         aiRecommendation: ai?.result?.recommendation ?? null,
-        adjustedScore: adjustedScores(family, ai?.result ?? null, await overridesFor(db, candidate.id))?.overall ?? null,
+        adjustedScore:
+          adjustedScores(family, ai?.result ?? null, await overridesFor(db, candidate.id))?.overall ?? null,
         notableSignals: responses.filter((r) =>
           hasNotableSignals(kindOf.get(r.stage_id) ?? 'scenario', parseSignals(r.signals_json), answerChars(r)),
         ).length,

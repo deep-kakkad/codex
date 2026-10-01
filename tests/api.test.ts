@@ -636,6 +636,54 @@ describe('candidate accounts', () => {
   });
 });
 
+describe('drop-off analytics', () => {
+  it('counts how far candidates get, timeouts and stalled candidates', async () => {
+    const { manager, assessmentId, candidate } = await setup();
+    // A second candidate who starts and stalls on question 2.
+    const { body } = await manager
+      .post(`/api/assessments/${assessmentId}/candidates`)
+      .send({ name: 'Ravi', email: 'ravi@example.com' })
+      .expect(201);
+    const ravi = body.candidate.token;
+    await candidateAccount(ravi, 'ravi@example.com', 'Ravi');
+    await as(ravi)
+      .post(`${c(ravi)}/start`)
+      .send({ idName: 'Ravi', consent: true });
+    const w = (
+      await as(ravi)
+        .post(`${c(ravi)}/next`)
+        .send({ index: 0 })
+    ).body;
+    await answerCurrent(ravi, w);
+    const fr = (
+      await as(ravi)
+        .post(`${c(ravi)}/next`)
+        .send({ index: 1 })
+    ).body as CandidateSession;
+    if (fr.state.phase !== 'stage') throw new Error('expected stage');
+
+    // Asha finishes everything.
+    await as(candidate.token)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    await completeAll(candidate.token);
+
+    // Two days pass: Ravi's open question times out and he counts as stalled there.
+    clock += 2 * 24 * 60 * 60 * 1000;
+    await as(ravi).get(c(ravi));
+
+    const funnel = (await manager.get(`/api/assessments/${assessmentId}/funnel`).expect(200)).body;
+    expect(funnel).toMatchObject({ invited: 2, started: 2, finished: 1, stalledBeforeFirst: 0 });
+    expect(funnel.stages[0]).toMatchObject({ id: 'warmup', reached: 2, submitted: 2, timedOut: 0 });
+    expect(funnel.stages[1]).toMatchObject({ id: 'first-read', reached: 2, submitted: 1, timedOut: 1, stalledHere: 1 });
+    expect(funnel.stages[2]).toMatchObject({ id: 'budget-cut', reached: 1, stalledHere: 0 });
+    expect(typeof funnel.stages[1].medianTimeSec).toBe('number');
+
+    const outsider = await signup('Other Co', 'eve@other.test');
+    await outsider.get(`/api/assessments/${assessmentId}/funnel`).expect(404);
+  });
+});
+
 describe('activity selection', () => {
   it('builds the assessment from the chosen activities only', async () => {
     const manager = await signup();

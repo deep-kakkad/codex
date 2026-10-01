@@ -9,6 +9,7 @@ import { audioParts } from '../candidateFlow';
 import { createUser, currentUser, randomToken, requireManager, requireUser } from '../auth';
 import { type AssessmentRow, all, one, run, type ResponseRow } from '../db';
 import { aiReviewView } from '../ai/queue';
+import { assessmentFunnel } from '../analytics';
 import { familyFor, resolveSelection } from '../families';
 import { readChunks } from '../files';
 import { badRequest, conflict, email, notFound, oneOf, optionalText, str } from '../http';
@@ -124,6 +125,11 @@ export function managerRoutes(deps: AppDeps) {
       family: familySummary(familyFor(assessment)),
       candidates: await candidateList(db, assessment),
     });
+  });
+
+  router.get('/assessments/:id/funnel', async (req, res) => {
+    const user = currentUser(res);
+    res.json(await assessmentFunnel(db, await loadAssessment(db, user, req.params.id), now()));
   });
 
   router.post('/assessments/:id/candidates', async (req, res) => {

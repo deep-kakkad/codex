@@ -34,7 +34,8 @@ export function adjustedScores(family: RoleFamily, result: AiReviewResult | null
   if (!result || !overrides.length) return null;
   const scores: ReviewScores = {};
   for (const stage of result.stages) {
-    for (const [criterionId, c] of Object.entries(stage.criteria)) (scores[stage.stageId] ??= {})[criterionId] = c.score;
+    for (const [criterionId, c] of Object.entries(stage.criteria))
+      (scores[stage.stageId] ??= {})[criterionId] = c.score;
   }
   for (const o of overrides) (scores[o.stageId] ??= {})[o.criterionId] = o.score;
   const summary = computeScore(family, scores);

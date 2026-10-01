@@ -102,6 +102,29 @@ export interface CandidateListItem {
   decision: Decision | null;
 }
 
+export interface FunnelStage {
+  id: string;
+  title: string;
+  kind: StageKind;
+  /** Candidates who opened this question. */
+  reached: number;
+  submitted: number;
+  timedOut: number;
+  /** In-progress candidates quiet for a day whose furthest question is this one. */
+  stalledHere: number;
+  timeLimitSec: number;
+  medianTimeSec: number | null;
+}
+
+export interface AssessmentFunnel {
+  invited: number;
+  started: number;
+  finished: number;
+  stalledBeforeFirst: number;
+  stalledAfterHours: number;
+  stages: FunnelStage[];
+}
+
 export interface AssessmentDetail {
   assessment: AssessmentSummary;
   family: RoleFamilySummary;
@@ -226,7 +249,11 @@ export interface CandidateReport {
   /** Recruiters' disagreements with individual AI scores. */
   overrides: ScoreOverride[];
   /** Scores with overrides applied; null when there are none. */
-  adjusted: { overall: number | null; byStage: Record<string, number | null>; recommendation: Recommendation | null } | null;
+  adjusted: {
+    overall: number | null;
+    byStage: Record<string, number | null>;
+    recommendation: Recommendation | null;
+  } | null;
   verification: { script: VerificationScript; record: VerificationRecord | null };
 }
 

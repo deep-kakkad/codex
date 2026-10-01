@@ -1728,3 +1728,64 @@ blockquote cite {
   gap: 0.4rem;
   align-items: baseline;
 }
+
+/* Drop-off funnel --------------------------------------------------------- */
+
+.funnel-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.funnel-table th,
+.funnel-table td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+  font-weight: normal;
+}
+.funnel-table thead th {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+.funnel-table .num {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.funnel-label {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.funnel-bar-cell {
+  width: 45%;
+}
+.funnel-track {
+  height: 10px;
+}
+.funnel-bar {
+  height: 100%;
+  min-width: 2px;
+  background: var(--accent);
+  border-radius: 0 4px 4px 0;
+}
+.funnel-drop th .funnel-label::after {
+  content: 'Biggest drop';
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--warn);
+  background: var(--warn-soft);
+  border-radius: 999px;
+  padding: 0 0.5rem;
+}
+.sr-only-col {
+  font-size: 0;
+}
+@media (max-width: 560px) {
+  .funnel-bar-cell {
+    width: 30%;
+  }
+}

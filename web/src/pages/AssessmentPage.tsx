@@ -1,7 +1,8 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { AiReviewStatus, AssessmentDetail, CandidateListItem } from '../../../shared/api';
+import type { AiReviewStatus, AssessmentDetail, AssessmentFunnel, CandidateListItem } from '../../../shared/api';
 import { api, errorMessage } from '../api';
+import { Funnel } from '../components/Funnel';
 import { useAuth } from '../auth';
 import {
   CopyButton,
@@ -37,6 +38,7 @@ export function AssessmentPage() {
   const { id } = useParams();
   const { user } = useAuth();
   const { data, setData, error } = useApi<AssessmentDetail>(`/api/assessments/${id}`);
+  const { data: funnel } = useApi<AssessmentFunnel>(`/api/assessments/${id}/funnel`);
 
   if (error) return <ErrorNote error={error} />;
   if (!data) return <p className="muted">Loading…</p>;
@@ -158,6 +160,8 @@ export function AssessmentPage() {
           </table>
         </div>
       )}
+
+      {funnel && funnel.started > 0 && <Funnel funnel={funnel} />}
     </>
   );
 }
