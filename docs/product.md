@@ -19,7 +19,13 @@ Where the gap is, according to the competitor map:
 | BarRaiser, InCruiter, Intervue              | Human interview-as-a-service           | Engineering-first; deep rubrics for non-tech roles like marketing are a possible gap                                           |
 | Coderbyte AI-fluency                        | "Allow AI, grade the process"          | Proves the idea works for non-tech tasks, but it's a developer-tools company                                                   |
 
-The first two role families are **performance marketing** (the gap the research names most often) and **customer support leadership** (non-tech, high volume, relevant to Indian hiring).
+The first role families are **performance marketing** (the gap the research names most often) and **customer support leadership** (non-tech, high volume, relevant to Indian hiring), followed by three more marketing roles:
+
+| Role family     | Scenario                                                                         | Planted flaws in the critique                                                                               |
+| --------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Content & Brand | B2B SaaS blog: traffic doubled, trials flat                                      | Brief targets the wrong audience, claims "cheapest" when a competitor is cheaper, ignores why people buy    |
+| SEO             | Organic revenue drop after a site migration, with a Google update as red herring | Audit would block the new category pages in robots.txt, canonicalise them to the home page, delay redirects |
+| Social Media    | Engagement "up" because of a giveaway whose followers leave                      | Public reply to a viral complaint exposes the customer's address, blames them, overpromises, hides comments |
 
 ## Anti-AI methods: what we built and what we skipped
 

@@ -973,7 +973,13 @@ describe('role library', () => {
   it('previews every branch of a role family with a chosen seed', async () => {
     const manager = await signup();
     const { body } = await manager.get('/api/role-families').expect(200);
-    expect(body.families.map((f: { id: string }) => f.id)).toEqual(['performance-marketing', 'customer-support-lead']);
+    expect(body.families.map((f: { id: string }) => f.id)).toEqual([
+      'performance-marketing',
+      'content-brand',
+      'seo',
+      'social-media',
+      'customer-support-lead',
+    ]);
 
     const preview = (
       await manager.get('/api/role-families/customer-support-lead/preview?seed=5&currency=USD').expect(200)

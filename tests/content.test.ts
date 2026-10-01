@@ -122,6 +122,59 @@ describe('role family content', () => {
       expect(n(v, 'backlog')).toBeGreaterThan(n(v, 'normalBacklog'));
     }
   });
+
+  it('content and brand numbers carry the planted flaws for every seed', () => {
+    const family = ROLE_FAMILIES.find((f) => f.id === 'content-brand')!;
+    for (const currency of CURRENCIES) {
+      for (const seed of SEEDS) {
+        const v = generateVariant(family, seed, currency);
+        // The brief's "cheapest" claim is false.
+        expect(n(v, 'competitorPrice')).toBeLessThan(n(v, 'price'));
+        // The listicle brings the most traffic and converts worst; the comparison page converts best.
+        const rate = (page: string) => n(v, `${page}Trials`) / n(v, `${page}Sessions`);
+        for (const page of ['guide', 'template', 'comparison', 'other']) {
+          expect(n(v, 'listicleSessions')).toBeGreaterThan(n(v, `${page}Sessions`));
+          expect(rate('listicle')).toBeLessThan(rate(page));
+          if (page !== 'comparison') expect(rate('comparison')).toBeGreaterThan(rate(page));
+        }
+        // Customers buy for the differentiator, not price.
+        expect(n(v, 'reasonDifferentiatorPct')).toBeGreaterThan(n(v, 'reasonPricePct'));
+      }
+    }
+  });
+
+  it('SEO numbers point at the migration, not the core update, for every seed', () => {
+    const family = ROLE_FAMILIES.find((f) => f.id === 'seo')!;
+    for (const seed of SEEDS) {
+      const v = generateVariant(family, seed, 'USD');
+      expect(n(v, 'catDropPct')).toBeGreaterThanOrEqual(n(v, 'prodDropPct') + 40);
+      expect(Math.abs(n(v, 'blogChangePct'))).toBeLessThanOrEqual(3);
+      expect(Math.abs(n(v, 'competitorChangePct'))).toBeLessThanOrEqual(3);
+      // The 404s are the old category URLs.
+      expect(n(v, 'notFound')).toBeLessThanOrEqual(n(v, 'oldCategoryUrls'));
+      expect(n(v, 'notFound')).toBeGreaterThan(n(v, 'oldCategoryUrls') * 0.9);
+      expect(n(v, 'indexedAfter')).toBeLessThan(n(v, 'indexedBefore'));
+      expect(n(v, 'revenueAfter')).toBeLessThan(n(v, 'revenueBefore'));
+    }
+  });
+
+  it('social media numbers carry the planted flaws for every seed', () => {
+    const family = ROLE_FAMILIES.find((f) => f.id === 'social-media')!;
+    for (const currency of CURRENCIES) {
+      for (const seed of SEEDS) {
+        const v = generateVariant(family, seed, currency);
+        // The giveaway inflates engagement but sells least; Reels sell most.
+        for (const format of ['reels', 'carousels', 'shorts']) {
+          expect(n(v, 'giveawayEngagements')).toBeGreaterThan(n(v, `${format}Engagements`) / n(v, `${format}Posts`));
+          expect(n(v, 'giveawaySales')).toBeLessThan(n(v, `${format}Sales`));
+          if (format !== 'reels') expect(n(v, 'reelsSales')).toBeGreaterThan(n(v, `${format}Sales`));
+        }
+        expect(n(v, 'erNow')).toBeGreaterThan(n(v, 'erBefore') + 2);
+        expect(Math.abs(n(v, 'erWithoutGiveaway') - n(v, 'erBefore'))).toBeLessThanOrEqual(0.5);
+        expect(n(v, 'unfollowPct')).toBeGreaterThan(50);
+      }
+    }
+  });
 });
 
 describe('client bundle boundary', () => {

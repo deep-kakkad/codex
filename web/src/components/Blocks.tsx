@@ -1,14 +1,18 @@
 import { Fragment, type ReactNode } from 'react';
 import type { Block } from '../../../shared/types';
 
-/** Renders inline **bold** markers. Everything else is plain text. */
+/** Renders inline **bold** and `code` markers. Everything else is plain text. */
 export function Inline({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return (
     <>
       {parts.map((part, i) =>
-        part.startsWith('**') && part.endsWith('**') ? (
-          <strong key={i}>{part.slice(2, -2)}</strong>
+        part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
+          <strong key={i}>
+            <Inline text={part.slice(2, -2)} />
+          </strong>
+        ) : part.startsWith('`') && part.endsWith('`') && part.length > 2 ? (
+          <code key={i}>{part.slice(1, -1)}</code>
         ) : (
           <Fragment key={i}>{part}</Fragment>
         ),

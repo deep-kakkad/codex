@@ -28,7 +28,7 @@ The seed leaves two candidates submitted; with the key set, the server reviews t
 
 **Recruiters**
 
-- **Role and activities.** Pick the role you're hiring for (Performance Marketing or Customer Support Leadership for now), then choose activities from its scenario: a warm-up, think-aloud questions, a decision, a situation change that follows it, a critique with planted flaws, an AI-allowed task and a real story from their career. A preview shows every branch and the answer key.
+- **Role and activities.** Pick the role you're hiring for (Performance Marketing, Content & Brand, SEO, Social Media or Customer Support Leadership for now), then choose activities from its scenario: a warm-up, think-aloud questions, a decision, a situation change that follows it, a critique with planted flaws, an AI-allowed task and a real story from their career. A preview shows every branch and the answer key.
 - **Invites.** Add a candidate by name and email and send them the private link. Extra time can be set per candidate.
 - **AI review.** For every answer: what the candidate saw, their recording (with speed control and a scratchpad timeline that seeks the audio), the transcript, the AI's read of the delivery, and each rubric criterion with the anchor it chose, a verbatim quote and its reasoning. Plus an overall score, recommendation, strengths, concerns and how they worked with versus without AI. Failed reviews show why and can be re-run.
 - **Decision.** Advance, hold or reject. The AI recommends; the recruiter decides.
@@ -120,7 +120,7 @@ Create `shared/roleFamilies/<name>.ts` exporting a `RoleFamily`, then register i
 - `brief(ctx)` is the scenario, as structured blocks.
 - Each stage has a `summary` for recruiters choosing activities, `prompt`, optional `material`, `reviewerGuide` (the answer key the AI scores against), `rubric` (four anchors per criterion) and `followUps` for the call. Branch stages set `dependsOn` to an earlier decision stage and read `ctx.choices`. Set `thinkAloud: true` to record the working.
 
-`tests/content.test.ts` renders every branch for 60 seeds in both currencies and fails on missing values. Add an invariant there for any planted flaw that must hold for every variant.
+`tests/content.test.ts` renders every branch for 60 seeds in both currencies and fails on missing values. Add an invariant there for any planted flaw that must hold for every variant. `roleFamilies/common.ts` has the shared warm-up and past-work stages.
 
 ## Known gaps (next steps)
 
