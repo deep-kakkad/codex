@@ -8,7 +8,28 @@ import type { AiConfig, ChatRequest } from '../server/ai/client';
 import type { ReviewQueue } from '../server/ai/queue';
 import { createApp } from '../server/app';
 import { SUBMIT_GRACE_MS } from '../server/candidateFlow';
-import { openDb } from '../server/db';
+import { localFileStore } from '../server/files';
+import { type DB, fromPgPool } from '../server/db';
+import { openLocalDb } from '../server/localDb';
+
+/**
+ * PGlite by default. Set TEST_DATABASE_URL to run against a real Postgres
+ * (already migrated): every table is emptied before each test.
+ */
+let sharedPg: DB | null = null;
+async function testDb(): Promise<DB> {
+  const url = process.env.TEST_DATABASE_URL;
+  if (!url) return openLocalDb();
+  if (!sharedPg) {
+    const { default: pg } = await import('pg');
+    sharedPg = fromPgPool(new pg.Pool({ connectionString: url, max: 4 }));
+  }
+  await sharedPg.query(
+    `TRUNCATE orgs, users, sessions, candidate_accounts, candidate_sessions, assessments, candidates,
+       responses, audio_parts, ai_reviews, transcripts, verifications CASCADE`,
+  );
+  return sharedPg;
+}
 
 let clock = 1_750_000_000_000;
 let uploadDir: string;
@@ -75,11 +96,11 @@ function createFakeAi(): FakeAi {
   return fake;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   clock = 1_750_000_000_000;
   uploadDir = mkdtempSync(path.join(tmpdir(), 'proofwork-test-'));
   ai = createFakeAi();
-  ({ app, reviews } = createApp({ db: openDb(':memory:'), uploadDir, now: () => clock, ai }));
+  ({ app, reviews } = createApp({ db: await testDb(), files: localFileStore(uploadDir), now: () => clock, ai }));
   agents.clear();
 });
 
@@ -474,7 +495,7 @@ describe('think-aloud', () => {
     await chunk(token, 'part=0&seq=0&startMs=900&sec=4', 'AAA').expect(200);
     await chunk(token, 'part=0&seq=0&startMs=900&sec=4', 'AAA').expect(200); // retry
     await chunk(token, 'part=0&seq=2&startMs=900&sec=12', 'CCC').expect(409); // gap
-    await chunk(token, 'part=0&seq=1&startMs=900&sec=8', 'BBB').expect(200);
+    await chunk(token, 'part=0&seq=1&startMs=900&sec=8.4', 'BBB').expect(200);
     await chunk(token, 'part=2&seq=0&startMs=0&sec=1', 'X').expect(409); // must be part 1 next
     await as(token)
       .post(`${c(token)}/stages/first-read/stream?part=0&seq=2&sec=9`)
@@ -485,7 +506,7 @@ describe('think-aloud', () => {
     // A reload mid-question reports the saved audio and continues as part 1.
     const reloaded = (await as(token).get(c(token))).body as CandidateSession;
     if (reloaded.state.phase !== 'stage') throw new Error('expected stage');
-    expect(reloaded.state.audio).toEqual({ sec: 8, parts: 1 });
+    expect(reloaded.state.audio).toEqual({ sec: 8.4, parts: 1 });
     await chunk(token, 'part=1&seq=0&startMs=30000&sec=3', 'DDD').expect(200);
 
     // Audio alone is a valid think-aloud answer.
@@ -498,7 +519,7 @@ describe('think-aloud', () => {
     const response = report.stages[1].response;
     expect(report.stages[1].thinkAloud).toBe(true);
     expect(response.audio).toEqual([
-      { url: `/api/candidates/${candidate.id}/audio/first-read?part=0`, startMs: 900, sec: 8 },
+      { url: `/api/candidates/${candidate.id}/audio/first-read?part=0`, startMs: 900, sec: 8.4 },
       { url: `/api/candidates/${candidate.id}/audio/first-read?part=1`, startMs: 30000, sec: 3 },
     ]);
     const first = await manager.get(response.audio[0].url).buffer(true).expect(200);

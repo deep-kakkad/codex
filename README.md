@@ -8,7 +8,7 @@ The product decisions and the research behind them are in [docs/product.md](docs
 
 ## Quick start
 
-Requires Node.js 22.13 or later (it uses the built-in `node:sqlite`).
+Requires Node.js 22.13 or later. Locally the database is PGlite (in-process Postgres), so there's nothing else to install.
 
 ```bash
 npm install
@@ -53,19 +53,40 @@ Runs in the background after a candidate submits (one review at a time; interrup
 
 The overall score is the weighted rubric average computed by the app, not by the model; the recommendation follows it (≥3.0 advance, ≥2.3 hold).
 
+## Deploying to Netlify
+
+The app is built for Netlify:
+
+| Piece      | Netlify feature                                                                                                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------------- |
+| Web client | Static site (`dist/web`)                                                                                             |
+| API        | Function on `/api/*` (`netlify/functions/api.mts`, Express via serverless-http)                                      |
+| Database   | Netlify Database (Postgres), migrations in `netlify/database/migrations/` applied on every deploy                    |
+| Recordings | Netlify Blobs (`recordings` store)                                                                                   |
+| AI reviews | Background function (`/internal/review`, up to 15 minutes) plus a sweep every 10 minutes for stuck or missed reviews |
+| Demo data  | Background function (`/internal/seed-demo`), run once when `DEMO_SEED=1`                                             |
+
+Steps:
+
+1. Create a site from this repository (or `netlify deploy --build --prod` from a linked folder). Netlify Database needs a credit-based plan (Free included).
+2. Set environment variables: `OPENROUTER_API_KEY`, and `DEMO_SEED=1` if you want the demo accounts. Optionally `AI_REVIEW_MODEL` and `AI_AUDIO_MODEL`.
+3. Deploy. The database is provisioned and migrated during the deploy. With `DEMO_SEED=1`, the first API request creates the demo workspace and its two submitted candidates are reviewed by AI within a minute or two.
+
+Recordings are capped at 32 kbps so a 9-minute think-aloud stays around 2 MB, well inside Netlify's 6 MB function payload limit.
+
 ## Scripts
 
-| Command                     | What it does                                                 |
-| --------------------------- | ------------------------------------------------------------ |
-| `npm run dev`               | API and Vite dev server on one port (`PORT`, default 3000)   |
-| `npm run build`             | Builds the web client to `dist/web`                          |
-| `npm start`                 | Production server; serves the API and `dist/web`             |
-| `npm run seed [-- --reset]` | Demo data (`--reset` wipes `./data` first)                   |
-| `npm test`                  | Vitest: content, scoring, API and AI review (with a fake AI) |
-| `npm run typecheck`         | `tsc --noEmit`                                               |
-| `npm run lint`              | Prettier check and typecheck                                 |
+| Command                     | What it does                                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `npm run dev`               | API and Vite dev server on one port (`PORT`, default 3000)                                                 |
+| `npm run build`             | Builds the web client to `dist/web`                                                                        |
+| `npm start`                 | Production server; serves the API and `dist/web`                                                           |
+| `npm run seed [-- --reset]` | Demo data (`--reset` wipes `./data` first)                                                                 |
+| `npm test`                  | Vitest: content, scoring, API and AI review (fake AI, PGlite; set `TEST_DATABASE_URL` for a real Postgres) |
+| `npm run typecheck`         | `tsc --noEmit`                                                                                             |
+| `npm run lint`              | Prettier check and typecheck                                                                               |
 
-Environment variables (read from `.env` if present): `OPENROUTER_API_KEY`, `AI_REVIEW_MODEL`, `AI_AUDIO_MODEL`, `PORT`, `DATA_DIR` (default `./data`: database and recordings), `TRUST_PROXY` (default `loopback`) and `INSECURE_COOKIES=1`. Session cookies are `Secure` in production, so they need HTTPS; set `INSECURE_COOKIES=1` to run production over plain HTTP locally. Behind an outbound HTTP proxy, also set `NODE_USE_ENV_PROXY=1` so Node's `fetch` uses `HTTPS_PROXY`.
+Local environment variables (read from `.env` if present): `OPENROUTER_API_KEY`, `AI_REVIEW_MODEL`, `AI_AUDIO_MODEL`, `PORT`, `DATA_DIR` (default `./data`: a PGlite database and recordings), `DATABASE_URL` (use a real Postgres instead of PGlite), `DEMO_SEED=1` (create the demo workspace on start), `TRUST_PROXY` (default `loopback`) and `INSECURE_COOKIES=1`. Session cookies are `Secure` in production, so they need HTTPS; set `INSECURE_COOKIES=1` to run production over plain HTTP locally. Behind an outbound HTTP proxy, also set `NODE_USE_ENV_PROXY=1` so Node's `fetch` uses `HTTPS_PROXY`.
 
 ## Layout
 
@@ -76,12 +97,15 @@ shared/                 domain code used by the server (and types used by the cl
   scoring.ts            weighted rubric scoring
   verification.ts       live call script builder
 server/
-  ai/                   OpenRouter client, review pipeline and background queue
+  ai/                   OpenRouter client, review pipeline and queues (in-process or background function)
   candidateFlow.ts      sequential reveal, server-side timers, drafts, audio uploads
   families.ts           activity selection per assessment
   report.ts             recruiter report assembly
   routes/               recruiter auth, candidate accounts, candidate flow, recruiter APIs
-  db.ts                 node:sqlite schema, helpers and in-place migrations
+  db.ts                 async Postgres helpers (Netlify Database in production, PGlite locally)
+  files.ts              recordings storage (Netlify Blobs or a local folder)
+  demo.ts               the demo workspace
+netlify/                functions, shared runtime and database migrations
 web/src/                React client (candidate flow and dashboard, recruiter workspace)
 tests/                  vitest suites
 ```
@@ -102,7 +126,7 @@ Create `shared/roleFamilies/<name>.ts` exporting a `RoleFamily`, then register i
 
 - No email delivery: recruiters send the candidate link themselves. Links don't expire yet.
 - No password reset, SSO or login rate limiting.
-- SQLite on one node, recordings on local disk, and an in-process review queue. Move to managed storage and a job queue before running multiple instances.
+- The local server runs AI reviews in-process; on Netlify they run in background functions. There is no dead-letter alerting yet: failed reviews show in the recruiter's view with a re-run button.
 - No data-retention or deletion tooling for candidate data and recordings yet.
 - AI review quality should be checked against expert human scores on a sample of real candidates before relying on it, and AI-assisted hiring is regulated in some places (for example NYC Local Law 144 and the EU AI Act). Candidates are told that AI reviews their answers and people decide.
 - Integrity signals are client-reported and can be spoofed. By design they are only hints for the call.

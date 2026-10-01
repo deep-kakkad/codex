@@ -1,7 +1,9 @@
 import express from 'express';
 import type { AiConfig } from './ai/client';
-import { type ReviewQueue, createReviewQueue } from './ai/queue';
+import { type ReviewQueue, inProcessQueue } from './ai/queue';
+import type { ReviewDeps } from './ai/review';
 import type { DB } from './db';
+import type { FileStore } from './files';
 import { errorHandler, jsonBody, notFound } from './http';
 import { authRoutes } from './routes/auth';
 import { candidateRoutes } from './routes/candidate';
@@ -10,29 +12,32 @@ import { managerRoutes } from './routes/manager';
 
 export interface AppOptions {
   db: DB;
-  uploadDir: string;
+  files: FileStore;
   ai: AiConfig;
   now?: () => number;
   secureCookies?: boolean;
+  /** How reviews run: in this process (default) or handed to a background function. */
+  queue?: (deps: ReviewDeps) => ReviewQueue;
 }
 
 export interface AppDeps {
   db: DB;
-  uploadDir: string;
+  files: FileStore;
   now: () => number;
   secureCookies: boolean;
   ai: AiConfig;
   reviews: ReviewQueue;
-  onSubmitted: (candidateId: string) => void;
+  onSubmitted: (candidateId: string) => Promise<void>;
 }
 
 /** The JSON API. Serving the web client is handled in index.ts. */
 export function createApi(options: AppOptions) {
   const now = options.now ?? Date.now;
-  const reviews = createReviewQueue({ db: options.db, uploadDir: options.uploadDir, now, ai: options.ai });
+  const reviewDeps: ReviewDeps = { db: options.db, files: options.files, now, ai: options.ai };
+  const reviews = (options.queue ?? inProcessQueue)(reviewDeps);
   const deps: AppDeps = {
     db: options.db,
-    uploadDir: options.uploadDir,
+    files: options.files,
     now,
     secureCookies: options.secureCookies ?? false,
     ai: options.ai,
@@ -56,10 +61,10 @@ export function createApi(options: AppOptions) {
   return { router, reviews };
 }
 
-export function createApp(options: AppOptions) {
+export function createApp(options: AppOptions & { trustProxy?: boolean | string }) {
   const app = express();
   app.disable('x-powered-by');
-  app.set('trust proxy', 'loopback');
+  app.set('trust proxy', options.trustProxy ?? 'loopback');
   const { router, reviews } = createApi(options);
   app.use('/api', router);
   return { app, reviews };

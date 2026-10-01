@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api';
 import { formatClock } from '../hooks';
-import { pickMimeType, voiceSupported } from './VoiceRecorder';
+import { AUDIO_BITS_PER_SECOND, pickMimeType, voiceSupported } from './VoiceRecorder';
 
 /** How often the recorder hands over a chunk to upload. */
 const CHUNK_MS = 4000;
@@ -95,7 +95,10 @@ export function useThinkAloud({ enabled, url, existingParts, openedAt, onClosed 
         return;
       }
       const mimeType = pickMimeType() ?? '';
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      const recorder = new MediaRecorder(stream, {
+        ...(mimeType ? { mimeType } : {}),
+        audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+      });
       const startedAt = Date.now();
       const startMs = startedAt - openedAt;
       recorder.ondataavailable = (event) => {

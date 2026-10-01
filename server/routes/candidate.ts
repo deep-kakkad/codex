@@ -51,13 +51,13 @@ function session(deps: FlowDeps, ctx: CandidateContext, state: CandidatePhase): 
  * The invite link works only for the candidate account with the invited
  * email. The first visit links the invitation to that account.
  */
-function claim(deps: AppDeps, ctx: CandidateContext, me: SessionCandidate) {
+async function claim(deps: AppDeps, ctx: CandidateContext, me: SessionCandidate) {
   const { candidate } = ctx;
   if (candidate.account_id === me.id) return;
   if (candidate.account_id || candidate.email.toLowerCase() !== me.email.toLowerCase()) {
     throw new HttpError(403, `This invitation was sent to ${candidate.email}. Log in with that email to continue.`);
   }
-  run(deps.db, 'UPDATE candidates SET account_id = ? WHERE id = ? AND account_id IS NULL', me.id, candidate.id);
+  await run(deps.db, 'UPDATE candidates SET account_id = ? WHERE id = ? AND account_id IS NULL', me.id, candidate.id);
   candidate.account_id = me.id;
 }
 
@@ -66,15 +66,15 @@ export function candidateRoutes(deps: AppDeps) {
   const json = jsonBody('512kb');
 
   /** Loads the invitation and checks it belongs to the signed-in candidate. */
-  const load = (req: Request<{ token: string }>) => {
-    const ctx = loadByToken(deps.db, req.params.token);
-    claim(deps, ctx, requireCandidate(deps.db, req, deps.now()));
+  const load = async (req: Request<{ token: string }>) => {
+    const ctx = await loadByToken(deps.db, req.params.token);
+    await claim(deps, ctx, await requireCandidate(deps.db, req, deps.now()));
     return ctx;
   };
 
   // Public: enough for the sign-in page to say who invited them.
-  router.get('/:token/invite', (req, res) => {
-    const ctx = loadByToken(deps.db, req.params.token);
+  router.get('/:token/invite', async (req, res) => {
+    const ctx = await loadByToken(deps.db, req.params.token);
     const preview: InvitePreview = {
       orgName: ctx.orgName,
       title: ctx.assessment.title,
@@ -84,45 +84,45 @@ export function candidateRoutes(deps: AppDeps) {
     res.json(preview);
   });
 
-  router.get('/:token', (req, res) => {
-    const ctx = load(req);
-    res.json(session(deps, ctx, currentPhase(deps, ctx)));
+  router.get('/:token', async (req, res) => {
+    const ctx = await load(req);
+    res.json(session(deps, ctx, await currentPhase(deps, ctx)));
   });
 
-  router.post('/:token/start', json, (req, res) => {
-    const ctx = load(req);
+  router.post('/:token/start', json, async (req, res) => {
+    const ctx = await load(req);
     if (req.body.consent !== true) throw badRequest('Please confirm you have read how this assessment works');
     const idName = str(req.body.idName, 'Name as it appears on your ID', { max: 120 });
-    res.json(session(deps, ctx, start(deps, ctx, idName)));
+    res.json(session(deps, ctx, await start(deps, ctx, idName)));
   });
 
-  router.post('/:token/next', json, (req, res) => {
-    const ctx = load(req);
+  router.post('/:token/next', json, async (req, res) => {
+    const ctx = await load(req);
     const index = Number(req.body.index);
     if (!Number.isInteger(index) || index < 0) throw badRequest('Question number is required');
-    res.json(session(deps, ctx, revealNext(deps, ctx, index)));
+    res.json(session(deps, ctx, await revealNext(deps, ctx, index)));
   });
 
-  router.put('/:token/stages/:stageId/draft', json, (req, res) => {
-    const ctx = load(req);
-    saveDraft(deps, ctx, req.params.stageId, req.body);
+  router.put('/:token/stages/:stageId/draft', json, async (req, res) => {
+    const ctx = await load(req);
+    await saveDraft(deps, ctx, req.params.stageId, req.body);
     res.json({ ok: true, serverNow: deps.now() });
   });
 
   router.post(
     '/:token/stages/:stageId/audio',
     express.raw({ type: ['audio/*'], limit: LIMITS.audioBytes }),
-    (req, res) => {
-      const ctx = load(req);
-      saveAudio(deps, ctx, req.params.stageId, req.body, req.headers['content-type'], Number(req.query.seconds));
+    async (req, res) => {
+      const ctx = await load(req);
+      await saveAudio(deps, ctx, req.params.stageId, req.body, req.headers['content-type'], Number(req.query.seconds));
       res.json({ ok: true });
     },
   );
 
   // Think-aloud audio, a few seconds at a time, appended in order.
-  router.post('/:token/stages/:stageId/stream', express.raw({ type: ['audio/*'], limit: '4mb' }), (req, res) => {
-    const ctx = load(req);
-    const result = appendAudioChunk(deps, ctx, req.params.stageId, req.body, req.headers['content-type'], {
+  router.post('/:token/stages/:stageId/stream', express.raw({ type: ['audio/*'], limit: '4mb' }), async (req, res) => {
+    const ctx = await load(req);
+    const result = await appendAudioChunk(deps, ctx, req.params.stageId, req.body, req.headers['content-type'], {
       part: Number(req.query.part),
       seq: Number(req.query.seq),
       startMs: Number(req.query.startMs),
@@ -131,9 +131,9 @@ export function candidateRoutes(deps: AppDeps) {
     res.json({ ok: true, ...result });
   });
 
-  router.post('/:token/stages/:stageId/submit', json, (req, res) => {
-    const ctx = load(req);
-    res.json(session(deps, ctx, submit(deps, ctx, req.params.stageId, req.body)));
+  router.post('/:token/stages/:stageId/submit', json, async (req, res) => {
+    const ctx = await load(req);
+    res.json(session(deps, ctx, await submit(deps, ctx, req.params.stageId, req.body)));
   });
 
   return router;

@@ -1,187 +1,76 @@
-import { DatabaseSync, type SQLInputValue } from 'node:sqlite';
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-export type DB = DatabaseSync;
-
-const SCHEMA = `
-CREATE TABLE IF NOT EXISTS orgs (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  created_at INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS users (
-  id TEXT PRIMARY KEY,
-  org_id TEXT NOT NULL REFERENCES orgs(id),
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('manager', 'reviewer')),
-  created_at INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS sessions (
-  token_hash TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  expires_at INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS assessments (
-  id TEXT PRIMARY KEY,
-  org_id TEXT NOT NULL REFERENCES orgs(id),
-  role_family_id TEXT NOT NULL,
-  role_family_version INTEGER NOT NULL,
-  title TEXT NOT NULL,
-  currency TEXT NOT NULL CHECK (currency IN ('INR', 'USD')),
-  created_by TEXT NOT NULL REFERENCES users(id),
-  created_at INTEGER NOT NULL,
-  archived INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE TABLE IF NOT EXISTS candidates (
-  id TEXT PRIMARY KEY,
-  org_id TEXT NOT NULL REFERENCES orgs(id),
-  assessment_id TEXT NOT NULL REFERENCES assessments(id),
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  token TEXT NOT NULL UNIQUE,
-  seed INTEGER NOT NULL,
-  variant_json TEXT NOT NULL,
-  time_multiplier REAL NOT NULL DEFAULT 1,
-  status TEXT NOT NULL DEFAULT 'invited',
-  id_name TEXT,
-  decision TEXT,
-  created_at INTEGER NOT NULL,
-  started_at INTEGER,
-  submitted_at INTEGER
-);
-CREATE INDEX IF NOT EXISTS candidates_assessment ON candidates(assessment_id);
-
-CREATE TABLE IF NOT EXISTS responses (
-  id TEXT PRIMARY KEY,
-  candidate_id TEXT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
-  stage_id TEXT NOT NULL,
-  stage_index INTEGER NOT NULL,
-  prompt_json TEXT NOT NULL,
-  revealed_at INTEGER NOT NULL,
-  deadline_at INTEGER NOT NULL,
-  submitted_at INTEGER,
-  closed_reason TEXT,
-  text TEXT,
-  choice_id TEXT,
-  ai_transcript TEXT,
-  reflection TEXT,
-  audio_path TEXT,
-  audio_mime TEXT,
-  audio_sec REAL,
-  draft_json TEXT,
-  signals_json TEXT,
-  UNIQUE (candidate_id, stage_id)
-);
-
--- Think-aloud audio arrives as sequential chunks appended to one file per
--- part. A new part starts if the candidate reloads mid-question.
-CREATE TABLE IF NOT EXISTS audio_parts (
-  response_id TEXT NOT NULL REFERENCES responses(id) ON DELETE CASCADE,
-  part INTEGER NOT NULL,
-  path TEXT NOT NULL,
-  mime TEXT NOT NULL,
-  bytes INTEGER NOT NULL,
-  chunks INTEGER NOT NULL,
-  start_ms INTEGER NOT NULL,
-  sec REAL,
-  PRIMARY KEY (response_id, part)
-);
-
--- Candidates have their own accounts, separate from recruiters.
-CREATE TABLE IF NOT EXISTS candidate_accounts (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
-  created_at INTEGER NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS candidate_sessions (
-  token_hash TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
-  expires_at INTEGER NOT NULL
-);
-
--- One AI review per candidate attempt, produced after submission.
-CREATE TABLE IF NOT EXISTS ai_reviews (
-  candidate_id TEXT PRIMARY KEY REFERENCES candidates(id) ON DELETE CASCADE,
-  status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'done', 'failed')),
-  attempts INTEGER NOT NULL DEFAULT 0,
-  models TEXT,
-  result_json TEXT,
-  error TEXT,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL
-);
-
--- Audio transcripts, cached so a retried review doesn't transcribe twice.
-CREATE TABLE IF NOT EXISTS transcripts (
-  response_id TEXT NOT NULL REFERENCES responses(id) ON DELETE CASCADE,
-  part INTEGER NOT NULL,
-  transcript TEXT NOT NULL,
-  delivery TEXT,
-  delivery_reasons TEXT,
-  model TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  PRIMARY KEY (response_id, part)
-);
-
-CREATE TABLE IF NOT EXISTS verifications (
-  candidate_id TEXT PRIMARY KEY REFERENCES candidates(id) ON DELETE CASCADE,
-  interviewer_id TEXT NOT NULL REFERENCES users(id),
-  identity TEXT,
-  consistency TEXT,
-  notes TEXT NOT NULL DEFAULT '',
-  updated_at INTEGER NOT NULL
-);
-`;
-
-export function openDb(file: string): DB {
-  const db = new DatabaseSync(file);
-  db.exec('PRAGMA foreign_keys = ON;');
-  if (file !== ':memory:') db.exec('PRAGMA journal_mode = WAL;');
-  db.exec(SCHEMA);
-  // Columns added after the first release.
-  addColumn(db, 'responses', 'scratch_json', 'TEXT');
-  addColumn(db, 'assessments', 'stage_ids_json', 'TEXT');
-  addColumn(db, 'candidates', 'account_id', 'TEXT REFERENCES candidate_accounts(id)');
-  return db;
+/**
+ * Minimal async database interface. Production uses Netlify Database
+ * (Postgres via its pool); local development and tests use PGlite, an
+ * in-process Postgres, so the SQL is the same everywhere.
+ */
+export interface DB {
+  query<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<{ rows: T[]; rowCount: number }>;
 }
 
-function addColumn(db: DB, table: string, column: string, definition: string) {
-  const columns = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
-  if (!columns.some((c) => c.name === column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+/** Anything with pg's `query(text, values)` shape (pg.Pool, Neon Pool). */
+export function fromPgPool(pool: {
+  query: (text: string, values?: unknown[]) => Promise<{ rows: unknown[]; rowCount: number | null }>;
+}): DB {
+  return {
+    async query<T>(sql: string, params: unknown[] = []) {
+      const result = await pool.query(sql, params);
+      return { rows: result.rows as T[], rowCount: result.rowCount ?? 0 };
+    },
+  };
 }
 
-export type Params = SQLInputValue[];
-
-export function one<T>(db: DB, sql: string, ...params: Params): T | undefined {
-  return db.prepare(sql).get(...params) as T | undefined;
+/**
+ * Neon's HTTP client (what Netlify Database uses in production). It refreshes
+ * its credentials itself, so it is safe to keep for a container's lifetime.
+ */
+export function fromNeonHttp(client: {
+  query: (
+    text: string,
+    values: unknown[],
+    options: { fullResults: true },
+  ) => Promise<{ rows: unknown[]; rowCount: number | null }>;
+}): DB {
+  return {
+    async query<T>(sql: string, params: unknown[] = []) {
+      const result = await client.query(sql, params, { fullResults: true });
+      return { rows: result.rows as T[], rowCount: result.rowCount ?? 0 };
+    },
+  };
 }
 
-export function all<T>(db: DB, sql: string, ...params: Params): T[] {
-  return db.prepare(sql).all(...params) as T[];
+/** Resolved lazily: bundled serverless functions never read migrations (Netlify applies them). */
+function migrationsDir() {
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'netlify', 'database', 'migrations');
 }
 
-export function run(db: DB, sql: string, ...params: Params) {
-  return db.prepare(sql).run(...params);
+/** The migration files Netlify applies on deploy, in order. */
+export function migrationFiles(dir = migrationsDir()): { name: string; sql: string }[] {
+  return readdirSync(dir)
+    .filter((name) => name.endsWith('.sql'))
+    .sort()
+    .map((name) => ({ name, sql: readFileSync(path.join(dir, name), 'utf8') }));
 }
 
-export function transaction<T>(db: DB, fn: () => T): T {
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    const result = fn();
-    db.exec('COMMIT');
-    return result;
-  } catch (error) {
-    db.exec('ROLLBACK');
-    throw error;
-  }
+/** `?` placeholders (easier to read) become Postgres `$n`. */
+function toPg(sql: string) {
+  let n = 0;
+  return sql.replace(/\?/g, () => `$${++n}`);
+}
+
+export async function one<T>(db: DB, sql: string, ...params: unknown[]): Promise<T | undefined> {
+  return (await db.query<T>(toPg(sql), params)).rows[0];
+}
+
+export async function all<T>(db: DB, sql: string, ...params: unknown[]): Promise<T[]> {
+  return (await db.query<T>(toPg(sql), params)).rows;
+}
+
+export async function run(db: DB, sql: string, ...params: unknown[]): Promise<{ changes: number }> {
+  return { changes: (await db.query(toPg(sql), params)).rowCount };
 }
 
 // Row types --------------------------------------------------------------

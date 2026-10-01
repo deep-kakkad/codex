@@ -3,6 +3,9 @@ import { formatClock } from '../hooks';
 
 const PREFERRED_TYPES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
 
+/** Plenty for speech, and keeps a 9-minute think-aloud around 2 MB. */
+export const AUDIO_BITS_PER_SECOND = 32_000;
+
 export function pickMimeType() {
   if (typeof MediaRecorder === 'undefined') return null;
   return PREFERRED_TYPES.find((type) => MediaRecorder.isTypeSupported(type)) ?? '';
@@ -81,7 +84,10 @@ export function VoiceRecorder({ maxSec, savedSec, disabled, onRecorded }: Props)
     }
     streamRef.current = stream;
     const mimeType = pickMimeType() ?? '';
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+    const recorder = new MediaRecorder(stream, {
+      ...(mimeType ? { mimeType } : {}),
+      audioBitsPerSecond: AUDIO_BITS_PER_SECOND,
+    });
     const chunks: BlobPart[] = [];
     recorder.ondataavailable = (event) => {
       if (event.data.size > 0) chunks.push(event.data);

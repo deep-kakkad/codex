@@ -1,0 +1,25 @@
+[build]
+  command = "npm run build"
+  publish = "dist/web"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Background functions (up to 15 minutes): AI reviews and the demo seed.
+# Also declared in code; listed here so every tool agrees.
+[functions.review]
+  background = true
+
+[functions.seed-demo]
+  background = true
+
+# The API is a function mounted on /api/* (see netlify/functions/api.mts).
+
+# Single-page app: every other route serves index.html.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

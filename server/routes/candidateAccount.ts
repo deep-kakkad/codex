@@ -21,12 +21,12 @@ import { HttpError, email, str } from '../http';
 export function candidateAccountRoutes({ db, now, secureCookies }: AppDeps) {
   const router = Router();
 
-  router.get('/auth/me', (req, res) => {
-    res.json({ candidate: candidateForSession(db, readCookie(req, CANDIDATE_COOKIE), now()) });
+  router.get('/auth/me', async (req, res) => {
+    res.json({ candidate: await candidateForSession(db, readCookie(req, CANDIDATE_COOKIE), now()) });
   });
 
-  router.post('/auth/signup', (req, res) => {
-    const id = createCandidateAccount(
+  router.post('/auth/signup', async (req, res) => {
+    const id = await createCandidateAccount(
       db,
       {
         name: str(req.body.name, 'Your name', { max: 120 }),
@@ -35,31 +35,31 @@ export function candidateAccountRoutes({ db, now, secureCookies }: AppDeps) {
       },
       now(),
     );
-    setSessionCookie(res, createCandidateSession(db, id, now()), secureCookies, CANDIDATE_COOKIE);
+    setSessionCookie(res, await createCandidateSession(db, id, now()), secureCookies, CANDIDATE_COOKIE);
     res.status(201).json({ ok: true });
   });
 
-  router.post('/auth/login', (req, res) => {
+  router.post('/auth/login', async (req, res) => {
     const address = email(req.body.email);
     const password = str(req.body.password, 'Password', { max: 200 });
-    const account = one<CandidateAccountRow>(db, 'SELECT * FROM candidate_accounts WHERE email = ?', address);
+    const account = await one<CandidateAccountRow>(db, 'SELECT * FROM candidate_accounts WHERE email = ?', address);
     const valid = verifyPassword(password, account?.password_hash ?? DUMMY_PASSWORD_HASH);
     if (!account || !valid) throw new HttpError(401, 'Email or password is incorrect');
-    setSessionCookie(res, createCandidateSession(db, account.id, now()), secureCookies, CANDIDATE_COOKIE);
+    setSessionCookie(res, await createCandidateSession(db, account.id, now()), secureCookies, CANDIDATE_COOKIE);
     res.json({ ok: true });
   });
 
-  router.post('/auth/logout', (req, res) => {
+  router.post('/auth/logout', async (req, res) => {
     const token = readCookie(req, CANDIDATE_COOKIE);
-    if (token) destroyCandidateSession(db, token);
+    if (token) await destroyCandidateSession(db, token);
     res.clearCookie(CANDIDATE_COOKIE, { path: '/' });
     res.json({ ok: true });
   });
 
   // Invitations sent to this email, plus ones already claimed by the account.
-  router.get('/assessments', (req, res) => {
-    const me = requireCandidate(db, req, now());
-    const rows = all<{
+  router.get('/assessments', async (req, res) => {
+    const me = await requireCandidate(db, req, now());
+    const rows = await all<{
       token: string;
       status: CandidateStatus;
       created_at: number;

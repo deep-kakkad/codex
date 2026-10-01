@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import type { AiCriterionScore, AiReviewResult, AiStageReview } from '../../shared/api';
 import { choicesFrom } from '../../shared/render';
 import { computeScore, isValidScore, suggestedRecommendation } from '../../shared/scoring';
@@ -28,11 +26,12 @@ import {
   type TranscriptRow,
 } from '../db';
 import { familyFor } from '../families';
+import { type FileStore, readChunks } from '../files';
 import { type AiClient, type AiConfig, AiError, type ChatMessage, type ContentPart, extractJson } from './client';
 
 export interface ReviewDeps {
   db: DB;
-  uploadDir: string;
+  files: FileStore;
   now: () => number;
   ai: AiConfig;
 }
@@ -118,19 +117,32 @@ async function askJson<T>(
 
 interface Recording {
   part: number;
-  file: string;
   mime: string;
+  read: () => Promise<Buffer>;
 }
 
-function recordingsFor(db: DB, response: ResponseRow): Recording[] {
-  if (response.audio_path) return [{ part: 0, file: response.audio_path, mime: response.audio_mime ?? 'audio/webm' }];
-  return audioParts(db, response.id).map((p) => ({ part: p.part, file: p.path, mime: p.mime }));
+async function recordingsFor(db: DB, files: FileStore, response: ResponseRow): Promise<Recording[]> {
+  if (response.audio_path) {
+    const key = response.audio_path;
+    return [
+      {
+        part: 0,
+        mime: response.audio_mime ?? 'audio/webm',
+        read: async () => (await files.get(key)) ?? Buffer.alloc(0),
+      },
+    ];
+  }
+  return (await audioParts(db, response.id)).map((p) => ({
+    part: p.part,
+    mime: p.mime,
+    read: () => readChunks(files, p.path, p.chunks),
+  }));
 }
 
 async function transcribe(deps: ReviewDeps, client: AiClient, response: ResponseRow): Promise<TranscriptRow[]> {
   const rows: TranscriptRow[] = [];
-  for (const recording of recordingsFor(deps.db, response)) {
-    const cached = one<TranscriptRow>(
+  for (const recording of await recordingsFor(deps.db, deps.files, response)) {
+    const cached = await one<TranscriptRow>(
       deps.db,
       'SELECT * FROM transcripts WHERE response_id = ? AND part = ?',
       response.id,
@@ -140,7 +152,9 @@ async function transcribe(deps: ReviewDeps, client: AiClient, response: Response
       rows.push(cached);
       continue;
     }
-    const data = readFileSync(path.join(deps.uploadDir, recording.file)).toString('base64');
+    const audio = await recording.read();
+    if (!audio.length) continue;
+    const data = audio.toString('base64');
     const reply = await askJson<{ transcript?: unknown; delivery?: unknown; reasons?: unknown }>(
       client,
       deps.ai.audioModel,
@@ -160,10 +174,12 @@ async function transcribe(deps: ReviewDeps, client: AiClient, response: Response
       model: deps.ai.audioModel,
       created_at: deps.now(),
     };
-    run(
+    await run(
       deps.db,
-      `INSERT OR REPLACE INTO transcripts (response_id, part, transcript, delivery, delivery_reasons, model, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO transcripts (response_id, part, transcript, delivery, delivery_reasons, model, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (response_id, part) DO UPDATE SET transcript = excluded.transcript,
+         delivery = excluded.delivery, delivery_reasons = excluded.delivery_reasons, model = excluded.model`,
       row.response_id,
       row.part,
       row.transcript,
@@ -245,12 +261,16 @@ function stringList(value: unknown, max: number): string[] {
 export async function reviewCandidate(deps: ReviewDeps, candidateId: string): Promise<AiReviewResult> {
   const client = deps.ai.client;
   if (!client) throw new AiError('AI review is not configured. Set OPENROUTER_API_KEY and retry.');
-  const candidate = one<CandidateRow>(deps.db, 'SELECT * FROM candidates WHERE id = ?', candidateId);
+  const candidate = await one<CandidateRow>(deps.db, 'SELECT * FROM candidates WHERE id = ?', candidateId);
   if (!candidate) throw new AiError('Candidate not found');
-  const assessment = one<AssessmentRow>(deps.db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id)!;
+  const assessment = (await one<AssessmentRow>(
+    deps.db,
+    'SELECT * FROM assessments WHERE id = ?',
+    candidate.assessment_id,
+  ))!;
   const family = familyFor(assessment);
   const variant = JSON.parse(candidate.variant_json) as Variant;
-  const responses = all<ResponseRow>(
+  const responses = await all<ResponseRow>(
     deps.db,
     'SELECT * FROM responses WHERE candidate_id = ? ORDER BY stage_index',
     candidateId,

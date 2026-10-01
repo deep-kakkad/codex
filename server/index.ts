@@ -4,16 +4,29 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { aiConfigFromEnv } from './ai/client';
 import { createApi } from './app';
-import { openDb } from './db';
+import { seedDemo } from './demo';
+import { type DB, fromPgPool } from './db';
+import { localFileStore } from './files';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const isProduction = process.env.NODE_ENV === 'production';
 const port = Number(process.env.PORT ?? 3000);
 const dataDir = path.resolve(process.env.DATA_DIR ?? path.join(root, 'data'));
-const uploadDir = path.join(dataDir, 'uploads');
-mkdirSync(uploadDir, { recursive: true });
+mkdirSync(dataDir, { recursive: true });
 
-const db = openDb(path.join(dataDir, 'proofwork.db'));
+// A real Postgres if DATABASE_URL is set (e.g. your Netlify database), otherwise PGlite on disk.
+async function openDatabase(): Promise<DB> {
+  if (process.env.DATABASE_URL) {
+    const { getDatabase } = await import('@netlify/database');
+    return fromPgPool(getDatabase({ connectionString: process.env.DATABASE_URL }).pool);
+  }
+  const { openLocalDb } = await import('./localDb');
+  return openLocalDb(path.join(dataDir, 'pg'));
+}
+
+const db = await openDatabase();
+const files = localFileStore(path.join(dataDir, 'uploads'));
+if (process.env.DEMO_SEED === '1' && (await seedDemo(db, files))) console.log('Created the demo workspace.');
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY ?? 'loopback');
@@ -21,12 +34,12 @@ const ai = aiConfigFromEnv();
 if (!ai.client) console.warn('OPENROUTER_API_KEY is not set: AI reviews will fail until it is.');
 const { router, reviews } = createApi({
   db,
-  uploadDir,
+  files,
   ai,
   secureCookies: isProduction && process.env.INSECURE_COOKIES !== '1',
 });
 app.use('/api', router);
-reviews.resume();
+await reviews.resume();
 
 if (isProduction) {
   const webDir = path.join(root, 'dist', 'web');

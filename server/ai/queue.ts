@@ -1,22 +1,25 @@
-import type { AiReviewView } from '../../shared/api';
+import type { AiReviewResult, AiReviewView } from '../../shared/api';
 import { type AiReviewRow, type DB, all, one, run } from '../db';
 import { type ReviewDeps, reviewCandidate } from './review';
 
+/** A review stuck in "running" this long is assumed dead (crash, timeout) and retried. */
+export const STALE_RUNNING_MS = 20 * 60 * 1000;
 const MAX_AUTO_ATTEMPTS = 3;
+const TRIGGER_WAIT_MS = 3000;
 
 export interface ReviewQueue {
-  /** Queues an AI review for a submitted candidate (no-op if one is done or queued). */
-  enqueue(candidateId: string): void;
-  /** Re-queues a failed review on request. */
-  retry(candidateId: string): void;
-  /** Picks up reviews interrupted by a restart. */
-  resume(): void;
-  /** Resolves once the queue is empty (tests, graceful shutdown). */
+  /** Queues an AI review for a submitted candidate (no-op if one is already done). */
+  enqueue(candidateId: string): Promise<void>;
+  /** Re-queues a review on request, e.g. after a failure. */
+  retry(candidateId: string): Promise<void>;
+  /** Picks up reviews that were interrupted or never started. */
+  resume(): Promise<void>;
+  /** Resolves once in-process work is finished (tests, local dev). */
   idle(): Promise<void>;
 }
 
-function upsertPending(db: DB, candidateId: string, now: number) {
-  run(
+async function markPending(db: DB, candidateId: string, now: number) {
+  await run(
     db,
     `INSERT INTO ai_reviews (candidate_id, status, attempts, created_at, updated_at) VALUES (?, 'pending', 0, ?, ?)
      ON CONFLICT (candidate_id) DO UPDATE SET status = 'pending', error = NULL, updated_at = excluded.updated_at`,
@@ -26,79 +29,94 @@ function upsertPending(db: DB, candidateId: string, now: number) {
   );
 }
 
-/** Reviews run one at a time in the background so a burst of submissions can't flood the AI provider. */
-export function createReviewQueue(deps: ReviewDeps): ReviewQueue {
-  const queued = new Set<string>();
-  let chain: Promise<void> = Promise.resolve();
+/** Pending reviews to (re)start: queued, stuck, or failed with attempts left; plus old submissions. */
+async function reviewsToResume(deps: ReviewDeps): Promise<string[]> {
+  const now = deps.now();
+  await run(
+    deps.db,
+    "UPDATE ai_reviews SET status = 'pending', updated_at = ? WHERE status = 'running' AND updated_at < ?",
+    now,
+    now - STALE_RUNNING_MS,
+  );
+  await run(
+    deps.db,
+    "UPDATE ai_reviews SET status = 'pending', updated_at = ? WHERE status = 'failed' AND attempts < ?",
+    now,
+    MAX_AUTO_ATTEMPTS,
+  );
+  for (const c of await all<{ id: string }>(
+    deps.db,
+    `SELECT id FROM candidates WHERE status = 'submitted' AND id NOT IN (SELECT candidate_id FROM ai_reviews)`,
+  )) {
+    await markPending(deps.db, c.id, now);
+  }
+  return (
+    await all<{ candidate_id: string }>(deps.db, "SELECT candidate_id FROM ai_reviews WHERE status = 'pending'")
+  ).map((r) => r.candidate_id);
+}
 
-  async function process(candidateId: string) {
-    const { db, now } = deps;
-    run(
+/**
+ * Runs one review if it is still pending. The pending→running update is the
+ * claim: of two concurrent triggers, only one gets a row back.
+ */
+export async function processReview(deps: ReviewDeps, candidateId: string): Promise<boolean> {
+  const { db, now } = deps;
+  const claimed = await run(
+    db,
+    `UPDATE ai_reviews SET status = 'running', attempts = attempts + 1, updated_at = ?
+      WHERE candidate_id = ? AND status = 'pending'`,
+    now(),
+    candidateId,
+  );
+  if (!claimed.changes) return false;
+  try {
+    const result: AiReviewResult = await reviewCandidate(deps, candidateId);
+    await run(
       db,
-      "UPDATE ai_reviews SET status = 'running', attempts = attempts + 1, updated_at = ? WHERE candidate_id = ?",
+      `UPDATE ai_reviews SET status = 'done', result_json = ?, models = ?, error = NULL, updated_at = ?
+        WHERE candidate_id = ?`,
+      JSON.stringify(result),
+      `${result.models.review}, ${result.models.audio}`,
       now(),
       candidateId,
     );
-    try {
-      const result = await reviewCandidate(deps, candidateId);
-      run(
-        db,
-        `UPDATE ai_reviews SET status = 'done', result_json = ?, models = ?, error = NULL, updated_at = ?
-          WHERE candidate_id = ?`,
-        JSON.stringify(result),
-        `${result.models.review}, ${result.models.audio}`,
-        now(),
-        candidateId,
-      );
-      run(db, "UPDATE candidates SET status = 'reviewed' WHERE id = ? AND status = 'submitted'", candidateId);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error(`AI review failed for ${candidateId}: ${message}`);
-      run(
-        db,
-        "UPDATE ai_reviews SET status = 'failed', error = ?, updated_at = ? WHERE candidate_id = ?",
-        message.slice(0, 1000),
-        now(),
-        candidateId,
-      );
-    }
+    await run(db, "UPDATE candidates SET status = 'reviewed' WHERE id = ? AND status = 'submitted'", candidateId);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`AI review failed for ${candidateId}: ${message}`);
+    await run(
+      db,
+      "UPDATE ai_reviews SET status = 'failed', error = ?, updated_at = ? WHERE candidate_id = ?",
+      message.slice(0, 1000),
+      now(),
+      candidateId,
+    );
   }
+  return true;
+}
 
-  function schedule(candidateId: string) {
-    if (queued.has(candidateId)) return;
-    queued.add(candidateId);
-    chain = chain.then(() => process(candidateId)).finally(() => queued.delete(candidateId));
-  }
-
+/** Local development and tests: reviews run one at a time in this process. */
+export function inProcessQueue(deps: ReviewDeps): ReviewQueue {
+  let chain: Promise<unknown> = Promise.resolve();
+  const schedule = (candidateId: string) => {
+    chain = chain.then(() => processReview(deps, candidateId)).catch(() => undefined);
+  };
   return {
-    enqueue(candidateId) {
-      const existing = one<AiReviewRow>(deps.db, 'SELECT * FROM ai_reviews WHERE candidate_id = ?', candidateId);
+    async enqueue(candidateId) {
+      const existing = await one<AiReviewRow>(deps.db, 'SELECT * FROM ai_reviews WHERE candidate_id = ?', candidateId);
       if (existing?.status === 'done') return;
-      if (!existing) upsertPending(deps.db, candidateId, deps.now());
+      if (!existing) await markPending(deps.db, candidateId, deps.now());
       schedule(candidateId);
     },
-    retry(candidateId) {
-      upsertPending(deps.db, candidateId, deps.now());
+    async retry(candidateId) {
+      await markPending(deps.db, candidateId, deps.now());
       schedule(candidateId);
     },
-    resume() {
-      const rows = all<AiReviewRow>(
-        deps.db,
-        `SELECT * FROM ai_reviews WHERE status IN ('pending', 'running')
-            OR (status = 'failed' AND attempts < ?)`,
-        MAX_AUTO_ATTEMPTS,
-      );
-      for (const row of rows) schedule(row.candidate_id);
-      // Submissions from before AI review existed.
-      for (const c of all<{ id: string }>(
-        deps.db,
-        `SELECT id FROM candidates WHERE status = 'submitted' AND id NOT IN (SELECT candidate_id FROM ai_reviews)`,
-      )) {
-        this.enqueue(c.id);
-      }
+    async resume() {
+      for (const id of await reviewsToResume(deps)) schedule(id);
     },
     async idle() {
-      let current: Promise<void>;
+      let current: Promise<unknown>;
       do {
         current = chain;
         await current;
@@ -107,8 +125,49 @@ export function createReviewQueue(deps: ReviewDeps): ReviewQueue {
   };
 }
 
-export function aiReviewView(db: DB, candidateId: string): AiReviewView | null {
-  const row = one<AiReviewRow>(db, 'SELECT * FROM ai_reviews WHERE candidate_id = ?', candidateId);
+/**
+ * Netlify: a review takes longer than a normal function may run, so each one
+ * is handed to a background function (up to 15 minutes). The trigger only
+ * carries an id; the background function re-checks the database, so a
+ * stray trigger can't do anything a real submission didn't ask for.
+ */
+export function backgroundFunctionQueue(deps: ReviewDeps, triggerUrl: string): ReviewQueue {
+  const trigger = async (candidateId: string) => {
+    try {
+      // Netlify answers 202 as soon as a background function is queued; don't
+      // wait longer than that (local emulators hold the request open).
+      await fetch(triggerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ candidateId }),
+        signal: AbortSignal.timeout(TRIGGER_WAIT_MS),
+      });
+    } catch (error) {
+      // Timed out waiting is fine; anything else is picked up by the scheduled sweep.
+      if ((error as Error).name !== 'TimeoutError')
+        console.error(`Could not start the review for ${candidateId}:`, error);
+    }
+  };
+  return {
+    async enqueue(candidateId) {
+      const existing = await one<AiReviewRow>(deps.db, 'SELECT * FROM ai_reviews WHERE candidate_id = ?', candidateId);
+      if (existing?.status === 'done') return;
+      if (!existing) await markPending(deps.db, candidateId, deps.now());
+      await trigger(candidateId);
+    },
+    async retry(candidateId) {
+      await markPending(deps.db, candidateId, deps.now());
+      await trigger(candidateId);
+    },
+    async resume() {
+      for (const id of await reviewsToResume(deps)) await trigger(id);
+    },
+    async idle() {},
+  };
+}
+
+export async function aiReviewView(db: DB, candidateId: string): Promise<AiReviewView | null> {
+  const row = await one<AiReviewRow>(db, 'SELECT * FROM ai_reviews WHERE candidate_id = ?', candidateId);
   if (!row) return null;
   return {
     status: row.status,

@@ -43,26 +43,31 @@ export function listFamilies(): RoleFamilySummary[] {
   return ROLE_FAMILIES.map(familySummary);
 }
 
-export function loadAssessment(db: DB, user: SessionUser, id: string): AssessmentRow {
-  const assessment = one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ? AND org_id = ?', id, user.orgId);
+export async function loadAssessment(db: DB, user: SessionUser, id: string): Promise<AssessmentRow> {
+  const assessment = await one<AssessmentRow>(
+    db,
+    'SELECT * FROM assessments WHERE id = ? AND org_id = ?',
+    id,
+    user.orgId,
+  );
   if (!assessment) throw notFound('Assessment not found');
   return assessment;
 }
 
-export function loadCandidate(db: DB, user: SessionUser, id: string): CandidateRow {
-  const candidate = one<CandidateRow>(db, 'SELECT * FROM candidates WHERE id = ? AND org_id = ?', id, user.orgId);
+export async function loadCandidate(db: DB, user: SessionUser, id: string): Promise<CandidateRow> {
+  const candidate = await one<CandidateRow>(db, 'SELECT * FROM candidates WHERE id = ? AND org_id = ?', id, user.orgId);
   if (!candidate) throw notFound('Candidate not found');
   return candidate;
 }
 
 const EMPTY_COUNTS: StatusCounts = { invited: 0, in_progress: 0, submitted: 0, reviewed: 0, decided: 0 };
 
-export function assessmentSummary(db: DB, assessment: AssessmentRow): AssessmentSummary {
+export async function assessmentSummary(db: DB, assessment: AssessmentRow): Promise<AssessmentSummary> {
   const family = familyFor(assessment);
   const counts = { ...EMPTY_COUNTS };
-  for (const row of all<{ status: CandidateStatus; count: number }>(
+  for (const row of await all<{ status: CandidateStatus; count: number }>(
     db,
-    'SELECT status, COUNT(*) AS count FROM candidates WHERE assessment_id = ? GROUP BY status',
+    'SELECT status, COUNT(*)::int AS count FROM candidates WHERE assessment_id = ? GROUP BY status',
     assessment.id,
   )) {
     counts[row.status] = row.count;
@@ -79,10 +84,14 @@ export function assessmentSummary(db: DB, assessment: AssessmentRow): Assessment
   };
 }
 
-function audioFor(db: DB, candidateId: string, stageId: string, response: ResponseRow) {
+async function audioFor(db: DB, candidateId: string, stageId: string, response: ResponseRow) {
   const base = `/api/candidates/${candidateId}/audio/${stageId}`;
   if (response.audio_path) return [{ url: base, startMs: null, sec: response.audio_sec }];
-  return audioParts(db, response.id).map((p) => ({ url: `${base}?part=${p.part}`, startMs: p.start_ms, sec: p.sec }));
+  return (await audioParts(db, response.id)).map((p) => ({
+    url: `${base}?part=${p.part}`,
+    startMs: p.start_ms,
+    sec: p.sec,
+  }));
 }
 
 function parseScratch(json: string | null): ScratchSnapshot[] {
@@ -97,45 +106,51 @@ function answerChars(response: ResponseRow) {
   return (response.text?.length ?? 0) + (response.reflection?.length ?? 0);
 }
 
-export function candidateList(db: DB, assessment: AssessmentRow): CandidateListItem[] {
+export async function candidateList(db: DB, assessment: AssessmentRow): Promise<CandidateListItem[]> {
   const family = familyFor(assessment);
   const kindOf = new Map(family.stages.map((s) => [s.id, s.kind]));
-  const candidates = all<CandidateRow>(
+  const candidates = await all<CandidateRow>(
     db,
     'SELECT * FROM candidates WHERE assessment_id = ? ORDER BY created_at DESC',
     assessment.id,
   );
-  return candidates.map((candidate) => {
-    const ai = aiReviewView(db, candidate.id);
-    const responses = all<ResponseRow>(db, 'SELECT * FROM responses WHERE candidate_id = ?', candidate.id);
-    const verification = one<VerificationRow>(db, 'SELECT * FROM verifications WHERE candidate_id = ?', candidate.id);
-    return {
-      id: candidate.id,
-      name: candidate.name,
-      email: candidate.email,
-      token: candidate.token,
-      status: candidate.status as CandidateStatus,
-      timeMultiplier: candidate.time_multiplier,
-      createdAt: candidate.created_at,
-      startedAt: candidate.started_at,
-      submittedAt: candidate.submitted_at,
-      aiScore: ai?.result?.overall ?? null,
-      aiStatus: ai?.status ?? null,
-      aiRecommendation: ai?.result?.recommendation ?? null,
-      notableSignals: responses.filter((r) =>
-        hasNotableSignals(kindOf.get(r.stage_id) ?? 'scenario', parseSignals(r.signals_json), answerChars(r)),
-      ).length,
-      verification: verification ? { identity: verification.identity, consistency: verification.consistency } : null,
-      decision: candidate.decision as Decision | null,
-    };
-  });
+  return Promise.all(
+    candidates.map(async (candidate) => {
+      const ai = await aiReviewView(db, candidate.id);
+      const responses = await all<ResponseRow>(db, 'SELECT * FROM responses WHERE candidate_id = ?', candidate.id);
+      const verification = await one<VerificationRow>(
+        db,
+        'SELECT * FROM verifications WHERE candidate_id = ?',
+        candidate.id,
+      );
+      return {
+        id: candidate.id,
+        name: candidate.name,
+        email: candidate.email,
+        token: candidate.token,
+        status: candidate.status as CandidateStatus,
+        timeMultiplier: candidate.time_multiplier,
+        createdAt: candidate.created_at,
+        startedAt: candidate.started_at,
+        submittedAt: candidate.submitted_at,
+        aiScore: ai?.result?.overall ?? null,
+        aiStatus: ai?.status ?? null,
+        aiRecommendation: ai?.result?.recommendation ?? null,
+        notableSignals: responses.filter((r) =>
+          hasNotableSignals(kindOf.get(r.stage_id) ?? 'scenario', parseSignals(r.signals_json), answerChars(r)),
+        ).length,
+        verification: verification ? { identity: verification.identity, consistency: verification.consistency } : null,
+        decision: candidate.decision as Decision | null,
+      };
+    }),
+  );
 }
 
-export function candidateReport(db: DB, candidate: CandidateRow): CandidateReport {
-  const assessment = one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id)!;
+export async function candidateReport(db: DB, candidate: CandidateRow): Promise<CandidateReport> {
+  const assessment = (await one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id))!;
   const family = familyFor(assessment);
   const variant = JSON.parse(candidate.variant_json);
-  const responses = all<ResponseRow>(
+  const responses = await all<ResponseRow>(
     db,
     'SELECT * FROM responses WHERE candidate_id = ? ORDER BY stage_index',
     candidate.id,
@@ -147,11 +162,12 @@ export function candidateReport(db: DB, candidate: CandidateRow): CandidateRepor
     choicesFrom(responses.map((r) => ({ stageId: r.stage_id, choiceId: r.choice_id }))),
   );
 
-  const stages: ReportStage[] = family.stages.map((stage, index) => {
+  const stages: ReportStage[] = [];
+  for (const [index, stage] of family.stages.entries()) {
     const response = byStage.get(stage.id);
     const shown = response ? (JSON.parse(response.prompt_json) as CandidateStageView) : null;
     const signals = response ? parseSignals(response.signals_json) : null;
-    return {
+    stages.push({
       id: stage.id,
       index,
       kind: stage.kind,
@@ -179,16 +195,16 @@ export function candidateReport(db: DB, candidate: CandidateRow): CandidateRepor
             choiceLabel: stage.choices?.find((c) => c.id === response.choice_id)?.label ?? null,
             aiTranscript: response.ai_transcript,
             reflection: response.reflection,
-            audio: audioFor(db, candidate.id, stage.id, response),
+            audio: await audioFor(db, candidate.id, stage.id, response),
             scratch: parseScratch(response.scratch_json),
             signals,
             signalNotes: response.closed_reason ? describeSignals(stage.kind, signals, answerChars(response)) : [],
           }
         : null,
-    };
-  });
+    });
+  }
 
-  const aiReview = aiReviewView(db, candidate.id);
+  const aiReview = await aiReviewView(db, candidate.id);
 
   const scriptResponses: ResponseForScript[] = stages.flatMap((stage) => {
     const r = byStage.get(stage.id);
@@ -214,7 +230,7 @@ export function candidateReport(db: DB, candidate: CandidateRow): CandidateRepor
     const label = stage.delivery?.label;
     if (label === 'read' || label === 'unsure') concerns[stage.stageId] = label;
   }
-  const verificationRow = one<VerificationRow & { interviewer_name: string }>(
+  const verificationRow = await one<VerificationRow & { interviewer_name: string }>(
     db,
     `SELECT v.*, u.name AS interviewer_name FROM verifications v JOIN users u ON u.id = v.interviewer_id
       WHERE v.candidate_id = ?`,

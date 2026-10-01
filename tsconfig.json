@@ -16,5 +16,5 @@
     "noFallthroughCasesInSwitch": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["server", "shared", "web/src", "tests", "vite.config.ts"]
+  "include": ["server", "shared", "web/src", "tests", "netlify", "vite.config.ts"]
 }

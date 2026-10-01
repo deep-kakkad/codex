@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import path from 'node:path';
 import { Router } from 'express';
 import type { PreviewStage, RoleFamilyPreview, TeamMember } from '../../shared/api';
 import { getRoleFamily } from '../../shared/roleFamilies';
@@ -10,6 +9,7 @@ import { audioParts } from '../candidateFlow';
 import { createUser, currentUser, randomToken, requireManager, requireUser } from '../auth';
 import { type AssessmentRow, all, one, run, type ResponseRow } from '../db';
 import { familyFor, resolveSelection } from '../families';
+import { readChunks } from '../files';
 import { badRequest, conflict, email, notFound, oneOf, optionalText, str } from '../http';
 import {
   assessmentSummary,
@@ -31,11 +31,11 @@ export function managerRoutes(deps: AppDeps) {
 
   // Role library ----------------------------------------------------------
 
-  router.get('/role-families', (_req, res) => {
+  router.get('/role-families', async (_req, res) => {
     res.json({ families: listFamilies() });
   });
 
-  router.get('/role-families/:id/preview', (req, res) => {
+  router.get('/role-families/:id/preview', async (req, res) => {
     const family = getRoleFamily(req.params.id);
     if (!family) throw notFound('Role family not found');
     const currency: Currency = req.query.currency === 'USD' ? 'USD' : 'INR';
@@ -79,17 +79,17 @@ export function managerRoutes(deps: AppDeps) {
 
   // Assessments -------------------------------------------------------------
 
-  router.get('/assessments', (_req, res) => {
+  router.get('/assessments', async (_req, res) => {
     const user = currentUser(res);
-    const rows = all<AssessmentRow>(
+    const rows = await all<AssessmentRow>(
       db,
       'SELECT * FROM assessments WHERE org_id = ? AND archived = 0 ORDER BY created_at DESC',
       user.orgId,
     );
-    res.json({ assessments: rows.map((row) => assessmentSummary(db, row)) });
+    res.json({ assessments: await Promise.all(rows.map((row) => assessmentSummary(db, row))) });
   });
 
-  router.post('/assessments', (req, res) => {
+  router.post('/assessments', async (req, res) => {
     const user = requireManager(res);
     const family = getRoleFamily(str(req.body.roleFamilyId, 'Role family'));
     if (!family) throw badRequest('Unknown role family');
@@ -97,7 +97,7 @@ export function managerRoutes(deps: AppDeps) {
     const currency = oneOf(req.body.currency, 'Currency', CURRENCIES);
     const stageIds = resolveSelection(family, req.body.stageIds);
     const id = randomUUID();
-    run(
+    await run(
       db,
       `INSERT INTO assessments
          (id, org_id, role_family_id, role_family_version, title, currency, created_by, created_at, stage_ids_json)
@@ -115,19 +115,19 @@ export function managerRoutes(deps: AppDeps) {
     res.status(201).json({ id });
   });
 
-  router.get('/assessments/:id', (req, res) => {
+  router.get('/assessments/:id', async (req, res) => {
     const user = currentUser(res);
-    const assessment = loadAssessment(db, user, req.params.id);
+    const assessment = await loadAssessment(db, user, req.params.id);
     res.json({
-      assessment: assessmentSummary(db, assessment),
+      assessment: await assessmentSummary(db, assessment),
       family: familySummary(familyFor(assessment)),
-      candidates: candidateList(db, assessment),
+      candidates: await candidateList(db, assessment),
     });
   });
 
-  router.post('/assessments/:id/candidates', (req, res) => {
+  router.post('/assessments/:id/candidates', async (req, res) => {
     const user = requireManager(res);
-    const assessment = loadAssessment(db, user, req.params.id);
+    const assessment = await loadAssessment(db, user, req.params.id);
     const family = familyFor(assessment);
     const name = str(req.body.name, 'Candidate name', { max: 120 });
     const address = email(req.body.email, 'Candidate email');
@@ -137,7 +137,7 @@ export function managerRoutes(deps: AppDeps) {
     const seed = randomSeed();
     const variant = generateVariant(family, seed, assessment.currency);
     const id = randomUUID();
-    run(
+    await run(
       db,
       `INSERT INTO candidates (id, org_id, assessment_id, name, email, token, seed, variant_json, time_multiplier, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -152,51 +152,53 @@ export function managerRoutes(deps: AppDeps) {
       multiplier,
       now(),
     );
-    const created = candidateList(db, assessment).find((c) => c.id === id);
+    const created = (await candidateList(db, assessment)).find((c) => c.id === id);
     res.status(201).json({ candidate: created });
   });
 
   // Candidates --------------------------------------------------------------
 
-  router.get('/candidates/:id', (req, res) => {
+  router.get('/candidates/:id', async (req, res) => {
     const user = currentUser(res);
-    res.json(candidateReport(db, loadCandidate(db, user, req.params.id)));
+    res.json(await candidateReport(db, await loadCandidate(db, user, req.params.id)));
   });
 
-  router.get('/candidates/:id/audio/:stageId', (req, res) => {
+  router.get('/candidates/:id/audio/:stageId', async (req, res) => {
     const user = currentUser(res);
-    const candidate = loadCandidate(db, user, req.params.id);
-    const response = one<ResponseRow>(
+    const candidate = await loadCandidate(db, user, req.params.id);
+    const response = await one<ResponseRow>(
       db,
       'SELECT * FROM responses WHERE candidate_id = ? AND stage_id = ?',
       candidate.id,
       req.params.stageId,
     );
     if (!response) throw notFound('No recording for this question');
-    let file = response.audio_path;
+    let audio: Buffer | null = null;
     let mime = response.audio_mime;
     if (req.query.part !== undefined) {
-      const part = audioParts(db, response.id).find((p) => p.part === Number(req.query.part));
-      file = part?.path ?? null;
+      const part = (await audioParts(db, response.id)).find((p) => p.part === Number(req.query.part));
+      if (part) audio = await readChunks(deps.files, part.path, part.chunks);
       mime = part?.mime ?? null;
+    } else if (response.audio_path) {
+      audio = await deps.files.get(response.audio_path);
     }
-    if (!file) throw notFound('No recording for this question');
-    res.type(mime ?? 'application/octet-stream');
-    res.sendFile(path.resolve(deps.uploadDir, file));
+    if (!audio?.length) throw notFound('No recording for this question');
+    res.set('Cache-Control', 'private, max-age=3600');
+    res.type(mime ?? 'application/octet-stream').send(audio);
   });
 
   // Re-runs a failed (or any) AI review, e.g. after fixing the API key.
-  router.post('/candidates/:id/ai-review', (req, res) => {
+  router.post('/candidates/:id/ai-review', async (req, res) => {
     const user = currentUser(res);
-    const candidate = loadCandidate(db, user, req.params.id);
+    const candidate = await loadCandidate(db, user, req.params.id);
     if (!REVIEWABLE.includes(candidate.status)) throw conflict('The candidate has not finished yet');
-    deps.reviews.retry(candidate.id);
-    res.status(202).json(candidateReport(db, loadCandidate(db, user, candidate.id)));
+    await deps.reviews.retry(candidate.id);
+    res.status(202).json(await candidateReport(db, await loadCandidate(db, user, candidate.id)));
   });
 
-  router.put('/candidates/:id/verification', (req, res) => {
+  router.put('/candidates/:id/verification', async (req, res) => {
     const user = currentUser(res);
-    const candidate = loadCandidate(db, user, req.params.id);
+    const candidate = await loadCandidate(db, user, req.params.id);
     if (!REVIEWABLE.includes(candidate.status)) throw conflict('The candidate has not finished yet');
     const identity =
       req.body.identity == null
@@ -207,7 +209,7 @@ export function managerRoutes(deps: AppDeps) {
         ? null
         : oneOf(req.body.consistency, 'Consistency', ['consistent', 'partly', 'inconsistent'] as const);
     const notes = optionalText(req.body.notes, 'Notes', 10_000) ?? '';
-    run(
+    await run(
       db,
       `INSERT INTO verifications (candidate_id, interviewer_id, identity, consistency, notes, updated_at)
        VALUES (?, ?, ?, ?, ?, ?)
@@ -224,20 +226,20 @@ export function managerRoutes(deps: AppDeps) {
       notes,
       now(),
     );
-    res.json(candidateReport(db, loadCandidate(db, user, candidate.id)));
+    res.json(await candidateReport(db, await loadCandidate(db, user, candidate.id)));
   });
 
-  router.put('/candidates/:id/decision', (req, res) => {
+  router.put('/candidates/:id/decision', async (req, res) => {
     const user = requireManager(res);
-    const candidate = loadCandidate(db, user, req.params.id);
+    const candidate = await loadCandidate(db, user, req.params.id);
     if (!REVIEWABLE.includes(candidate.status)) throw conflict('The candidate has not finished yet');
     if (req.body.decision == null) {
-      const hasReview = one<{ id: string }>(
+      const hasReview = await one<{ id: string }>(
         db,
         'SELECT id FROM reviews WHERE candidate_id = ? AND submitted_at IS NOT NULL LIMIT 1',
         candidate.id,
       );
-      run(
+      await run(
         db,
         'UPDATE candidates SET decision = NULL, status = ? WHERE id = ?',
         hasReview ? 'reviewed' : 'submitted',
@@ -245,20 +247,22 @@ export function managerRoutes(deps: AppDeps) {
       );
     } else {
       const decision = oneOf(req.body.decision, 'Decision', ['advance', 'hold', 'reject'] as const);
-      run(db, "UPDATE candidates SET decision = ?, status = 'decided' WHERE id = ?", decision, candidate.id);
+      await run(db, "UPDATE candidates SET decision = ?, status = 'decided' WHERE id = ?", decision, candidate.id);
     }
-    res.json(candidateReport(db, loadCandidate(db, user, candidate.id)));
+    res.json(await candidateReport(db, await loadCandidate(db, user, candidate.id)));
   });
 
   // Team -------------------------------------------------------------------
 
-  router.get('/team', (_req, res) => {
+  router.get('/team', async (_req, res) => {
     const user = currentUser(res);
-    const members = all<{ id: string; name: string; email: string; role: 'manager' | 'reviewer'; created_at: number }>(
-      db,
-      'SELECT id, name, email, role, created_at FROM users WHERE org_id = ? ORDER BY created_at',
-      user.orgId,
-    );
+    const members = await all<{
+      id: string;
+      name: string;
+      email: string;
+      role: 'manager' | 'reviewer';
+      created_at: number;
+    }>(db, 'SELECT id, name, email, role, created_at FROM users WHERE org_id = ? ORDER BY created_at', user.orgId);
     const team: TeamMember[] = members.map((m) => ({
       id: m.id,
       name: m.name,
@@ -269,9 +273,9 @@ export function managerRoutes(deps: AppDeps) {
     res.json({ team });
   });
 
-  router.post('/team', (req, res) => {
+  router.post('/team', async (req, res) => {
     const user = requireManager(res);
-    const id = createUser(
+    const id = await createUser(
       db,
       {
         orgId: user.orgId,

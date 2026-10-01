@@ -39,16 +39,22 @@ export function randomToken(bytes = 24): string {
 
 const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
-export function createSession(db: DB, userId: string, now: number): string {
+export async function createSession(db: DB, userId: string, now: number): Promise<string> {
   const token = randomToken(32);
   const expiresAt = now + SESSION_TTL_MS;
-  run(db, 'DELETE FROM sessions WHERE expires_at < ?', now);
-  run(db, 'INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)', sha256(token), userId, expiresAt);
+  await run(db, 'DELETE FROM sessions WHERE expires_at < ?', now);
+  await run(
+    db,
+    'INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)',
+    sha256(token),
+    userId,
+    expiresAt,
+  );
   return token;
 }
 
-export function destroySession(db: DB, token: string) {
-  run(db, 'DELETE FROM sessions WHERE token_hash = ?', sha256(token));
+export async function destroySession(db: DB, token: string) {
+  await run(db, 'DELETE FROM sessions WHERE token_hash = ?', sha256(token));
 }
 
 export function readCookie(req: Request, name: string): string | undefined {
@@ -78,9 +84,9 @@ export function setSessionCookie(res: Response, token: string, secure: boolean, 
   });
 }
 
-export function userForSession(db: DB, token: string | undefined, now: number): SessionUser | null {
+export async function userForSession(db: DB, token: string | undefined, now: number): Promise<SessionUser | null> {
   if (!token) return null;
-  const row = one<UserRow & { org_name: string; expires_at: number }>(
+  const row = await one<UserRow & { org_name: string; expires_at: number }>(
     db,
     `SELECT u.*, o.name AS org_name, s.expires_at
        FROM sessions s
@@ -101,8 +107,8 @@ export function userForSession(db: DB, token: string | undefined, now: number): 
 }
 
 export function requireUser(db: DB, now: () => number) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const user = userForSession(db, readCookie(req, SESSION_COOKIE), now());
+  return async (req: Request, res: Response, next: NextFunction) => {
+    const user = await userForSession(db, readCookie(req, SESSION_COOKIE), now());
     if (!user) throw new HttpError(401, 'Please log in');
     res.locals.user = user;
     next();
@@ -121,15 +127,15 @@ export function requireManager(res: Response): SessionUser {
   return user;
 }
 
-export function createUser(
+export async function createUser(
   db: DB,
   input: { orgId: string; name: string; email: string; password: string; role: 'manager' | 'reviewer' },
   now: number,
-): string {
-  const existing = one<{ id: string }>(db, 'SELECT id FROM users WHERE email = ?', input.email);
+): Promise<string> {
+  const existing = await one<{ id: string }>(db, 'SELECT id FROM users WHERE email = ?', input.email);
   if (existing) throw new HttpError(409, 'An account with this email already exists');
   const id = randomUUID();
-  run(
+  await run(
     db,
     'INSERT INTO users (id, org_id, name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
     id,
@@ -151,10 +157,10 @@ export interface SessionCandidate {
   email: string;
 }
 
-export function createCandidateSession(db: DB, accountId: string, now: number): string {
+export async function createCandidateSession(db: DB, accountId: string, now: number): Promise<string> {
   const token = randomToken(32);
-  run(db, 'DELETE FROM candidate_sessions WHERE expires_at < ?', now);
-  run(
+  await run(db, 'DELETE FROM candidate_sessions WHERE expires_at < ?', now);
+  await run(
     db,
     'INSERT INTO candidate_sessions (token_hash, account_id, expires_at) VALUES (?, ?, ?)',
     sha256(token),
@@ -164,13 +170,17 @@ export function createCandidateSession(db: DB, accountId: string, now: number): 
   return token;
 }
 
-export function destroyCandidateSession(db: DB, token: string) {
-  run(db, 'DELETE FROM candidate_sessions WHERE token_hash = ?', sha256(token));
+export async function destroyCandidateSession(db: DB, token: string) {
+  await run(db, 'DELETE FROM candidate_sessions WHERE token_hash = ?', sha256(token));
 }
 
-export function candidateForSession(db: DB, token: string | undefined, now: number): SessionCandidate | null {
+export async function candidateForSession(
+  db: DB,
+  token: string | undefined,
+  now: number,
+): Promise<SessionCandidate | null> {
   if (!token) return null;
-  const row = one<CandidateAccountRow & { expires_at: number }>(
+  const row = await one<CandidateAccountRow & { expires_at: number }>(
     db,
     `SELECT a.*, s.expires_at FROM candidate_sessions s JOIN candidate_accounts a ON a.id = s.account_id
       WHERE s.token_hash = ?`,
@@ -180,22 +190,22 @@ export function candidateForSession(db: DB, token: string | undefined, now: numb
   return { id: row.id, name: row.name, email: row.email };
 }
 
-export function requireCandidate(db: DB, req: Request, now: number): SessionCandidate {
-  const candidate = candidateForSession(db, readCookie(req, CANDIDATE_COOKIE), now);
+export async function requireCandidate(db: DB, req: Request, now: number): Promise<SessionCandidate> {
+  const candidate = await candidateForSession(db, readCookie(req, CANDIDATE_COOKIE), now);
   if (!candidate) throw new HttpError(401, 'Please log in to your candidate account');
   return candidate;
 }
 
-export function createCandidateAccount(
+export async function createCandidateAccount(
   db: DB,
   input: { name: string; email: string; password: string },
   now: number,
-): string {
-  if (one(db, 'SELECT id FROM candidate_accounts WHERE email = ?', input.email)) {
+): Promise<string> {
+  if (await one(db, 'SELECT id FROM candidate_accounts WHERE email = ?', input.email)) {
     throw new HttpError(409, 'A candidate account with this email already exists');
   }
   const id = randomUUID();
-  run(
+  await run(
     db,
     'INSERT INTO candidate_accounts (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)',
     id,

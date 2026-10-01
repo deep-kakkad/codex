@@ -18,15 +18,21 @@
     "lint": "prettier --check . && tsc --noEmit"
   },
   "dependencies": {
+    "@netlify/blobs": "^11.1.2",
+    "@netlify/database": "^2.0.1",
     "express": "^5.2.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",
+    "serverless-http": "^4.0.0",
     "tsx": "^4.23.15"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
+    "@netlify/functions": "^6.0.1",
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.4",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@types/supertest": "^7.2.1",
