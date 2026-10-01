@@ -4,20 +4,20 @@ import { Logo } from '../components/Logo';
 
 const PRINCIPLES = [
   {
-    title: 'Design beats detection',
-    body: 'Specific scenarios, tight time boxes and questions that appear one at a time make outside help slow and clumsy, without watching anyone through a webcam.',
+    title: 'With and without AI',
+    body: 'Candidates work a realistic scenario on their own, then on one task with any AI tool they like. You see how they think in both, and what AI actually added.',
   },
   {
-    title: 'Unique to every candidate',
-    body: 'Company names, budgets and numbers change per candidate, so leaked answers and shared question banks stop working.',
+    title: 'Their thinking, out loud',
+    body: "Key questions record audio from the moment they open: sums, doubts and corrections. Live reasoning sounds nothing like reading an AI's answer.",
   },
   {
-    title: 'AI allowed where it is honest',
-    body: 'One task invites any AI tool and asks for the transcript. You grade judgment: what they asked, what they kept and what they threw away.',
+    title: 'Reviewed by AI',
+    body: "Every answer is transcribed and scored against a practitioner-written rubric, with the candidate's own words quoted as evidence. You decide.",
   },
   {
-    title: 'People review, a call confirms',
-    body: "Practitioner-written rubrics for human reviewers, then a 10–15 minute call scripted from the candidate's own answers. That call is the real security layer.",
+    title: 'No bot interviewer',
+    body: 'No camera, no proctoring, no AI asking questions. When you want more, a 10–15 minute call script is built from their own answers.',
   },
 ];
 
@@ -25,11 +25,11 @@ const SKIPPED = [
   ['Webcam proctoring', '"AI monitoring during the process" is one of the top reasons candidates walk away.'],
   ['Lockdown browsers', 'A second device beats them, and installs cost you candidates.'],
   ['AI-text detectors', 'Light rewording defeats them, and false positives accuse honest people.'],
-  ['AI video interviewers', "Pre-recorded, AI-scored video is candidates' top reason for withdrawing."],
+  ['Bot interviewers', "Pre-recorded video with an AI asking questions is candidates' top reason for withdrawing."],
 ];
 
 export function Landing() {
-  const { user } = useAuth();
+  const { user, candidate } = useAuth();
   return (
     <div className="landing">
       <header className="landing-nav">
@@ -40,6 +40,10 @@ export function Landing() {
           {user ? (
             <Link to="/app" className="btn btn-primary btn-sm">
               Open dashboard
+            </Link>
+          ) : candidate ? (
+            <Link to="/candidate" className="btn btn-primary btn-sm">
+              My assessments
             </Link>
           ) : (
             <>
@@ -55,11 +59,11 @@ export function Landing() {
       </header>
 
       <section className="hero">
-        <p className="eyebrow">Practical hiring assessments for non-tech roles</p>
+        <p className="eyebrow">Practical hiring assessments</p>
         <h1>Hire for the job, not the prompt.</h1>
         <p className="lead">
-          Proofwork gives hiring managers realistic, practitioner-built scenarios that AI can't answer on a candidate's
-          behalf, reviewed by people and confirmed on a short call. No proctoring, no AI interviewer.
+          A practical check that shows how a candidate thinks with and without AI, reviewed by AI, plus audio answers
+          that show the thinking is really theirs. There's no bot interviewer.
         </p>
         <div className="hero-actions">
           <Link to={user ? '/app' : '/signup'} className="btn btn-primary btn-lg">
@@ -84,20 +88,20 @@ export function Landing() {
         <h2>How it works</h2>
         <ol className="steps">
           <li>
-            <strong>Pick a role family.</strong> Start with performance marketing or customer support leadership,
-            written by people who have done the job.
+            <strong>Pick the role and the activities.</strong> Choose the role you're hiring for, then the scenario
+            activities you want: decisions, critiques, think-aloud questions, an AI-allowed task.
           </li>
           <li>
-            <strong>Invite candidates.</strong> Each gets a unique version of the scenario: 35–40 minutes, one question
-            at a time, voice notes or text.
+            <strong>Invite candidates.</strong> They sign in with their own account and get a unique version of the
+            scenario, one question at a time.
           </li>
           <li>
-            <strong>Review with rubrics.</strong> Behavioural anchors and an answer key for each question. Reviews stay
-            blind until you submit your own.
+            <strong>AI reviews every answer.</strong> Audio is transcribed, each answer is scored against the rubric
+            with quoted evidence, and you get a summary and a recommendation.
           </li>
           <li>
-            <strong>Verify live.</strong> A 10–15 minute call script built from the candidate's own answers, with ID
-            check and targeted follow-ups.
+            <strong>You decide.</strong> Advance, hold or reject. If you want to go further, use the call script built
+            from their own answers.
           </li>
         </ol>
       </section>

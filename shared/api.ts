@@ -10,7 +10,6 @@ import type {
   Decision,
   Delivery,
   Recommendation,
-  ReviewScores,
   ScratchSnapshot,
   StageKind,
   StageSignals,
@@ -31,8 +30,12 @@ export interface StageOutline {
   id: string;
   kind: StageKind;
   title: string;
+  summary: string;
   timeLimitSec: number;
   scored: boolean;
+  thinkAloud: boolean;
+  /** A situation-change activity needs the decision it follows. */
+  dependsOn: string | null;
 }
 
 export interface RoleFamilySummary {
@@ -88,9 +91,10 @@ export interface CandidateListItem {
   createdAt: number;
   startedAt: number | null;
   submittedAt: number | null;
-  myScore: number | null;
-  teamScore: number | null;
-  reviewCount: number;
+  /** AI review: overall score (1–4) once done. */
+  aiScore: number | null;
+  aiStatus: AiReviewStatus | null;
+  aiRecommendation: Recommendation | null;
   notableSignals: number;
   verification: { identity: string | null; consistency: string | null } | null;
   decision: Decision | null;
@@ -136,17 +140,47 @@ export interface ReportStage {
   response: StageResponseView | null;
 }
 
-export interface ReviewView {
-  reviewerId: string;
-  reviewerName: string;
-  scores: ReviewScores;
-  notes: string;
-  recommendation: Recommendation | null;
-  submittedAt: number | null;
+export type AiReviewStatus = 'pending' | 'running' | 'done' | 'failed';
+
+export interface AiCriterionScore {
+  score: number;
+  /** Short verbatim quote from the candidate's answer. */
+  evidence: string;
+  rationale: string;
+}
+
+export interface AiStageReview {
+  stageId: string;
+  /** Empty for unscored stages (the warm-up). */
+  criteria: Record<string, AiCriterionScore>;
+  summary: string;
+  /** Transcript of any spoken answer; think-aloud parts are joined in order. */
+  transcript: string | null;
+  /** How the audio sounded: live reasoning or reading. Null without audio. */
+  delivery: { label: Delivery; reasons: string } | null;
+}
+
+export interface AiReviewResult {
+  stages: AiStageReview[];
   overall: number | null;
   byStage: Record<string, number | null>;
-  /** How each think-aloud recording sounded to this reviewer. */
-  observations: Record<string, Delivery>;
+  recommendation: Recommendation | null;
+  summary: string;
+  strengths: string[];
+  concerns: string[];
+  /** How their thinking changed when AI was allowed, versus on their own. */
+  withAndWithoutAi: string;
+  /** Questions for the verification call, built on their answers. */
+  probes: string[];
+  models: { review: string; audio: string };
+}
+
+export interface AiReviewView {
+  status: AiReviewStatus;
+  attempts: number;
+  error: string | null;
+  updatedAt: number;
+  result: AiReviewResult | null;
 }
 
 export interface VerificationRecord {
@@ -175,12 +209,8 @@ export interface CandidateReport {
   family: { id: string; name: string };
   brief: Block[];
   stages: ReportStage[];
-  myReview: ReviewView | null;
-  otherReviews: ReviewView[];
-  /** Submitted reviews by others that stay hidden until you submit your own. */
-  hiddenReviews: number;
-  teamScore: number | null;
-  suggestedRecommendation: Recommendation | null;
+  /** Null until the candidate has submitted. */
+  aiReview: AiReviewView | null;
   verification: { script: VerificationScript; record: VerificationRecord | null };
 }
 

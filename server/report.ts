@@ -3,22 +3,18 @@ import type {
   CandidateListItem,
   CandidateReport,
   ReportStage,
-  ReviewView,
   RoleFamilySummary,
   StatusCounts,
   VerificationRecord,
 } from '../shared/api';
-import { ROLE_FAMILIES, getRoleFamily, totalTimeSec } from '../shared/roleFamilies';
+import { ROLE_FAMILIES, totalTimeSec } from '../shared/roleFamilies';
 import { choicesFrom, scaledTimeLimit, stageOutline } from '../shared/render';
-import { computeScore, suggestedRecommendation } from '../shared/scoring';
 import { describeSignals, hasNotableSignals } from '../shared/signals';
 import type {
   CandidateStageView,
   CandidateStatus,
   Decision,
   Delivery,
-  Recommendation,
-  ReviewScores,
   RoleFamily,
   ScratchSnapshot,
   StageSignals,
@@ -27,17 +23,10 @@ import { buildVerificationScript, type ResponseForScript } from '../shared/verif
 import { buildContext } from '../shared/variants';
 import type { SessionUser } from './auth';
 import { audioParts } from './candidateFlow';
-import {
-  type AssessmentRow,
-  type CandidateRow,
-  type DB,
-  all,
-  one,
-  type ResponseRow,
-  type ReviewRow,
-  type VerificationRow,
-} from './db';
-import { HttpError, notFound } from './http';
+import { aiReviewView } from './ai/queue';
+import { familyFor } from './families';
+import { type AssessmentRow, type CandidateRow, type DB, all, one, type ResponseRow, type VerificationRow } from './db';
+import { notFound } from './http';
 
 export function familySummary(family: RoleFamily): RoleFamilySummary {
   return {
@@ -52,12 +41,6 @@ export function familySummary(family: RoleFamily): RoleFamilySummary {
 
 export function listFamilies(): RoleFamilySummary[] {
   return ROLE_FAMILIES.map(familySummary);
-}
-
-export function familyFor(assessment: AssessmentRow): RoleFamily {
-  const family = getRoleFamily(assessment.role_family_id);
-  if (!family) throw new HttpError(500, `Role family ${assessment.role_family_id} is missing`);
-  return family;
 }
 
 export function loadAssessment(db: DB, user: SessionUser, id: string): AssessmentRow {
@@ -96,22 +79,6 @@ export function assessmentSummary(db: DB, assessment: AssessmentRow): Assessment
   };
 }
 
-function toReviewView(family: RoleFamily, row: ReviewRow & { reviewer_name: string }): ReviewView {
-  const scores = JSON.parse(row.scores_json) as ReviewScores;
-  const summary = computeScore(family, scores);
-  return {
-    reviewerId: row.reviewer_id,
-    reviewerName: row.reviewer_name,
-    scores,
-    notes: row.notes,
-    recommendation: row.recommendation as Recommendation | null,
-    submittedAt: row.submitted_at,
-    overall: summary.overall,
-    byStage: summary.byStage,
-    observations: JSON.parse(row.observations_json || '{}') as Record<string, Delivery>,
-  };
-}
-
 function audioFor(db: DB, candidateId: string, stageId: string, response: ResponseRow) {
   const base = `/api/candidates/${candidateId}/audio/${stageId}`;
   if (response.audio_path) return [{ url: base, startMs: null, sec: response.audio_sec }];
@@ -122,21 +89,6 @@ function parseScratch(json: string | null): ScratchSnapshot[] {
   return json ? (JSON.parse(json) as ScratchSnapshot[]) : [];
 }
 
-function reviewsFor(db: DB, family: RoleFamily, candidateId: string): ReviewView[] {
-  return all<ReviewRow & { reviewer_name: string }>(
-    db,
-    `SELECT r.*, u.name AS reviewer_name FROM reviews r JOIN users u ON u.id = r.reviewer_id
-      WHERE r.candidate_id = ? ORDER BY r.updated_at`,
-    candidateId,
-  ).map((row) => toReviewView(family, row));
-}
-
-function average(values: (number | null)[]): number | null {
-  const present = values.filter((v): v is number => v !== null);
-  if (!present.length) return null;
-  return Math.round((present.reduce((a, b) => a + b, 0) / present.length) * 10) / 10;
-}
-
 function parseSignals(json: string | null): StageSignals | null {
   return json ? (JSON.parse(json) as StageSignals) : null;
 }
@@ -145,7 +97,7 @@ function answerChars(response: ResponseRow) {
   return (response.text?.length ?? 0) + (response.reflection?.length ?? 0);
 }
 
-export function candidateList(db: DB, user: SessionUser, assessment: AssessmentRow): CandidateListItem[] {
+export function candidateList(db: DB, assessment: AssessmentRow): CandidateListItem[] {
   const family = familyFor(assessment);
   const kindOf = new Map(family.stages.map((s) => [s.id, s.kind]));
   const candidates = all<CandidateRow>(
@@ -154,10 +106,7 @@ export function candidateList(db: DB, user: SessionUser, assessment: AssessmentR
     assessment.id,
   );
   return candidates.map((candidate) => {
-    const reviews = reviewsFor(db, family, candidate.id);
-    const mine = reviews.find((r) => r.reviewerId === user.id) ?? null;
-    const submitted = reviews.filter((r) => r.submittedAt !== null);
-    const canSeeTeam = mine?.submittedAt != null;
+    const ai = aiReviewView(db, candidate.id);
     const responses = all<ResponseRow>(db, 'SELECT * FROM responses WHERE candidate_id = ?', candidate.id);
     const verification = one<VerificationRow>(db, 'SELECT * FROM verifications WHERE candidate_id = ?', candidate.id);
     return {
@@ -170,9 +119,9 @@ export function candidateList(db: DB, user: SessionUser, assessment: AssessmentR
       createdAt: candidate.created_at,
       startedAt: candidate.started_at,
       submittedAt: candidate.submitted_at,
-      myScore: mine?.overall ?? null,
-      teamScore: canSeeTeam ? average(submitted.map((r) => r.overall)) : null,
-      reviewCount: submitted.length,
+      aiScore: ai?.result?.overall ?? null,
+      aiStatus: ai?.status ?? null,
+      aiRecommendation: ai?.result?.recommendation ?? null,
       notableSignals: responses.filter((r) =>
         hasNotableSignals(kindOf.get(r.stage_id) ?? 'scenario', parseSignals(r.signals_json), answerChars(r)),
       ).length,
@@ -182,7 +131,7 @@ export function candidateList(db: DB, user: SessionUser, assessment: AssessmentR
   });
 }
 
-export function candidateReport(db: DB, user: SessionUser, candidate: CandidateRow): CandidateReport {
+export function candidateReport(db: DB, candidate: CandidateRow): CandidateReport {
   const assessment = one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id)!;
   const family = familyFor(assessment);
   const variant = JSON.parse(candidate.variant_json);
@@ -239,13 +188,7 @@ export function candidateReport(db: DB, user: SessionUser, candidate: CandidateR
     };
   });
 
-  const reviews = reviewsFor(db, family, candidate.id);
-  const myReview = reviews.find((r) => r.reviewerId === user.id) ?? null;
-  const othersSubmitted = reviews.filter((r) => r.reviewerId !== user.id && r.submittedAt !== null);
-  // Blind review: other people's scores stay hidden until you commit your own,
-  // so the first reviewer's numbers don't anchor everyone else.
-  const canSeeOthers = myReview?.submittedAt != null;
-  const submittedOveralls = reviews.filter((r) => r.submittedAt !== null).map((r) => r.overall);
+  const aiReview = aiReviewView(db, candidate.id);
 
   const scriptResponses: ResponseForScript[] = stages.flatMap((stage) => {
     const r = byStage.get(stage.id);
@@ -265,14 +208,11 @@ export function candidateReport(db: DB, user: SessionUser, candidate: CandidateR
       },
     ];
   });
-  // Think-aloud concerns from your own review and submitted ones (drafts by
-  // others stay private, like their scores).
+  // Think-aloud delivery the AI flagged becomes a priority on the call.
   const concerns: Record<string, Delivery> = {};
-  for (const review of reviews) {
-    if (review.reviewerId !== user.id && review.submittedAt === null) continue;
-    for (const [stageId, delivery] of Object.entries(review.observations)) {
-      if (delivery === 'read' || (delivery === 'unsure' && concerns[stageId] !== 'read')) concerns[stageId] = delivery;
-    }
+  for (const stage of aiReview?.result?.stages ?? []) {
+    const label = stage.delivery?.label;
+    if (label === 'read' || label === 'unsure') concerns[stage.stageId] = label;
   }
   const verificationRow = one<VerificationRow & { interviewer_name: string }>(
     db,
@@ -308,11 +248,7 @@ export function candidateReport(db: DB, user: SessionUser, candidate: CandidateR
     family: { id: family.id, name: family.name },
     brief: family.brief(ctx),
     stages,
-    myReview,
-    otherReviews: canSeeOthers ? othersSubmitted : [],
-    hiddenReviews: canSeeOthers ? 0 : othersSubmitted.length,
-    teamScore: canSeeOthers ? average(submittedOveralls) : null,
-    suggestedRecommendation: suggestedRecommendation(myReview?.overall ?? null),
+    aiReview,
     verification: {
       script: buildVerificationScript(
         family,

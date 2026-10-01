@@ -1,9 +1,10 @@
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { NextFunction, Request, Response } from 'express';
-import { type DB, one, run, type UserRow } from './db';
+import { type CandidateAccountRow, type DB, one, run, type UserRow } from './db';
 import { HttpError } from './http';
 
 export const SESSION_COOKIE = 'pw_session';
+export const CANDIDATE_COOKIE = 'pw_candidate';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface SessionUser {
@@ -67,8 +68,8 @@ export function readCookie(req: Request, name: string): string | undefined {
   return undefined;
 }
 
-export function setSessionCookie(res: Response, token: string, secure: boolean) {
-  res.cookie(SESSION_COOKIE, token, {
+export function setSessionCookie(res: Response, token: string, secure: boolean, name = SESSION_COOKIE) {
+  res.cookie(name, token, {
     httpOnly: true,
     sameSite: 'lax',
     secure,
@@ -137,6 +138,70 @@ export function createUser(
     input.email,
     hashPassword(input.password),
     input.role,
+    now,
+  );
+  return id;
+}
+
+// Candidate accounts ---------------------------------------------------------
+
+export interface SessionCandidate {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export function createCandidateSession(db: DB, accountId: string, now: number): string {
+  const token = randomToken(32);
+  run(db, 'DELETE FROM candidate_sessions WHERE expires_at < ?', now);
+  run(
+    db,
+    'INSERT INTO candidate_sessions (token_hash, account_id, expires_at) VALUES (?, ?, ?)',
+    sha256(token),
+    accountId,
+    now + SESSION_TTL_MS,
+  );
+  return token;
+}
+
+export function destroyCandidateSession(db: DB, token: string) {
+  run(db, 'DELETE FROM candidate_sessions WHERE token_hash = ?', sha256(token));
+}
+
+export function candidateForSession(db: DB, token: string | undefined, now: number): SessionCandidate | null {
+  if (!token) return null;
+  const row = one<CandidateAccountRow & { expires_at: number }>(
+    db,
+    `SELECT a.*, s.expires_at FROM candidate_sessions s JOIN candidate_accounts a ON a.id = s.account_id
+      WHERE s.token_hash = ?`,
+    sha256(token),
+  );
+  if (!row || row.expires_at < now) return null;
+  return { id: row.id, name: row.name, email: row.email };
+}
+
+export function requireCandidate(db: DB, req: Request, now: number): SessionCandidate {
+  const candidate = candidateForSession(db, readCookie(req, CANDIDATE_COOKIE), now);
+  if (!candidate) throw new HttpError(401, 'Please log in to your candidate account');
+  return candidate;
+}
+
+export function createCandidateAccount(
+  db: DB,
+  input: { name: string; email: string; password: string },
+  now: number,
+): string {
+  if (one(db, 'SELECT id FROM candidate_accounts WHERE email = ?', input.email)) {
+    throw new HttpError(409, 'A candidate account with this email already exists');
+  }
+  const id = randomUUID();
+  run(
+    db,
+    'INSERT INTO candidate_accounts (id, name, email, password_hash, created_at) VALUES (?, ?, ?, ?, ?)',
+    id,
+    input.name,
+    input.email,
+    hashPassword(input.password),
     now,
   );
   return id;

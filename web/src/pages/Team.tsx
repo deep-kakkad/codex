@@ -8,7 +8,7 @@ import { formatDate, useApi } from '../hooks';
 export function Team() {
   const { user } = useAuth();
   const { data, error, reload } = useApi<{ team: TeamMember[] }>('/api/team');
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'reviewer' });
+  const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [formError, setFormError] = useState<string | null>(null);
   const [added, setAdded] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -20,7 +20,7 @@ export function Team() {
     try {
       await api.post('/api/team', form);
       setAdded(`${form.name} can now log in as ${form.email} with the temporary password you set.`);
-      setForm({ name: '', email: '', password: '', role: 'reviewer' });
+      setForm({ name: '', email: '', password: '' });
       await reload();
     } catch (e) {
       setFormError(errorMessage(e));
@@ -35,8 +35,7 @@ export function Team() {
         <div>
           <h1>Team</h1>
           <p className="muted">
-            Reviewers score candidates and run verification calls. Hiring managers can also create assessments, invite
-            candidates and record decisions.
+            Recruiters on your team can create assessments, invite candidates, read the AI reviews and record decisions.
           </p>
         </div>
       </div>
@@ -59,7 +58,7 @@ export function Team() {
                   {m.id === user?.id && <span className="small muted"> (you)</span>}
                 </td>
                 <td>{m.email}</td>
-                <td>{m.role === 'manager' ? 'Hiring manager' : 'Reviewer'}</td>
+                <td>Recruiter</td>
                 <td className="small">{formatDate(m.createdAt)}</td>
               </tr>
             ))}
@@ -94,13 +93,6 @@ export function Team() {
                 required
                 autoComplete="off"
               />
-            </label>
-            <label className="field">
-              <span>Role</span>
-              <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                <option value="reviewer">Reviewer</option>
-                <option value="manager">Hiring manager</option>
-              </select>
             </label>
           </div>
           <ErrorNote error={formError} />

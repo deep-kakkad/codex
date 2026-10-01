@@ -80,6 +80,8 @@ export interface StageDef {
   id: string;
   kind: StageKind;
   title: string;
+  /** One or two sentences shown to recruiters choosing activities. */
+  summary: string;
   timeLimitSec: number;
   voiceMaxSec: number;
   preferVoice: boolean;

@@ -1,9 +1,18 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { AssessmentDetail, CandidateListItem } from '../../../shared/api';
+import type { AiReviewStatus, AssessmentDetail, CandidateListItem } from '../../../shared/api';
 import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
-import { CopyButton, DecisionBadge, EmptyState, ErrorNote, Score, StatusBadge, candidateLink } from '../components/ui';
+import {
+  CopyButton,
+  DecisionBadge,
+  EmptyState,
+  ErrorNote,
+  RecommendationBadge,
+  Score,
+  StatusBadge,
+  candidateLink,
+} from '../components/ui';
 import { formatDate, useApi } from '../hooks';
 
 const IDENTITY_LABEL: Record<string, string> = {
@@ -11,6 +20,13 @@ const IDENTITY_LABEL: Record<string, string> = {
   not_verified: 'ID not verified',
   not_checked: 'ID not checked',
 };
+const AI_STATUS_LABEL: Record<AiReviewStatus, string> = {
+  pending: 'Queued',
+  running: 'Reviewing…',
+  done: 'Done',
+  failed: 'Review failed',
+};
+
 const CONSISTENCY_LABEL: Record<string, string> = {
   consistent: 'consistent',
   partly: 'partly consistent',
@@ -61,8 +77,8 @@ export function AssessmentPage() {
                 <th>Candidate</th>
                 <th>Status</th>
                 <th>Submitted</th>
-                <th>Your score</th>
-                <th>Team</th>
+                <th>AI score</th>
+                <th>AI recommends</th>
                 <th>Signals</th>
                 <th>Verification</th>
                 <th>Decision</th>
@@ -86,14 +102,14 @@ export function AssessmentPage() {
                   </td>
                   <td className="small">{formatDate(c.submittedAt)}</td>
                   <td>
-                    <Score value={c.myScore} />
+                    {c.aiStatus === 'done' ? (
+                      <Score value={c.aiScore} />
+                    ) : (
+                      <span className="small muted">{c.aiStatus ? AI_STATUS_LABEL[c.aiStatus] : '—'}</span>
+                    )}
                   </td>
                   <td>
-                    {c.teamScore !== null ? (
-                      <Score value={c.teamScore} />
-                    ) : (
-                      <span className="small muted">{c.reviewCount > 0 ? `${c.reviewCount} hidden` : '—'}</span>
-                    )}
+                    <RecommendationBadge value={c.aiRecommendation} />
                   </td>
                   <td>
                     {c.notableSignals > 0 ? (

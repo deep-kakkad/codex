@@ -122,6 +122,7 @@ export const customerSupport: RoleFamily = {
       id: 'warmup',
       kind: 'warmup',
       title: 'Warm-up',
+      summary: 'A 45-second spontaneous answer. Not scored; gives a voice sample to compare with later recordings.',
       timeLimitSec: 120,
       voiceMaxSec: 45,
       preferVoice: true,
@@ -143,6 +144,8 @@ export const customerSupport: RoleFamily = {
       id: 'first-30-minutes',
       kind: 'scenario',
       title: 'The first 30 minutes',
+      summary:
+        'Read the outage dashboard and say what to do first. Think aloud: shows whether they go after demand or just add effort.',
       timeLimitSec: 300,
       voiceMaxSec: 120,
       preferVoice: true,
@@ -218,6 +221,8 @@ export const customerSupport: RoleFamily = {
       id: 'one-lever',
       kind: 'decision',
       title: 'One lever',
+      summary:
+        'Commit to one lever (proactive message, overtime, bulk-close, borrowed staff) and estimate the end-of-day backlog. Think aloud.',
       timeLimitSec: 360,
       voiceMaxSec: 150,
       preferVoice: true,
@@ -284,6 +289,7 @@ export const customerSupport: RoleFamily = {
       id: 'midday',
       kind: 'branch',
       title: 'Midday',
+      summary: 'The situation changes based on their lever. Tests whether they adapt and own the downside.',
       timeLimitSec: 300,
       voiceMaxSec: 120,
       preferVoice: true,
@@ -384,6 +390,8 @@ export const customerSupport: RoleFamily = {
       id: 'draft-reply',
       kind: 'critique',
       title: "Review a new agent's reply",
+      summary:
+        'Critique a draft reply with a planted security mistake (asking for an OTP) and a false refund promise. Think aloud.',
       timeLimitSec: 420,
       voiceMaxSec: 180,
       preferVoice: false,
@@ -484,6 +492,8 @@ export const customerSupport: RoleFamily = {
       id: 'agent-macro',
       kind: 'ai_allowed',
       title: 'Agent guidance (AI allowed)',
+      summary:
+        'Write agent guidance with any AI tool and paste the conversation. Shows how they work with AI, not just whether they use it.',
       timeLimitSec: 540,
       voiceMaxSec: 0,
       preferVoice: false,
@@ -561,6 +571,8 @@ export const customerSupport: RoleFamily = {
       id: 'real-escalation',
       kind: 'past_work',
       title: 'A real escalation',
+      summary:
+        'A real situation from their career that got worse before it got better. Checks specificity and ownership.',
       timeLimitSec: 240,
       voiceMaxSec: 150,
       preferVoice: true,

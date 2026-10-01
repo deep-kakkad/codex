@@ -92,16 +92,43 @@ CREATE TABLE IF NOT EXISTS audio_parts (
   PRIMARY KEY (response_id, part)
 );
 
-CREATE TABLE IF NOT EXISTS reviews (
+-- Candidates have their own accounts, separate from recruiters.
+CREATE TABLE IF NOT EXISTS candidate_accounts (
   id TEXT PRIMARY KEY,
-  candidate_id TEXT NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
-  reviewer_id TEXT NOT NULL REFERENCES users(id),
-  scores_json TEXT NOT NULL,
-  notes TEXT NOT NULL DEFAULT '',
-  recommendation TEXT,
-  submitted_at INTEGER,
-  updated_at INTEGER NOT NULL,
-  UNIQUE (candidate_id, reviewer_id)
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS candidate_sessions (
+  token_hash TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES candidate_accounts(id) ON DELETE CASCADE,
+  expires_at INTEGER NOT NULL
+);
+
+-- One AI review per candidate attempt, produced after submission.
+CREATE TABLE IF NOT EXISTS ai_reviews (
+  candidate_id TEXT PRIMARY KEY REFERENCES candidates(id) ON DELETE CASCADE,
+  status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'done', 'failed')),
+  attempts INTEGER NOT NULL DEFAULT 0,
+  models TEXT,
+  result_json TEXT,
+  error TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+
+-- Audio transcripts, cached so a retried review doesn't transcribe twice.
+CREATE TABLE IF NOT EXISTS transcripts (
+  response_id TEXT NOT NULL REFERENCES responses(id) ON DELETE CASCADE,
+  part INTEGER NOT NULL,
+  transcript TEXT NOT NULL,
+  delivery TEXT,
+  delivery_reasons TEXT,
+  model TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (response_id, part)
 );
 
 CREATE TABLE IF NOT EXISTS verifications (
@@ -121,7 +148,8 @@ export function openDb(file: string): DB {
   db.exec(SCHEMA);
   // Columns added after the first release.
   addColumn(db, 'responses', 'scratch_json', 'TEXT');
-  addColumn(db, 'reviews', 'observations_json', "TEXT NOT NULL DEFAULT '{}'");
+  addColumn(db, 'assessments', 'stage_ids_json', 'TEXT');
+  addColumn(db, 'candidates', 'account_id', 'TEXT REFERENCES candidate_accounts(id)');
   return db;
 }
 
@@ -178,6 +206,8 @@ export interface AssessmentRow {
   created_by: string;
   created_at: number;
   archived: number;
+  /** Activities the recruiter chose; null means all. */
+  stage_ids_json: string | null;
 }
 
 export interface CandidateRow {
@@ -196,6 +226,7 @@ export interface CandidateRow {
   created_at: number;
   started_at: number | null;
   submitted_at: number | null;
+  account_id: string | null;
 }
 
 export interface ResponseRow {
@@ -231,16 +262,33 @@ export interface AudioPartRow {
   sec: number | null;
 }
 
-export interface ReviewRow {
+export interface CandidateAccountRow {
   id: string;
+  name: string;
+  email: string;
+  password_hash: string;
+  created_at: number;
+}
+
+export interface AiReviewRow {
   candidate_id: string;
-  reviewer_id: string;
-  scores_json: string;
-  notes: string;
-  recommendation: string | null;
-  submitted_at: number | null;
+  status: 'pending' | 'running' | 'done' | 'failed';
+  attempts: number;
+  models: string | null;
+  result_json: string | null;
+  error: string | null;
+  created_at: number;
   updated_at: number;
-  observations_json: string;
+}
+
+export interface TranscriptRow {
+  response_id: string;
+  part: number;
+  transcript: string;
+  delivery: string | null;
+  delivery_reasons: string | null;
+  model: string;
+  created_at: number;
 }
 
 export interface VerificationRow {

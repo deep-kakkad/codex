@@ -1,9 +1,10 @@
 import { type ClipboardEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import type { CandidatePhaseView, CandidateSession } from '../../../shared/candidateApi';
+import { Link, useParams } from 'react-router-dom';
+import type { CandidatePhaseView, CandidateSession, InvitePreview } from '../../../shared/candidateApi';
 import type { Block, CandidateStageView, ScratchSnapshot, StageSignals } from '../../../shared/types';
 import { EMPTY_SIGNALS, STAGE_KIND_LABEL } from '../../../shared/types';
 import { ApiError, api, errorMessage } from '../api';
+import { useAuth } from '../auth';
 import { Blocks } from '../components/Blocks';
 import { Logo } from '../components/Logo';
 import { Collapsible, ErrorNote, KindBadge } from '../components/ui';
@@ -19,6 +20,7 @@ export function TakeAssessment() {
   const [session, setSession] = useState<CandidateSession | null>(null);
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [gate, setGate] = useState<{ invite: InvitePreview; wrongAccount: string | null } | null>(null);
 
   const apply = useCallback((next: CandidateSession) => {
     setSession(next);
@@ -29,7 +31,18 @@ export function TakeAssessment() {
   const load = useCallback(async () => {
     try {
       apply(await api.get<CandidateSession>(base));
+      setGate(null);
     } catch (e) {
+      // Not signed in as the invited candidate: show who invited them and how to sign in.
+      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+        try {
+          const invite = await api.get<InvitePreview>(`${base}/invite`);
+          setGate({ invite, wrongAccount: e.status === 403 ? e.message : null });
+          return;
+        } catch {
+          // Fall through to the generic error.
+        }
+      }
       setError(errorMessage(e));
     }
   }, [apply, base]);
@@ -41,6 +54,8 @@ export function TakeAssessment() {
   useEffect(() => {
     if (session) document.title = `${session.assessment.title} · ${session.assessment.orgName}`;
   }, [session]);
+
+  if (gate) return <SignInGate token={token ?? ''} invite={gate.invite} wrongAccount={gate.wrongAccount} />;
 
   if (!session) {
     return (
@@ -97,7 +112,7 @@ export function TakeAssessment() {
       )}
       {state.phase === 'done' && <Done session={session} />}
       <footer className="candidate-footer small muted">
-        <Logo size={14} /> Assessment by Proofwork. Your answers are reviewed by people, not scored by AI.
+        <Logo size={14} /> Assessment by Proofwork. AI reviews your answers; people at the company make every decision.
       </footer>
     </div>
   );
@@ -197,22 +212,26 @@ function Intro({
       </section>
 
       <section className="card">
-        <h2>What we record, and what we don't</h2>
+        <h2>How your answers are reviewed</h2>
         <div className="two-col">
           <div>
             <h3 className="small-heading">We record</h3>
             <ul>
-              <li>Your answers (voice notes or text)</li>
+              <li>Your answers: audio recordings and text</li>
               <li>How long each question takes</li>
               <li>When you leave this tab or paste text</li>
             </ul>
           </div>
           <div>
-            <h3 className="small-heading">We don't</h3>
+            <h3 className="small-heading">How it's assessed</h3>
             <ul>
-              <li>Use your camera or record your screen</li>
-              <li>Score you with AI; people on the hiring team review your answers</li>
-              <li>Reject anyone automatically</li>
+              <li>
+                <strong>AI reviews your answers</strong>: it transcribes your audio and scores each answer against a
+                fixed rubric, quoting what you said
+              </li>
+              <li>Accent, fluency and nerves are not assessed</li>
+              <li>People at {assessment.orgName} read the review and make every decision</li>
+              <li>No camera, no screen recording, no AI interviewer</li>
             </ul>
           </div>
         </div>
@@ -803,10 +822,68 @@ function Done({ session }: { session: CandidateSession }) {
       </div>
       <h1>Thank you, {firstName(session.candidate.name)}. Your answers are in.</h1>
       <p className="lead">
-        People on the {session.assessment.orgName} hiring team will read and listen to your answers. If they'd like to
-        go further, they'll set up a short call about your own answers. Please have a photo ID ready for it.
+        AI will review your answers against the rubric, and the {session.assessment.orgName} hiring team will decide on
+        next steps. If they'd like to go further, they'll set up a short call about your own answers. Please have a
+        photo ID ready for it.
       </p>
-      <p className="muted">You can close this page.</p>
+      <p className="muted">
+        You can close this page, or <Link to="/candidate">see all your assessments</Link>.
+      </p>
     </main>
+  );
+}
+
+// Sign-in gate -------------------------------------------------------------
+
+function SignInGate({
+  token,
+  invite,
+  wrongAccount,
+}: {
+  token: string;
+  invite: InvitePreview;
+  wrongAccount: string | null;
+}) {
+  const { candidate, logoutCandidate } = useAuth();
+  const query = new URLSearchParams({ as: 'candidate', email: invite.email, next: `/c/${token}` }).toString();
+  return (
+    <div className="candidate-shell">
+      <main className="candidate-main narrow">
+        <h1>Hi {firstName(invite.candidateName)},</h1>
+        <p className="lead">
+          {invite.orgName} has invited you to a practical assessment for <strong>{invite.title}</strong>.
+        </p>
+        <div className="card">
+          {wrongAccount ? (
+            <>
+              <p>
+                You're signed in as <strong>{candidate?.email}</strong>. {wrongAccount}
+              </p>
+              <button
+                className="btn btn-secondary"
+                onClick={() => void logoutCandidate().then(() => location.reload())}
+              >
+                Log out and switch account
+              </button>
+            </>
+          ) : (
+            <>
+              <p>
+                To keep your progress safe and your answers private, take it from a candidate account. Use{' '}
+                <strong>{invite.email}</strong>, the address the invitation was sent to.
+              </p>
+              <div className="row-gap">
+                <Link to={`/signup?${query}`} className="btn btn-primary">
+                  Create a candidate account
+                </Link>
+                <Link to={`/login?${query}`} className="btn btn-secondary">
+                  I already have one
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+      </main>
+    </div>
   );
 }

@@ -1,7 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { getRoleFamily } from '../shared/roleFamilies';
 import { choicesFrom, renderStageForCandidate, scaledTimeLimit } from '../shared/render';
 import { sanitizeScratch } from '../shared/scratch';
 import { sanitizeSignals } from '../shared/signals';
@@ -19,7 +18,8 @@ import {
   type ResponseRow,
   transaction,
 } from './db';
-import { HttpError, badRequest, conflict, notFound, optionalText } from './http';
+import { familyFor } from './families';
+import { badRequest, conflict, notFound, optionalText } from './http';
 
 /** Accept a submission this long after the timer hits zero (slow uploads, flaky networks). */
 export const SUBMIT_GRACE_MS = 60_000;
@@ -39,6 +39,8 @@ export interface FlowDeps {
   db: DB;
   now: () => number;
   uploadDir: string;
+  /** Called once when a candidate's last answer closes (queues the AI review). */
+  onSubmitted?: (candidateId: string) => void;
 }
 
 export type Draft = CandidateDraft;
@@ -56,8 +58,7 @@ export function loadByToken(db: DB, token: string): CandidateContext {
   const candidate = one<CandidateRow>(db, 'SELECT * FROM candidates WHERE token = ?', token);
   if (!candidate) throw notFound('This assessment link is not valid');
   const assessment = one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id)!;
-  const family = getRoleFamily(assessment.role_family_id);
-  if (!family) throw new HttpError(500, 'Assessment content is missing');
+  const family = familyFor(assessment);
   const org = one<{ name: string }>(db, 'SELECT name FROM orgs WHERE id = ?', candidate.org_id)!;
   return { candidate, assessment, family, orgName: org.name, variant: JSON.parse(candidate.variant_json) };
 }
@@ -144,13 +145,14 @@ export function currentPhase(deps: FlowDeps, ctx: CandidateContext): CandidatePh
     };
   }
 
-  run(
+  const changed = run(
     db,
     "UPDATE candidates SET status = 'submitted', submitted_at = ? WHERE id = ? AND status = 'in_progress'",
     now,
     ctx.candidate.id,
   );
   ctx.candidate.status = 'submitted';
+  if (Number(changed.changes) > 0) deps.onSubmitted?.(ctx.candidate.id);
   return { phase: 'done' };
 }
 

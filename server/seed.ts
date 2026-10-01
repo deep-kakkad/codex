@@ -6,10 +6,9 @@ import { mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getRoleFamily } from '../shared/roleFamilies';
-import { computeScore } from '../shared/scoring';
-import type { ReviewScores, RoleFamily, Variant } from '../shared/types';
+import type { RoleFamily, Variant } from '../shared/types';
 import { createFormatter, generateVariant, n, s } from '../shared/variants';
-import { createUser, randomToken } from './auth';
+import { createCandidateAccount, createUser, randomToken } from './auth';
 import { type CandidateContext, type FlowDeps, loadByToken, revealNext, start, submit } from './candidateFlow';
 import { one, openDb, run } from './db';
 
@@ -35,11 +34,6 @@ const managerId = createUser(
   { orgId, name: 'Maya Iyer', email: 'demo@proofwork.test', password: 'demo-password', role: 'manager' },
   clock,
 );
-const reviewerId = createUser(
-  db,
-  { orgId, name: 'Rohan Mehta', email: 'reviewer@proofwork.test', password: 'demo-password', role: 'reviewer' },
-  clock,
-);
 
 function createAssessment(familyId: string, title: string) {
   const family = getRoleFamily(familyId)!;
@@ -59,12 +53,15 @@ function createAssessment(familyId: string, title: string) {
   return { id, family };
 }
 
+/** Invites a candidate who already has a candidate account (password demo-password). */
 function invite(assessmentId: string, family: RoleFamily, name: string, email: string, seed: number) {
   const token = randomToken();
+  const accountId = createCandidateAccount(db, { name, email, password: 'demo-password' }, clock);
   run(
     db,
-    `INSERT INTO candidates (id, org_id, assessment_id, name, email, token, seed, variant_json, time_multiplier, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+    `INSERT INTO candidates
+       (id, org_id, assessment_id, name, email, token, seed, variant_json, time_multiplier, created_at, account_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`,
     randomUUID(),
     orgId,
     assessmentId,
@@ -74,6 +71,7 @@ function invite(assessmentId: string, family: RoleFamily, name: string, email: s
     seed,
     JSON.stringify(generateVariant(family, seed, 'INR')),
     clock,
+    accountId,
   );
   return token;
 }
@@ -102,37 +100,6 @@ function take(token: string, answers: (v: Variant) => Answer[], stopAfter?: numb
     minutes(1);
     revealNext(deps, loadByToken(db, token), stopAfter);
   }
-}
-
-function review(
-  token: string,
-  reviewer: string,
-  family: RoleFamily,
-  pick: (stageId: string, i: number) => number,
-  notes: string,
-  recommendation: string,
-) {
-  const candidate = loadByToken(db, token).candidate;
-  const scores: ReviewScores = {};
-  for (const stage of family.stages) {
-    if (!stage.scored) continue;
-    scores[stage.id] = Object.fromEntries(stage.rubric.map((c, i) => [c.id, pick(stage.id, i)]));
-  }
-  if (!computeScore(family, scores).complete) throw new Error('incomplete demo review');
-  run(
-    db,
-    `INSERT INTO reviews (id, candidate_id, reviewer_id, scores_json, notes, recommendation, submitted_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    randomUUID(),
-    candidate.id,
-    reviewer,
-    JSON.stringify(scores),
-    notes,
-    recommendation,
-    clock,
-    clock,
-  );
-  run(db, "UPDATE candidates SET status = 'reviewed' WHERE id = ?", candidate.id);
 }
 
 // Performance marketing ------------------------------------------------------
@@ -220,14 +187,6 @@ invite(marketingId, marketing, 'Arjun Nair', 'arjun.nair@example.com', 7719);
 minutes(60);
 take(vikramToken, weakAnswers);
 minutes(30);
-review(
-  vikramToken,
-  reviewerId,
-  marketing,
-  (_stage, i) => (i === 0 ? 1 : 2),
-  'Generic throughout; missed the break-even ROAS. Agency critique was pasted.',
-  'reject',
-);
 minutes(20 * 60);
 take(ashaToken, strongAnswers);
 // Neha is mid-assessment right now.
@@ -240,5 +199,6 @@ const { id: supportId, family: support } = createAssessment('customer-support-le
 invite(supportId, support, 'Farah Siddiqui', 'farah.s@example.com', 5150);
 
 console.log(`Demo data created in ${dataDir}
-  Hiring manager: demo@proofwork.test / demo-password
-  Reviewer:       reviewer@proofwork.test / demo-password`);
+  Recruiter: demo@proofwork.test / demo-password
+  Candidate: asha.rao@example.com / demo-password (any demo candidate's email works)
+Submitted candidates are reviewed by AI when the server starts with OPENROUTER_API_KEY set.`);

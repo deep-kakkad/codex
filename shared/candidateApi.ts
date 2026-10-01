@@ -36,3 +36,27 @@ export interface CandidateSession {
   brief: Block[] | null;
   state: CandidatePhaseView;
 }
+
+export interface CandidateAccount {
+  id: string;
+  name: string;
+  email: string;
+}
+
+export interface CandidateAssessmentItem {
+  token: string;
+  title: string;
+  orgName: string;
+  status: 'invited' | 'in_progress' | 'submitted';
+  invitedAt: number;
+  submittedAt: number | null;
+}
+
+/** What the invite page shows before the candidate signs in. */
+export interface InvitePreview {
+  orgName: string;
+  title: string;
+  candidateName: string;
+  /** The invited address, so the candidate signs in with the right account. */
+  email: string;
+}

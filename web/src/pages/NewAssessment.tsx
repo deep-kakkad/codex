@@ -1,27 +1,56 @@
 import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import type { RoleFamilySummary } from '../../../shared/api';
+import type { RoleFamilySummary, StageOutline } from '../../../shared/api';
 import type { Currency } from '../../../shared/types';
 import { api, errorMessage } from '../api';
 import { ErrorNote, KindBadge } from '../components/ui';
 import { formatMinutes, useApi } from '../hooks';
 
+/** Adds an activity's prerequisite; removing a prerequisite removes what needs it. */
+function toggle(stages: StageOutline[], selected: Set<string>, id: string): Set<string> {
+  const next = new Set(selected);
+  if (next.has(id)) {
+    next.delete(id);
+    for (const s of stages) if (s.dependsOn === id) next.delete(s.id);
+  } else {
+    next.add(id);
+    const dependsOn = stages.find((s) => s.id === id)?.dependsOn;
+    if (dependsOn) next.add(dependsOn);
+  }
+  return next;
+}
+
 export function NewAssessment() {
   const navigate = useNavigate();
   const { data, error: loadError } = useApi<{ families: RoleFamilySummary[] }>('/api/role-families');
   const [familyId, setFamilyId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [title, setTitle] = useState('');
   const [currency, setCurrency] = useState<Currency>('INR');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const family = data?.families.find((f) => f.id === familyId);
+  const chosen = family?.stages.filter((s) => selected.has(s.id)) ?? [];
+  const minutes = Math.round(chosen.reduce((sum, s) => sum + s.timeLimitSec, 0) / 60);
+  const hasScored = chosen.some((s) => s.scored);
+
+  function pickRole(f: RoleFamilySummary) {
+    setFamilyId(f.id);
+    setSelected(new Set(f.stages.map((s) => s.id)));
+    setTitle(f.roles[0]);
+  }
 
   async function create(event: FormEvent) {
     event.preventDefault();
-    if (!familyId) return;
+    if (!family) return;
     setBusy(true);
     try {
-      const { id } = await api.post<{ id: string }>('/api/assessments', { roleFamilyId: familyId, title, currency });
+      const { id } = await api.post<{ id: string }>('/api/assessments', {
+        roleFamilyId: family.id,
+        title,
+        currency,
+        stageIds: chosen.map((s) => s.id),
+      });
       navigate(`/app/assessments/${id}`);
     } catch (e) {
       setError(errorMessage(e));
@@ -40,59 +69,85 @@ export function NewAssessment() {
         </div>
       </div>
       <ErrorNote error={loadError} />
-      <h2 className="section-title">1. Choose a role family</h2>
+
+      <h2 className="section-title">1. What role are you hiring for?</h2>
       <div className="grid-cards">
-        {data?.families.map((f) => {
-          const select = () => {
-            setFamilyId(f.id);
-            if (!title) setTitle(f.roles[0]);
-          };
-          return (
-            <div key={f.id} className={`card card-select ${familyId === f.id ? 'selected' : ''}`} onClick={select}>
-              <div className="card-select-head">
-                <label className="radio-title">
-                  <input type="radio" name="family" checked={familyId === f.id} onChange={select} />
-                  <span>{f.name}</span>
-                </label>
-                <span className="small muted">~{f.totalMinutes} min</span>
-              </div>
-              <p className="muted">{f.summary}</p>
-              <div className="small">For: {f.roles.join(', ')}</div>
-              <ol className="mini-outline">
-                {f.stages.map((s) => (
-                  <li key={s.id}>
-                    <KindBadge kind={s.kind} /> {s.title}{' '}
-                    <span className="muted">· {formatMinutes(s.timeLimitSec)}</span>
-                  </li>
-                ))}
-              </ol>
-              <Link to={`/app/library/${f.id}`} className="small" onClick={(e) => e.stopPropagation()}>
-                Preview the full content →
-              </Link>
-            </div>
-          );
-        })}
+        {data?.families.map((f) => (
+          <div
+            key={f.id}
+            className={`card card-select ${familyId === f.id ? 'selected' : ''}`}
+            onClick={() => pickRole(f)}
+          >
+            <label className="radio-title">
+              <input type="radio" name="family" checked={familyId === f.id} onChange={() => pickRole(f)} />
+              <span>{f.name}</span>
+            </label>
+            <div className="small">For: {f.roles.join(', ')}</div>
+            <p className="muted">{f.summary}</p>
+          </div>
+        ))}
       </div>
 
       {family && (
-        <form className="card form-card" onSubmit={create}>
-          <h2 className="section-title">2. Name it</h2>
-          <label className="field">
-            <span>Title candidates will see</span>
-            <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={120} />
-          </label>
-          <label className="field">
-            <span>Currency used in the scenario</span>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
-              <option value="INR">Indian rupee (₹)</option>
-              <option value="USD">US dollar ($)</option>
-            </select>
-          </label>
-          <ErrorNote error={error} />
-          <button className="btn btn-primary" disabled={busy || !title.trim()}>
-            {busy ? 'Creating…' : 'Create assessment'}
-          </button>
-        </form>
+        <>
+          <h2 className="section-title">2. Choose the activities</h2>
+          <p className="muted small">
+            All activities share one scenario, so candidates build on what they've already seen. A situation-change
+            activity needs the decision it follows.{' '}
+            <Link to={`/app/library/${family.id}?currency=${currency}`}>Preview the full content and answer key</Link>
+          </p>
+          <div className="activity-list">
+            {family.stages.map((s) => {
+              const on = selected.has(s.id);
+              const parent = s.dependsOn ? family.stages.find((p) => p.id === s.dependsOn) : null;
+              return (
+                <label key={s.id} className={`card activity ${on ? 'selected' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => setSelected(toggle(family.stages, selected, s.id))}
+                  />
+                  <div>
+                    <div className="activity-head">
+                      <strong>{s.title}</strong>
+                      <KindBadge kind={s.kind} />
+                      {s.thinkAloud && <span className="badge badge-think">Think aloud</span>}
+                      <span className="small muted">
+                        {formatMinutes(s.timeLimitSec)}
+                        {!s.scored && ' · not scored'}
+                      </span>
+                    </div>
+                    <p className="small muted">{s.summary}</p>
+                    {parent && <p className="small muted">Includes "{parent.title}", which it follows.</p>}
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+
+          <form className="card form-card" onSubmit={create}>
+            <h2 className="section-title">3. Name it</h2>
+            <p className="small muted">
+              {chosen.length} activities · about {minutes} minutes for the candidate
+            </p>
+            <label className="field">
+              <span>Job title candidates will see</span>
+              <input value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={120} />
+            </label>
+            <label className="field">
+              <span>Currency used in the scenario</span>
+              <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
+                <option value="INR">Indian rupee (₹)</option>
+                <option value="USD">US dollar ($)</option>
+              </select>
+            </label>
+            {!hasScored && <p className="small error-text">Pick at least one scored activity.</p>}
+            <ErrorNote error={error} />
+            <button className="btn btn-primary" disabled={busy || !title.trim() || !hasScored}>
+              {busy ? 'Creating…' : 'Create assessment'}
+            </button>
+          </form>
+        </>
       )}
     </>
   );

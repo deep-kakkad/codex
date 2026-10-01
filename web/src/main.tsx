@@ -1,10 +1,11 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
-import { AuthProvider, RequireAuth } from './auth';
+import { AuthProvider, RequireAuth, RequireCandidate } from './auth';
 import { AppLayout } from './components/AppLayout';
 import { AssessmentPage } from './pages/AssessmentPage';
 import { AuthPage } from './pages/AuthPage';
+import { CandidateHome } from './pages/CandidateHome';
 import { CandidateReportPage } from './pages/CandidateReport';
 import { Dashboard } from './pages/Dashboard';
 import { Landing } from './pages/Landing';
@@ -25,6 +26,14 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/signup" element={<AuthPage mode="signup" />} />
           <Route path="/c/:token" element={<TakeAssessment />} />
+          <Route
+            path="/candidate"
+            element={
+              <RequireCandidate>
+                <CandidateHome />
+              </RequireCandidate>
+            }
+          />
           <Route
             path="/app"
             element={

@@ -1,8 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { CandidateReport, ReportStage, VerificationRecord } from '../../../shared/api';
+import type {
+  AiReviewView,
+  AiStageReview,
+  CandidateReport,
+  ReportStage,
+  VerificationRecord,
+} from '../../../shared/api';
 import { formatDuration } from '../../../shared/signals';
-import type { Decision, Delivery, Recommendation, ReviewScores } from '../../../shared/types';
+import type { Decision } from '../../../shared/types';
 import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Blocks } from '../components/Blocks';
@@ -13,55 +19,28 @@ import {
   DecisionBadge,
   ErrorNote,
   KindBadge,
+  RecommendationBadge,
   Score,
   StatusBadge,
   candidateLink,
 } from '../components/ui';
 import { formatDate, useApi } from '../hooks';
 
-type Tab = 'answers' | 'verification' | 'scenario';
-
-const RECOMMENDATION_LABEL: Record<Recommendation, string> = {
-  advance: 'Advance to verification call',
-  hold: 'Hold',
-  reject: 'Do not advance',
-};
-
-/** Weighted mean over the rubric, mirroring the server's scoring. */
-function localScore(stages: ReportStage[], scores: ReviewScores) {
-  let weighted = 0;
-  let weights = 0;
-  let scored = 0;
-  let total = 0;
-  const byStage: Record<string, number | null> = {};
-  for (const stage of stages) {
-    if (!stage.scored) continue;
-    let sw = 0;
-    let sWeights = 0;
-    for (const criterion of stage.rubric) {
-      total += 1;
-      const value = scores[stage.id]?.[criterion.id];
-      if (!value) continue;
-      scored += 1;
-      sw += value * criterion.weight;
-      sWeights += criterion.weight;
-    }
-    byStage[stage.id] = sWeights ? Math.round((sw / sWeights) * 10) / 10 : null;
-    weighted += sw;
-    weights += sWeights;
-  }
-  return { overall: weights ? Math.round((weighted / weights) * 10) / 10 : null, byStage, scored, total };
-}
-
-function suggestion(overall: number | null): Recommendation | null {
-  if (overall === null) return null;
-  return overall >= 3 ? 'advance' : overall >= 2.3 ? 'hold' : 'reject';
-}
+type Tab = 'review' | 'verification' | 'scenario';
+const POLL_MS = 4000;
 
 export function CandidateReportPage() {
   const { id } = useParams();
-  const { data: report, setData: setReport, error } = useApi<CandidateReport>(`/api/candidates/${id}`);
-  const [tab, setTab] = useState<Tab>('answers');
+  const { data: report, setData: setReport, error, reload } = useApi<CandidateReport>(`/api/candidates/${id}`);
+  const [tab, setTab] = useState<Tab>('review');
+  const reviewing = report?.aiReview?.status === 'pending' || report?.aiReview?.status === 'running';
+
+  // Keep checking while the AI review runs in the background.
+  useEffect(() => {
+    if (!reviewing) return;
+    const timer = window.setInterval(() => void reload(), POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [reviewing, reload]);
 
   if (error) return <ErrorNote error={error} />;
   if (!report) return <p className="muted">Loading…</p>;
@@ -91,7 +70,7 @@ export function CandidateReportPage() {
       <div className="tabs" role="tablist">
         {(
           [
-            ['answers', 'Answers and scoring'],
+            ['review', 'AI review'],
             ['verification', 'Verification call'],
             ['scenario', "This candidate's scenario"],
           ] as [Tab, string][]
@@ -108,7 +87,7 @@ export function CandidateReportPage() {
         ))}
       </div>
 
-      {tab === 'answers' && <AnswersTab report={report} finished={finished} onReport={setReport} />}
+      {tab === 'review' && <ReviewTab report={report} finished={finished} onReport={setReport} />}
       {tab === 'verification' && <VerificationTab report={report} finished={finished} onReport={setReport} />}
       {tab === 'scenario' && (
         <div className="card">
@@ -122,9 +101,9 @@ export function CandidateReportPage() {
   );
 }
 
-// Answers and scoring -------------------------------------------------------
+// AI review -------------------------------------------------------------------
 
-function AnswersTab({
+function ReviewTab({
   report,
   finished,
   onReport,
@@ -133,50 +112,7 @@ function AnswersTab({
   finished: boolean;
   onReport: (r: CandidateReport) => void;
 }) {
-  const [scores, setScores] = useState<ReviewScores>(report.myReview?.scores ?? {});
-  const [notes, setNotes] = useState(report.myReview?.notes ?? '');
-  const [observations, setObservations] = useState<Record<string, Delivery>>(report.myReview?.observations ?? {});
-  const [recommendation, setRecommendation] = useState<Recommendation | null>(report.myReview?.recommendation ?? null);
-  const [dirty, setDirty] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const summary = useMemo(() => localScore(report.stages, scores), [report.stages, scores]);
-  const submitted = report.myReview?.submittedAt != null;
-
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
-
-  function setScore(stageId: string, criterionId: string, value: number) {
-    setScores((prev) => ({ ...prev, [stageId]: { ...prev[stageId], [criterionId]: value } }));
-    setDirty(true);
-  }
-
-  async function save(submit: boolean) {
-    setBusy(true);
-    setError(null);
-    try {
-      const next = await api.put<CandidateReport>(`/api/candidates/${report.candidate.id}/review`, {
-        scores,
-        observations,
-        notes,
-        recommendation,
-        submit,
-      });
-      onReport(next);
-      setDirty(false);
-      setSavedAt(Date.now());
-    } catch (e) {
-      setError(errorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
+  const result = report.aiReview?.result ?? null;
   return (
     <div className="review-layout">
       <div className="review-main">
@@ -184,98 +120,22 @@ function AnswersTab({
           <div className="callout callout-info">
             {report.candidate.status === 'invited'
               ? "This candidate hasn't started yet."
-              : "This candidate is still working. You can review once they've submitted."}
+              : 'This candidate is still working. The AI review starts as soon as they submit.'}
           </div>
         )}
         {report.stages.map((stage) => (
           <StageReview
             key={stage.id}
             stage={stage}
-            scores={scores[stage.id] ?? {}}
-            stageScore={summary.byStage[stage.id] ?? null}
-            canScore={finished}
-            onScore={(criterionId, value) => setScore(stage.id, criterionId, value)}
-            delivery={observations[stage.id]}
-            onDelivery={(value) => {
-              setObservations((prev) => ({ ...prev, [stage.id]: value }));
-              setDirty(true);
-            }}
+            ai={result?.stages.find((s) => s.stageId === stage.id) ?? null}
+            stageScore={result?.byStage[stage.id] ?? null}
           />
         ))}
       </div>
 
       <aside className="review-side">
         <div className="card sticky">
-          <h3>Your review</h3>
-          <div className="overall">
-            <Score value={summary.overall} />
-            <span className="small muted">
-              {summary.scored} of {summary.total} criteria scored
-            </span>
-          </div>
-          <fieldset className="recommendation" disabled={!finished}>
-            <legend className="small">Recommendation</legend>
-            {(Object.keys(RECOMMENDATION_LABEL) as Recommendation[]).map((key) => (
-              <label key={key} className={`choice compact ${recommendation === key ? 'selected' : ''}`}>
-                <input
-                  type="radio"
-                  name="recommendation"
-                  checked={recommendation === key}
-                  onChange={() => {
-                    setRecommendation(key);
-                    setDirty(true);
-                  }}
-                />
-                {RECOMMENDATION_LABEL[key]}
-                {suggestion(summary.overall) === key && <span className="small muted"> (suggested)</span>}
-              </label>
-            ))}
-          </fieldset>
-          <label className="field">
-            <span className="small">Notes for the team</span>
-            <textarea
-              rows={4}
-              value={notes}
-              disabled={!finished}
-              onChange={(e) => {
-                setNotes(e.target.value);
-                setDirty(true);
-              }}
-              placeholder="What stood out? What should the verification call probe?"
-            />
-          </label>
-          <ErrorNote error={error} />
-          <div className="row-gap">
-            {submitted ? (
-              <button className="btn btn-primary" onClick={() => save(false)} disabled={busy || !dirty || !finished}>
-                Save changes
-              </button>
-            ) : (
-              <>
-                <button className="btn btn-secondary" onClick={() => save(false)} disabled={busy || !finished}>
-                  Save draft
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => save(true)}
-                  disabled={busy || !finished || summary.scored < summary.total || !recommendation}
-                  title={summary.scored < summary.total ? 'Score every criterion first' : undefined}
-                >
-                  Submit review
-                </button>
-              </>
-            )}
-          </div>
-          <p className="small muted">
-            {submitted
-              ? `Submitted ${formatDate(report.myReview!.submittedAt)}`
-              : savedAt
-                ? 'Draft saved'
-                : 'Scores are your judgment. The suggestion only reflects the rubric average.'}
-            {dirty && ' · Unsaved changes'}
-          </p>
-
-          <TeamReviews report={report} />
+          <AiSummary report={report} review={report.aiReview} onReport={onReport} />
           <DecisionControl report={report} onReport={onReport} />
         </div>
       </aside>
@@ -283,22 +143,118 @@ function AnswersTab({
   );
 }
 
+function AiSummary({
+  report,
+  review,
+  onReport,
+}: {
+  report: CandidateReport;
+  review: AiReviewView | null;
+  onReport: (r: CandidateReport) => void;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function retry() {
+    setBusy(true);
+    try {
+      onReport(await api.post<CandidateReport>(`/api/candidates/${report.candidate.id}/ai-review`));
+      setError(null);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!review) {
+    return (
+      <>
+        <h3>AI review</h3>
+        <p className="small muted">Runs automatically once the candidate submits.</p>
+      </>
+    );
+  }
+  if (review.status === 'pending' || review.status === 'running') {
+    return (
+      <>
+        <h3>AI review</h3>
+        <p className="reviewing">
+          <span className="spinner" aria-hidden="true" />
+          {review.status === 'pending' ? 'Queued…' : 'Transcribing audio and scoring answers…'}
+        </p>
+        <p className="small muted">This usually takes a minute or two. The page updates by itself.</p>
+      </>
+    );
+  }
+  if (review.status === 'failed' || !review.result) {
+    return (
+      <>
+        <h3>AI review</h3>
+        <div className="alert alert-error small">The review failed: {review.error ?? 'unknown error'}</div>
+        <ErrorNote error={error} />
+        <button className="btn btn-primary btn-sm" onClick={retry} disabled={busy}>
+          {busy ? 'Starting…' : 'Run the review again'}
+        </button>
+      </>
+    );
+  }
+
+  const r = review.result;
+  return (
+    <>
+      <h3>AI review</h3>
+      <div className="overall">
+        <Score value={r.overall} />
+        <RecommendationBadge value={r.recommendation} />
+      </div>
+      <p className="small">{r.summary}</p>
+      {r.strengths.length > 0 && (
+        <>
+          <h4>Strengths</h4>
+          <ul className="small">
+            {r.strengths.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {r.concerns.length > 0 && (
+        <>
+          <h4>Concerns</h4>
+          <ul className="small">
+            {r.concerns.map((s, i) => (
+              <li key={i}>{s}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {r.withAndWithoutAi && (
+        <>
+          <h4>With and without AI</h4>
+          <p className="small">{r.withAndWithoutAi}</p>
+        </>
+      )}
+      <p className="small muted">
+        Reviewed {formatDate(review.updatedAt)} by {r.models.review} (audio: {r.models.audio}). The recommendation
+        reflects the rubric average; the decision is yours.
+      </p>
+      <ErrorNote error={error} />
+      <button className="btn btn-ghost btn-sm" onClick={retry} disabled={busy}>
+        Re-run review
+      </button>
+    </>
+  );
+}
+
 function StageReview({
   stage,
-  scores,
+  ai,
   stageScore,
-  canScore,
-  onScore,
-  delivery,
-  onDelivery,
 }: {
   stage: ReportStage;
-  scores: Record<string, number>;
+  ai: AiStageReview | null;
   stageScore: number | null;
-  canScore: boolean;
-  onScore: (criterionId: string, value: number) => void;
-  delivery: Delivery | undefined;
-  onDelivery: (value: Delivery) => void;
 }) {
   const r = stage.response;
   return (
@@ -350,14 +306,22 @@ function StageReview({
               </p>
             )}
             {stage.thinkAloud ? (
-              <ThinkAloudReview response={r} delivery={delivery} canObserve={canScore} onDelivery={onDelivery} />
+              <ThinkAloudReview response={r} delivery={ai?.delivery ?? null} />
             ) : (
               r.audio.map((a) => (
                 <div key={a.url} className="answer-audio">
-                  <span className="small muted">Voice note{a.sec ? ` (${formatDuration(a.sec)})` : ''}</span>
+                  <span className="small muted">
+                    Voice note{a.sec ? ` (${formatDuration(a.sec)})` : ''}
+                    {ai?.delivery && ` · AI: ${DELIVERY_LABEL[ai.delivery.label]}`}
+                  </span>
                   <audio controls preload="none" src={a.url} className="audio" />
                 </div>
               ))
+            )}
+            {ai?.transcript && (
+              <Collapsible title="Transcript (AI)" className="inset" defaultOpen={stage.thinkAloud}>
+                <div className="answer-text transcript">{ai.transcript}</div>
+              </Collapsible>
             )}
             {stage.thinkAloud ? (
               r.text &&
@@ -375,7 +339,7 @@ function StageReview({
             {stage.kind === 'ai_allowed' && (
               <>
                 <Collapsible
-                  title={`AI conversation${r.aiTranscript ? ` (${r.aiTranscript.length.toLocaleString()} characters)` : ': none given'}`}
+                  title={`Their AI conversation${r.aiTranscript ? ` (${r.aiTranscript.length.toLocaleString()} characters)` : ': none given'}`}
                   className="inset"
                 >
                   <div className="answer-text transcript">{r.aiTranscript || 'None'}</div>
@@ -392,77 +356,44 @@ function StageReview({
         </>
       )}
 
-      <Collapsible title="Reviewer guide" defaultOpen={stage.scored} className="inset guide">
-        <Blocks blocks={stage.reviewerGuide} />
-      </Collapsible>
-
-      {stage.scored && (
+      {stage.scored && ai && (
         <div className="rubric">
-          {stage.rubric.map((criterion) => (
-            <div key={criterion.id} className="criterion">
-              <div className="criterion-label">
-                {criterion.label}
-                {criterion.weight > 1 && <span className="small muted"> · counts ×{criterion.weight}</span>}
-              </div>
-              <div className="anchors" role="radiogroup" aria-label={criterion.label}>
-                {criterion.anchors.map((anchor, i) => {
-                  const value = i + 1;
-                  const selected = scores[criterion.id] === value;
-                  return (
-                    <button
-                      key={value}
-                      type="button"
-                      role="radio"
-                      aria-checked={selected}
-                      disabled={!canScore}
-                      className={`anchor ${selected ? 'selected' : ''}`}
-                      onClick={() => onScore(criterion.id, value)}
-                    >
-                      <span className="anchor-score">{value}</span>
+          {ai.summary && <p className="ai-stage-summary">{ai.summary}</p>}
+          {stage.rubric.map((criterion) => {
+            const scored = ai.criteria[criterion.id];
+            return (
+              <div key={criterion.id} className="criterion">
+                <div className="criterion-label">
+                  {criterion.label}
+                  {criterion.weight > 1 && <span className="small muted"> · counts ×{criterion.weight}</span>}
+                </div>
+                <div className="anchors">
+                  {criterion.anchors.map((anchor, i) => (
+                    <div key={i} className={`anchor static ${scored?.score === i + 1 ? 'selected' : ''}`}>
+                      <span className="anchor-score">{i + 1}</span>
                       <span className="anchor-text">{anchor}</span>
-                    </button>
-                  );
-                })}
+                    </div>
+                  ))}
+                </div>
+                {scored && (
+                  <div className="ai-evidence small">
+                    {scored.evidence && <q>{scored.evidence}</q>} {scored.rationale}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
+
+      <Collapsible title="Answer key used by the AI" className="inset guide">
+        <Blocks blocks={stage.reviewerGuide} />
+      </Collapsible>
     </section>
   );
 }
 
-function TeamReviews({ report }: { report: CandidateReport }) {
-  if (report.hiddenReviews > 0) {
-    return (
-      <div className="team-reviews">
-        <h4>Team</h4>
-        <p className="small muted">
-          {report.hiddenReviews} review{report.hiddenReviews === 1 ? ' is' : 's are'} hidden until you submit yours, so
-          nobody anchors on the first score.
-        </p>
-      </div>
-    );
-  }
-  if (!report.otherReviews.length) return null;
-  return (
-    <div className="team-reviews">
-      <h4>
-        Team <Score value={report.teamScore} />
-      </h4>
-      {report.otherReviews.map((review) => (
-        <div key={review.reviewerId} className="team-review">
-          <div className="row-between">
-            <strong>{review.reviewerName}</strong>
-            <Score value={review.overall} />
-          </div>
-          {review.recommendation && <div className="small">{RECOMMENDATION_LABEL[review.recommendation]}</div>}
-          {review.notes && <p className="small muted">{review.notes}</p>}
-        </div>
-      ))}
-    </div>
-  );
-}
+const DELIVERY_LABEL = { natural: 'sounds like live reasoning', unsure: 'unclear delivery', read: 'sounds read' };
 
 function DecisionControl({ report, onReport }: { report: CandidateReport; onReport: (r: CandidateReport) => void }) {
   const { user } = useAuth();
@@ -601,6 +532,17 @@ function VerificationTab({
             </ol>
           </div>
         ))}
+
+        {report.aiReview?.result?.probes.length ? (
+          <>
+            <h4>Suggested by the AI review</h4>
+            <ol className="probe-questions">
+              {report.aiReview.result.probes.map((q, i) => (
+                <li key={i}>{q}</li>
+              ))}
+            </ol>
+          </>
+        ) : null}
 
         <h3>3. Close (2 minutes)</h3>
         <ul>

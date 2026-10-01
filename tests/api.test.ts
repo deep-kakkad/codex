@@ -4,23 +4,111 @@ import path from 'node:path';
 import request from 'supertest';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { CandidateSession } from '../shared/candidateApi';
+import type { AiConfig, ChatRequest } from '../server/ai/client';
+import type { ReviewQueue } from '../server/ai/queue';
 import { createApp } from '../server/app';
 import { SUBMIT_GRACE_MS } from '../server/candidateFlow';
 import { openDb } from '../server/db';
 
 let clock = 1_750_000_000_000;
 let uploadDir: string;
-let app: ReturnType<typeof createApp>;
+let app: ReturnType<typeof createApp>['app'];
+let reviews: ReviewQueue;
+let ai: FakeAi;
+
+/** Stands in for OpenRouter: deterministic replies, and a record of every call. */
+interface FakeAi extends AiConfig {
+  calls: ChatRequest[];
+  delivery: 'natural' | 'unsure' | 'read';
+  score: number;
+  brokenJsonOnce: boolean;
+}
+
+function createFakeAi(): FakeAi {
+  const fake: FakeAi = {
+    reviewModel: 'test/review',
+    audioModel: 'test/audio',
+    calls: [],
+    delivery: 'natural',
+    score: 3,
+    brokenJsonOnce: false,
+    client: {
+      async chat(req) {
+        fake.calls.push(req);
+        if (fake.brokenJsonOnce) {
+          fake.brokenJsonOnce = false;
+          return 'Sure! Here is my assessment, not JSON.';
+        }
+        const system = String(req.messages[0].content);
+        const user = req.messages[1].content;
+        if (req.model === fake.audioModel) {
+          return JSON.stringify({
+            transcript: 'So the dashboards claim more orders than the store [pause] wait, that is the over-count.',
+            delivery: fake.delivery,
+            reasons: 'Test delivery.',
+          });
+        }
+        if (system.startsWith('You write the overall')) {
+          return (
+            '```json\n' +
+            JSON.stringify({
+              summary: 'Solid reasoning.',
+              strengths: ['Uses the numbers'],
+              concerns: ['Vague on risk'],
+              withAndWithoutAi: 'Similar with and without AI.',
+              probes: ['Walk me through break-even again.'],
+            }) +
+            '\n```'
+          );
+        }
+        const rubric = String(user).split('## Rubric')[1] ?? '';
+        const ids = [...rubric.matchAll(/^- ([\w-]+): /gm)].map((m) => m[1]);
+        return JSON.stringify({
+          criteria: Object.fromEntries(
+            ids.map((id) => [id, { score: fake.score, evidence: '"quote"', rationale: 'why' }]),
+          ),
+          summary: 'Answer summary.',
+        });
+      },
+    },
+  };
+  return fake;
+}
 
 beforeEach(() => {
   clock = 1_750_000_000_000;
   uploadDir = mkdtempSync(path.join(tmpdir(), 'proofwork-test-'));
-  app = createApp({ db: openDb(':memory:'), uploadDir, now: () => clock });
+  ai = createFakeAi();
+  ({ app, reviews } = createApp({ db: openDb(':memory:'), uploadDir, now: () => clock, ai }));
+  agents.clear();
 });
 
-afterEach(() => {
+afterEach(async () => {
+  await reviews.idle();
   rmSync(uploadDir, { recursive: true, force: true });
 });
+
+// Candidate accounts: one signed-in agent per invitation token.
+const agents = new Map<string, ReturnType<typeof request.agent>>();
+const as = (token: string) => {
+  const agent = agents.get(token);
+  if (!agent) throw new Error('No candidate account for this invitation');
+  return agent;
+};
+
+async function candidateAccount(token: string, emailAddress: string, name = 'Asha Rao') {
+  const agent = request.agent(app);
+  const res = await agent
+    .post('/api/candidate/auth/signup')
+    .send({ name, email: emailAddress, password: 'candidate-pass' });
+  if (res.status === 409) {
+    await agent.post('/api/candidate/auth/login').send({ email: emailAddress, password: 'candidate-pass' }).expect(200);
+  } else {
+    expect(res.status).toBe(201);
+  }
+  agents.set(token, agent);
+  return agent;
+}
 
 async function signup(orgName = 'Acme', emailAddress = 'maya@acme.test') {
   const agent = request.agent(app);
@@ -41,6 +129,7 @@ async function setup(roleFamilyId = 'performance-marketing') {
     .post(`/api/assessments/${created.id}/candidates`)
     .send({ name: 'Asha Rao', email: 'asha@example.com' })
     .expect(201);
+  await candidateAccount(invited.candidate.token, 'asha@example.com');
   return { manager, assessmentId: created.id as string, candidate: invited.candidate as { id: string; token: string } };
 }
 
@@ -55,34 +144,28 @@ async function answerCurrent(token: string, session: CandidateSession, extra: Re
     ...extra,
   };
   if (stage.choices && !body.choiceId) body.choiceId = stage.choices[0].id;
-  const res = await request(app)
+  const res = await as(token)
     .post(`${c(token)}/stages/${stage.id}/submit`)
     .send(body)
     .expect(200);
   return res.body as CandidateSession;
 }
 
-/** Reveals and answers every remaining stage. */
+/** Reveals and answers every remaining stage, from wherever the candidate is. */
 async function completeAll(token: string, choices: Record<string, string> = {}) {
-  let session = (await request(app).get(c(token)).expect(200)).body as CandidateSession;
-  const stageIds = [
-    'warmup',
-    'first-read',
-    'budget-cut',
-    'two-weeks-later',
-    'agency-plan',
-    'founder-update',
-    'real-decision',
-  ];
-  for (const stageId of stageIds) {
-    if (session.state.phase === 'done') break;
-    session = (
-      await request(app)
-        .post(`${c(token)}/next`)
-        .send({ index: stageIds.indexOf(stageId) })
-        .expect(200)
-    ).body;
-    session = await answerCurrent(token, session, choices[stageId] ? { choiceId: choices[stageId] } : {});
+  let session = (await as(token).get(c(token)).expect(200)).body as CandidateSession;
+  while (session.state.phase !== 'done') {
+    if (session.state.phase === 'ready') {
+      session = (
+        await as(token)
+          .post(`${c(token)}/next`)
+          .send({ index: session.state.next.index })
+          .expect(200)
+      ).body;
+    }
+    if (session.state.phase !== 'stage') throw new Error(`Unexpected phase ${session.state.phase}`);
+    const choiceId = choices[session.state.stage.id];
+    session = await answerCurrent(token, session, choiceId ? { choiceId } : {});
   }
   return session;
 }
@@ -119,16 +202,16 @@ describe('auth', () => {
 describe('candidate flow', () => {
   it('reveals one question at a time and never leaks reviewer material', async () => {
     const { candidate } = await setup();
-    const intro = (await request(app).get(c(candidate.token)).expect(200)).body as CandidateSession;
+    const intro = (await as(candidate.token).get(c(candidate.token)).expect(200)).body as CandidateSession;
     expect(intro.state.phase).toBe('intro');
     expect(intro.brief).toBeNull();
 
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
       .send({ idName: 'Asha Rao' })
       .expect(400);
     const started = (
-      await request(app)
+      await as(candidate.token)
         .post(`${c(candidate.token)}/start`)
         .send({ idName: 'Asha Rao', consent: true })
         .expect(200)
@@ -139,13 +222,13 @@ describe('candidate flow', () => {
     expect(started.brief?.length).toBeGreaterThan(0);
 
     // Cannot skip ahead.
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/next`)
       .send({ index: 1 })
       .expect(409);
 
     const warmup = (
-      await request(app)
+      await as(candidate.token)
         .post(`${c(candidate.token)}/next`)
         .send({ index: 0 })
         .expect(200)
@@ -159,7 +242,7 @@ describe('candidate flow', () => {
     // Revealing the same stage twice is idempotent and keeps the deadline.
     clock += 5_000;
     const again = (
-      await request(app)
+      await as(candidate.token)
         .post(`${c(candidate.token)}/next`)
         .send({ index: 0 })
         .expect(200)
@@ -167,7 +250,7 @@ describe('candidate flow', () => {
     expect(again.state.deadlineAt).toBe(warmup.state.deadlineAt);
 
     // Empty answers are rejected unless time ran out.
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/stages/warmup/submit`)
       .send({})
       .expect(400);
@@ -177,13 +260,13 @@ describe('candidate flow', () => {
 
   it('resolves the branch prompt from the earlier decision', async () => {
     const { candidate } = await setup();
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
       .send({ idName: 'Asha Rao', consent: true });
     let session: CandidateSession | undefined;
     for (const [index, stageId] of ['warmup', 'first-read', 'budget-cut'].entries()) {
       session = (
-        await request(app)
+        await as(candidate.token)
           .post(`${c(candidate.token)}/next`)
           .send({ index })
           .expect(200)
@@ -195,7 +278,7 @@ describe('candidate flow', () => {
       );
     }
     const branch = (
-      await request(app)
+      await as(candidate.token)
         .post(`${c(candidate.token)}/next`)
         .send({ index: 3 })
         .expect(200)
@@ -206,26 +289,26 @@ describe('candidate flow', () => {
 
   it('requires a choice on decision stages', async () => {
     const { candidate } = await setup();
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
       .send({ idName: 'Asha Rao', consent: true });
     for (const index of [0, 1]) {
       const s = (
-        await request(app)
+        await as(candidate.token)
           .post(`${c(candidate.token)}/next`)
           .send({ index })
       ).body;
       await answerCurrent(candidate.token, s);
     }
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/next`)
       .send({ index: 2 })
       .expect(200);
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/stages/budget-cut/submit`)
       .send({ text: 'Cut Meta' })
       .expect(400);
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/stages/budget-cut/submit`)
       .send({ text: 'Cut Meta', choiceId: 'not-a-choice' })
       .expect(400);
@@ -233,27 +316,27 @@ describe('candidate flow', () => {
 
   it('closes a stage with the autosaved draft once time and grace run out', async () => {
     const { candidate, manager } = await setup();
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
       .send({ idName: 'Asha Rao', consent: true });
     const warmup = (
-      await request(app)
+      await as(candidate.token)
         .post(`${c(candidate.token)}/next`)
         .send({ index: 0 })
     ).body as CandidateSession;
     if (warmup.state.phase !== 'stage') throw new Error('expected stage');
 
-    await request(app)
+    await as(candidate.token)
       .put(`${c(candidate.token)}/stages/warmup/draft`)
       .send({ text: 'half an answer' })
       .expect(200);
 
     clock = warmup.state.deadlineAt + SUBMIT_GRACE_MS + 1;
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/stages/warmup/submit`)
       .send({ text: 'too late' })
       .expect(409);
-    const after = (await request(app).get(c(candidate.token))).body as CandidateSession;
+    const after = (await as(candidate.token).get(c(candidate.token))).body as CandidateSession;
     expect(after.state).toMatchObject({ phase: 'ready', next: { index: 1 } });
 
     const report = (await manager.get(`/api/candidates/${candidate.id}`).expect(200)).body;
@@ -262,17 +345,17 @@ describe('candidate flow', () => {
 
   it('accepts a submission inside the grace window and records the overtime', async () => {
     const { candidate, manager } = await setup();
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
       .send({ idName: 'Asha Rao', consent: true });
     const warmup = (
-      await request(app)
+      await as(candidate.token)
         .post(`${c(candidate.token)}/next`)
         .send({ index: 0 })
     ).body as CandidateSession;
     if (warmup.state.phase !== 'stage') throw new Error('expected stage');
     clock = warmup.state.deadlineAt + 20_000;
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/stages/warmup/submit`)
       .send({ text: 'just in time', timedOut: true })
       .expect(200);
@@ -286,11 +369,12 @@ describe('candidate flow', () => {
       .post(`/api/assessments/${assessmentId}/candidates`)
       .send({ name: 'Ravi', email: 'ravi@example.com', timeMultiplier: 1.5 })
       .expect(201);
-    await request(app)
+    await candidateAccount(body.candidate.token, 'ravi@example.com', 'Ravi');
+    await as(body.candidate.token)
       .post(`${c(body.candidate.token)}/start`)
       .send({ idName: 'Ravi', consent: true });
     const s = (
-      await request(app)
+      await as(body.candidate.token)
         .post(`${c(body.candidate.token)}/next`)
         .send({ index: 0 })
     ).body;
@@ -300,24 +384,24 @@ describe('candidate flow', () => {
 
   it('stores voice notes and serves them only to the right org', async () => {
     const { candidate, manager } = await setup();
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
       .send({ idName: 'Asha Rao', consent: true });
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/next`)
       .send({ index: 0 });
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/stages/warmup/audio?seconds=12`)
       .set('Content-Type', 'audio/webm')
       .send(Buffer.from('fake-audio-bytes'))
       .expect(200);
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/stages/warmup/audio`)
       .set('Content-Type', 'text/plain')
       .send('nope')
       .expect(400);
     // A voice note alone is a valid answer.
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/stages/warmup/submit`)
       .send({})
       .expect(200);
@@ -334,13 +418,15 @@ describe('candidate flow', () => {
 
   it('marks the attempt submitted after the last stage', async () => {
     const { candidate, manager, assessmentId } = await setup();
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
       .send({ idName: 'Asha Rao', consent: true });
     const final = await completeAll(candidate.token);
     expect(final.state.phase).toBe('done');
     const detail = (await manager.get(`/api/assessments/${assessmentId}`)).body;
-    expect(detail.candidates[0].status).toBe('submitted');
+    expect(['submitted', 'reviewed']).toContain(detail.candidates[0].status);
+    await reviews.idle();
+    expect((await manager.get(`/api/assessments/${assessmentId}`)).body.candidates[0].status).toBe('reviewed');
   });
 });
 
@@ -349,17 +435,17 @@ describe('think-aloud', () => {
   async function openThinkAloud() {
     const ctx = await setup();
     const token = ctx.candidate.token;
-    await request(app)
+    await as(token)
       .post(`${c(token)}/start`)
       .send({ idName: 'Asha Rao', consent: true });
     const warmup = (
-      await request(app)
+      await as(token)
         .post(`${c(token)}/next`)
         .send({ index: 0 })
     ).body;
     await answerCurrent(token, warmup);
     const stage = (
-      await request(app)
+      await as(token)
         .post(`${c(token)}/next`)
         .send({ index: 1 })
         .expect(200)
@@ -368,7 +454,7 @@ describe('think-aloud', () => {
   }
 
   const chunk = (token: string, query: string, body: string, stageId = 'first-read') =>
-    request(app)
+    as(token)
       .post(`${c(token)}/stages/${stageId}/stream?${query}`)
       .set('Content-Type', 'audio/webm;codecs=opus')
       .send(Buffer.from(body));
@@ -378,7 +464,7 @@ describe('think-aloud', () => {
     if (stage.state.phase !== 'stage') throw new Error('expected stage');
     expect(stage.state.stage.thinkAloud).toBe(true);
     expect(stage.assessment.outline.filter((s) => s.thinkAloud)).toHaveLength(3);
-    const ready = (await request(app).get(c(token))).body;
+    const ready = (await as(token).get(c(token))).body;
     expect(ready.assessment.outline[1].thinkAloud).toBe(true);
   });
 
@@ -390,20 +476,20 @@ describe('think-aloud', () => {
     await chunk(token, 'part=0&seq=2&startMs=900&sec=12', 'CCC').expect(409); // gap
     await chunk(token, 'part=0&seq=1&startMs=900&sec=8', 'BBB').expect(200);
     await chunk(token, 'part=2&seq=0&startMs=0&sec=1', 'X').expect(409); // must be part 1 next
-    await request(app)
+    await as(token)
       .post(`${c(token)}/stages/first-read/stream?part=0&seq=2&sec=9`)
       .set('Content-Type', 'text/plain')
       .send('nope')
       .expect(400);
 
     // A reload mid-question reports the saved audio and continues as part 1.
-    const reloaded = (await request(app).get(c(token))).body as CandidateSession;
+    const reloaded = (await as(token).get(c(token))).body as CandidateSession;
     if (reloaded.state.phase !== 'stage') throw new Error('expected stage');
     expect(reloaded.state.audio).toEqual({ sec: 8, parts: 1 });
     await chunk(token, 'part=1&seq=0&startMs=30000&sec=3', 'DDD').expect(200);
 
     // Audio alone is a valid think-aloud answer.
-    await request(app)
+    await as(token)
       .post(`${c(token)}/stages/first-read/submit`)
       .send({})
       .expect(200);
@@ -423,7 +509,7 @@ describe('think-aloud', () => {
   it('only streams on think-aloud questions, and only while the question is open', async () => {
     const { token, stage } = await openThinkAloud();
     await chunk(token, 'part=0&seq=0&startMs=0&sec=1', 'A', 'warmup').expect(400);
-    await request(app)
+    await as(token)
       .post(`${c(token)}/stages/first-read/audio?seconds=3`)
       .set('Content-Type', 'audio/webm')
       .send(Buffer.from('x'))
@@ -441,14 +527,14 @@ describe('think-aloud', () => {
       { t: -5, text: 'clamped' },
       { t: 'bad', text: 'dropped' },
     ];
-    await request(app)
+    await as(token)
       .put(`${c(token)}/stages/first-read/draft`)
       .send({ text: 'AOV x margin', scratch })
       .expect(200);
-    const s = (await request(app).get(c(token))).body as CandidateSession;
+    const s = (await as(token).get(c(token))).body as CandidateSession;
     if (s.state.phase !== 'stage') throw new Error('expected stage');
     clock = s.state.deadlineAt + SUBMIT_GRACE_MS + 1;
-    await request(app).get(c(token)).expect(200); // closes the stage from the draft
+    await as(token).get(c(token)).expect(200); // closes the stage from the draft
 
     const report = (await manager.get(`/api/candidates/${candidate.id}`)).body;
     expect(report.stages[1].response.closedReason).toBe('timeout');
@@ -461,103 +547,273 @@ describe('think-aloud', () => {
 
   it('asks for audio or typed working before submitting', async () => {
     const { token } = await openThinkAloud();
-    const res = await request(app)
+    const res = await as(token)
       .post(`${c(token)}/stages/first-read/submit`)
       .send({})
       .expect(400);
     expect(res.body.error).toMatch(/Talk through your answer/);
   });
+});
 
-  it("turns a reviewer's delivery concern into a priority probe on the call", async () => {
-    const { candidate, manager } = await setup();
-    await request(app)
-      .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
-    await completeAll(candidate.token);
+describe('candidate accounts', () => {
+  it('requires the invited candidate to sign in, then links the invitation to their account', async () => {
+    const { candidate, manager, assessmentId } = await setup();
+    const token = candidate.token;
 
-    const saved = (
-      await manager
-        .put(`/api/candidates/${candidate.id}/review`)
-        .send({ scores: {}, observations: { 'agency-plan': 'read', 'first-read': 'natural', warmup: 'read' } })
+    // The invite page can say who invited them without signing in...
+    const invite = (
+      await request(app)
+        .get(`${c(token)}/invite`)
         .expect(200)
     ).body;
-    // Only think-aloud stages keep an observation.
-    expect(saved.myReview.observations).toEqual({ 'agency-plan': 'read', 'first-read': 'natural' });
-    const probe = saved.verification.script.probes[0];
-    expect(probe.stageId).toBe('agency-plan');
-    expect(probe.reasons.join(' ')).toMatch(/read or rehearsed/);
+    expect(invite).toMatchObject({ orgName: 'Acme', candidateName: 'Asha Rao', email: 'asha@example.com' });
+    // ...but nothing else is reachable anonymously.
+    await request(app).get(c(token)).expect(401);
+
+    // Someone else's account can't use the link.
+    const stranger = request.agent(app);
+    await stranger
+      .post('/api/candidate/auth/signup')
+      .send({ name: 'Eve', email: 'eve@example.com', password: 'candidate-pass' })
+      .expect(201);
+    const refused = await stranger.get(c(token)).expect(403);
+    expect(refused.body.error).toContain('asha@example.com');
+
+    // The invited account sees it on their dashboard and can start.
+    const mine = (await as(token).get('/api/candidate/assessments').expect(200)).body.assessments;
+    expect(mine).toEqual([expect.objectContaining({ token, title: 'Growth Marketer, Bengaluru', status: 'invited' })]);
+    await as(token).get(c(token)).expect(200);
+    expect((await stranger.get('/api/candidate/assessments')).body.assessments).toEqual([]);
+
+    // Recruiter and candidate sessions are separate.
+    await as(token).get('/api/assessments').expect(401);
+    await manager.get(c(token)).expect(401);
+    await manager.get(`/api/assessments/${assessmentId}`).expect(200);
+  });
+
+  it('logs candidates in and out, and rejects duplicates and bad passwords', async () => {
+    const agent = request.agent(app);
+    await agent
+      .post('/api/candidate/auth/signup')
+      .send({ name: 'Ravi', email: 'Ravi@Example.com', password: 'candidate-pass' })
+      .expect(201);
+    expect((await agent.get('/api/candidate/auth/me')).body.candidate).toMatchObject({ email: 'ravi@example.com' });
+    await agent.post('/api/candidate/auth/logout').expect(200);
+    expect((await agent.get('/api/candidate/auth/me')).body.candidate).toBeNull();
+    await agent
+      .post('/api/candidate/auth/login')
+      .send({ email: 'ravi@example.com', password: 'nope-nope' })
+      .expect(401);
+    await agent
+      .post('/api/candidate/auth/login')
+      .send({ email: 'ravi@example.com', password: 'candidate-pass' })
+      .expect(200);
+    await request(app)
+      .post('/api/candidate/auth/signup')
+      .send({ name: 'R', email: 'ravi@example.com', password: 'candidate-pass' })
+      .expect(409);
   });
 });
 
-describe('review and verification', () => {
-  function fullScores(report: { stages: { id: string; scored: boolean; rubric: { id: string }[] }[] }, value: number) {
-    return Object.fromEntries(
-      report.stages
-        .filter((s) => s.scored)
-        .map((s) => [s.id, Object.fromEntries(s.rubric.map((cr) => [cr.id, value]))]),
-    );
+describe('activity selection', () => {
+  it('builds the assessment from the chosen activities only', async () => {
+    const manager = await signup();
+    await manager
+      .post('/api/assessments')
+      .send({ title: 'x', roleFamilyId: 'performance-marketing', currency: 'INR', stageIds: ['nope'] })
+      .expect(400);
+    await manager
+      .post('/api/assessments')
+      .send({ title: 'x', roleFamilyId: 'performance-marketing', currency: 'INR', stageIds: ['warmup'] })
+      .expect(400);
+
+    // Choosing the situation change pulls in the decision it follows.
+    const { body } = await manager
+      .post('/api/assessments')
+      .send({
+        title: 'Growth lead',
+        roleFamilyId: 'performance-marketing',
+        currency: 'USD',
+        stageIds: ['two-weeks-later', 'agency-plan'],
+      })
+      .expect(201);
+    const detail = (await manager.get(`/api/assessments/${body.id}`)).body;
+    expect(detail.family.stages.map((s: { id: string }) => s.id)).toEqual([
+      'budget-cut',
+      'two-weeks-later',
+      'agency-plan',
+    ]);
+    expect(detail.family.stages[0]).toMatchObject({ thinkAloud: true, summary: expect.any(String) });
+
+    const { body: invited } = await manager
+      .post(`/api/assessments/${body.id}/candidates`)
+      .send({ name: 'Asha', email: 'asha@example.com' })
+      .expect(201);
+    const token = invited.candidate.token;
+    await candidateAccount(token, 'asha@example.com');
+    const session = (
+      await as(token)
+        .post(`${c(token)}/start`)
+        .send({ idName: 'Asha', consent: true })
+        .expect(200)
+    ).body as CandidateSession;
+    expect(session.assessment.outline.map((o) => o.kind)).toEqual(['decision', 'branch', 'critique']);
+    const first = (
+      await as(token)
+        .post(`${c(token)}/next`)
+        .send({ index: 0 })
+        .expect(200)
+    ).body as CandidateSession;
+    if (first.state.phase !== 'stage') throw new Error('expected stage');
+    expect(first.state.stage.id).toBe('budget-cut');
+  });
+});
+
+describe('AI review', () => {
+  async function finishedCandidate(choices: Record<string, string> = {}) {
+    const ctx = await setup();
+    await as(ctx.candidate.token)
+      .post(`${c(ctx.candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    await completeAll(ctx.candidate.token, choices);
+    return ctx;
   }
 
-  it('keeps reviews blind until you submit your own', async () => {
-    const { candidate, manager } = await setup();
-    await request(app)
-      .post(`${c(candidate.token)}/start`)
+  it('reviews a submitted candidate: transcripts, rubric scores, summary and recommendation', async () => {
+    const ctx = await setup();
+    const token = ctx.candidate.token;
+    await as(token)
+      .post(`${c(token)}/start`)
       .send({ idName: 'Asha Rao', consent: true });
-    await completeAll(candidate.token, { 'budget-cut': 'meta' });
-
-    await manager
-      .post('/api/team')
-      .send({ name: 'Rohan', email: 'rohan@acme.test', password: 'reviewer-pass', role: 'reviewer' })
-      .expect(201);
-    const reviewer = request.agent(app);
-    await reviewer.post('/api/auth/login').send({ email: 'rohan@acme.test', password: 'reviewer-pass' }).expect(200);
-    await reviewer
-      .post('/api/assessments')
-      .send({ title: 'x', roleFamilyId: 'performance-marketing', currency: 'INR' })
-      .expect(403);
-
-    const report = (await manager.get(`/api/candidates/${candidate.id}`)).body;
-    await manager
-      .put(`/api/candidates/${candidate.id}/review`)
-      .send({ scores: fullScores(report, 2), recommendation: 'advance', submit: false })
+    await as(token)
+      .post(`${c(token)}/next`)
+      .send({ index: 0 });
+    await as(token)
+      .post(`${c(token)}/stages/warmup/submit`)
+      .send({ text: 'warm-up' });
+    // Think-aloud audio on the first read.
+    await as(token)
+      .post(`${c(token)}/next`)
+      .send({ index: 1 });
+    await as(token)
+      .post(`${c(token)}/stages/first-read/stream?part=0&seq=0&startMs=500&sec=4`)
+      .set('Content-Type', 'audio/webm')
+      .send(Buffer.from('audio-bytes'))
       .expect(200);
-    await manager
-      .put(`/api/candidates/${candidate.id}/review`)
-      .send({ scores: { 'first-read': { numbers: 4 } }, recommendation: 'advance', submit: true })
-      .expect(400);
-    const submitted = (
-      await manager
-        .put(`/api/candidates/${candidate.id}/review`)
-        .send({ scores: fullScores(report, 4), recommendation: 'advance', notes: 'Strong', submit: true })
-        .expect(200)
-    ).body;
-    expect(submitted.myReview.overall).toBe(4);
-    expect(submitted.candidate.status).toBe('reviewed');
+    await as(token)
+      .post(`${c(token)}/stages/first-read/submit`)
+      .send({})
+      .expect(200);
+    await completeAll(token);
+    await reviews.idle();
 
-    const blind = (await reviewer.get(`/api/candidates/${candidate.id}`)).body;
-    expect(blind.otherReviews).toEqual([]);
-    expect(blind.hiddenReviews).toBe(1);
-    expect(blind.teamScore).toBeNull();
+    const report = (await ctx.manager.get(`/api/candidates/${ctx.candidate.id}`)).body;
+    expect(report.candidate.status).toBe('reviewed');
+    const review = report.aiReview;
+    expect(review).toMatchObject({ status: 'done', attempts: 1, error: null });
+    expect(review.result).toMatchObject({
+      overall: 3,
+      recommendation: 'advance',
+      summary: 'Solid reasoning.',
+      probes: ['Walk me through break-even again.'],
+      models: { review: 'test/review', audio: 'test/audio' },
+    });
+    const firstRead = review.result.stages.find((s: { stageId: string }) => s.stageId === 'first-read');
+    expect(firstRead.transcript).toContain('over-count');
+    expect(firstRead.delivery).toEqual({ label: 'natural', reasons: 'Test delivery.' });
+    expect(Object.keys(firstRead.criteria)).toEqual(['numbers', 'skepticism', 'priority']);
+    expect(firstRead.criteria.numbers.evidence).toBe('quote');
 
-    const reviewed = (
-      await reviewer
-        .put(`/api/candidates/${candidate.id}/review`)
-        .send({ scores: fullScores(report, 2), recommendation: 'hold', submit: true })
-        .expect(200)
-    ).body;
-    expect(reviewed.otherReviews).toHaveLength(1);
-    expect(reviewed.teamScore).toBe(3);
+    // The audio went to the audio model, scoring to the review model, and the
+    // scoring prompt carried the transcript and the answer key.
+    const audioCalls = ai.calls.filter((call) => call.model === 'test/audio');
+    expect(audioCalls).toHaveLength(1);
+    const firstReadPrompt = ai.calls.find(
+      (call) => call.model === 'test/review' && String(call.messages[1].content).includes('## Question: First read'),
+    )!;
+    expect(String(firstReadPrompt.messages[1].content)).toContain('over-count');
+    expect(String(firstReadPrompt.messages[1].content)).toContain('Reviewer guide');
 
-    await reviewer.put(`/api/candidates/${candidate.id}/decision`).send({ decision: 'advance' }).expect(403);
-    const decided = (
-      await manager.put(`/api/candidates/${candidate.id}/decision`).send({ decision: 'advance' }).expect(200)
-    ).body;
-    expect(decided.candidate).toMatchObject({ status: 'decided', decision: 'advance' });
+    const list = (await ctx.manager.get(`/api/assessments/${ctx.assessmentId}`)).body.candidates[0];
+    expect(list).toMatchObject({ aiScore: 3, aiStatus: 'done', aiRecommendation: 'advance' });
   });
 
+  it('moves audio that sounded read to the top of the verification call', async () => {
+    ai.delivery = 'read';
+    const ctx = await setup();
+    const token = ctx.candidate.token;
+    await as(token)
+      .post(`${c(token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    await as(token)
+      .post(`${c(token)}/next`)
+      .send({ index: 0 });
+    await as(token)
+      .post(`${c(token)}/stages/warmup/submit`)
+      .send({ text: 'hi' });
+    await as(token)
+      .post(`${c(token)}/next`)
+      .send({ index: 1 });
+    await as(token)
+      .post(`${c(token)}/stages/first-read/stream?part=0&seq=0&startMs=0&sec=4`)
+      .set('Content-Type', 'audio/webm')
+      .send(Buffer.from('a'));
+    await as(token)
+      .post(`${c(token)}/stages/first-read/submit`)
+      .send({});
+    await completeAll(token);
+    await reviews.idle();
+    const report = (await ctx.manager.get(`/api/candidates/${ctx.candidate.id}`)).body;
+    const probe = report.verification.script.probes[0];
+    expect(probe.stageId).toBe('first-read');
+    expect(probe.reasons.join(' ')).toMatch(/read or rehearsed/);
+  });
+
+  it('repairs a non-JSON reply once', async () => {
+    ai.brokenJsonOnce = true;
+    const ctx = await finishedCandidate();
+    await reviews.idle();
+    const report = (await ctx.manager.get(`/api/candidates/${ctx.candidate.id}`)).body;
+    expect(report.aiReview.status).toBe('done');
+  });
+
+  it('records a failure clearly and can be retried', async () => {
+    const realClient = ai.client;
+    ai.client = null;
+    const ctx = await finishedCandidate();
+    await reviews.idle();
+    let report = (await ctx.manager.get(`/api/candidates/${ctx.candidate.id}`)).body;
+    expect(report.aiReview).toMatchObject({ status: 'failed', result: null });
+    expect(report.aiReview.error).toMatch(/OPENROUTER_API_KEY/);
+    expect(report.candidate.status).toBe('submitted');
+
+    ai.client = realClient;
+    await ctx.manager.post(`/api/candidates/${ctx.candidate.id}/ai-review`).expect(202);
+    await reviews.idle();
+    report = (await ctx.manager.get(`/api/candidates/${ctx.candidate.id}`)).body;
+    expect(report.aiReview).toMatchObject({ status: 'done', attempts: 2 });
+  });
+
+  it('refuses an out-of-range score from the model', async () => {
+    ai.score = 7;
+    const ctx = await finishedCandidate();
+    await reviews.idle();
+    const report = (await ctx.manager.get(`/api/candidates/${ctx.candidate.id}`)).body;
+    expect(report.aiReview.status).toBe('failed');
+    expect(report.aiReview.error).toMatch(/No valid score/);
+  });
+
+  it('starts only after the last answer, and not before', async () => {
+    const ctx = await setup();
+    await ctx.manager.post(`/api/candidates/${ctx.candidate.id}/ai-review`).expect(409);
+    expect((await ctx.manager.get(`/api/candidates/${ctx.candidate.id}`)).body.aiReview).toBeNull();
+  });
+});
+
+describe('verification', () => {
   it('builds a verification script from the candidate answers and records the outcome', async () => {
     const { candidate, manager } = await setup();
-    await request(app)
+    await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
       .send({ idName: 'Asha Rao', consent: true });
     await completeAll(candidate.token, { 'budget-cut': 'search' });
@@ -578,11 +834,6 @@ describe('review and verification', () => {
         .expect(200)
     ).body;
     expect(saved.verification.record).toMatchObject({ identity: 'verified', interviewerName: 'Maya' });
-  });
-
-  it('refuses reviews before the candidate finishes', async () => {
-    const { candidate, manager } = await setup();
-    await manager.put(`/api/candidates/${candidate.id}/review`).send({ scores: {} }).expect(409);
   });
 });
 

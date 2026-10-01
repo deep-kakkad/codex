@@ -4,18 +4,20 @@ This MVP is built from the research workbook _Competitor map: practical-skills t
 
 ## Positioning
 
-**Practical, practitioner-built assessments for non-tech role families, reviewed by people and confirmed on a short live call. No proctoring, no AI interviewer.**
+**A practical check that shows how a candidate thinks with and without AI, reviewed by AI, plus audio answers that show the thinking is really theirs. There's no bot interviewer.**
+
+This replaced the first positioning ("reviewed by people"). Human review was the main cost in the first version, and the think-aloud audio made it slower still. AI now does the reviewing against the same practitioner-written rubrics and answer keys; recruiters make the decision.
 
 Where the gap is, according to the competitor map:
 
-| Competitor group                            | What they own                          | Why we don't compete head-on                                                                                            |
-| ------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| TestGorilla, Testlify, iMocha, Mercer Mettl | Big generic test libraries, proctoring | A price-and-library-size race; generic, not built by practitioners for one role family                                  |
-| Vervoe, Canditech                           | Job simulations with AI grading        | Closest to us. We differentiate on human expert review and role depth                                                   |
-| HackerRank, CodeSignal, Codility            | Developer hiring                       | Highest cheating rates and the strongest incumbents. Stay out at first                                                  |
-| Fabric, Hyring, Alex, HireVue               | AI interviewers and cheating detection | Candidates walk away from AI-scored video; detection is an arms race against funded cheating tools (Cluely raised $15M) |
-| BarRaiser, InCruiter, Intervue              | Human interview-as-a-service           | Engineering-first; deep rubrics for non-tech roles like marketing are a possible gap                                    |
-| Coderbyte AI-fluency                        | "Allow AI, grade the process"          | Proves the idea works for non-tech tasks, but it's a developer-tools company                                            |
+| Competitor group                            | What they own                          | Why we don't compete head-on                                                                                                   |
+| ------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| TestGorilla, Testlify, iMocha, Mercer Mettl | Big generic test libraries, proctoring | A price-and-library-size race; generic, not built by practitioners for one role family                                         |
+| Vervoe, Canditech                           | Job simulations with AI grading        | Closest to us. We differentiate on think-aloud audio, with-and-without-AI tasks, and practitioner rubrics with quoted evidence |
+| HackerRank, CodeSignal, Codility            | Developer hiring                       | Highest cheating rates and the strongest incumbents. Stay out at first                                                         |
+| Fabric, Hyring, Alex, HireVue               | AI interviewers and cheating detection | Candidates walk away from AI-scored video; detection is an arms race against funded cheating tools (Cluely raised $15M)        |
+| BarRaiser, InCruiter, Intervue              | Human interview-as-a-service           | Engineering-first; deep rubrics for non-tech roles like marketing are a possible gap                                           |
+| Coderbyte AI-fluency                        | "Allow AI, grade the process"          | Proves the idea works for non-tech tasks, but it's a developer-tools company                                                   |
 
 The first two role families are **performance marketing** (the gap the research names most often) and **customer support leadership** (non-tech, high volume, relevant to Indian hiring).
 
@@ -47,13 +49,21 @@ From the Greenhouse data (38% withdrew from a process because of an AI interview
 - Extra time (1.25×, 1.5×, 2×) is set per candidate as an adjustment.
 - The "what reviewers look for" criteria are shown on each question.
 
-## Reviewer workflow
+## Review workflow
 
-- Rubrics with four behavioural anchors per criterion and an answer key per question, which adapts to the candidate's variant and branch.
-- Reviews stay blind until you submit your own, so the first score doesn't anchor the rest.
-- The suggested recommendation is only the rubric average (≥3.0 advance, ≥2.3 hold); the decision is always a person's.
+- **AI reviews, recruiters decide.** After submission, an audio model transcribes each recording and judges whether it sounds like live reasoning or reading (ignoring accent, fluency and nerves). A text model scores each answer against the rubric anchors and answer key, quoting the candidate's words, then summarises strengths, concerns and how they worked with versus without AI.
+- The overall score is the weighted rubric average computed by the app; the recommendation follows it (≥3.0 advance, ≥2.3 hold). The decision is always the recruiter's.
+- Candidates are told up front that AI reviews their answers and people decide. Research showed undisclosed AI use is a top walk-away trigger; disclosure is the mitigation.
+- "Sounds read" never rejects anyone on its own: it moves that question to the top of the optional verification call.
+
+## Accounts
+
+- **Recruiters** belong to a company workspace and create assessments by choosing a role and its activities.
+- **Candidates** have their own accounts. An invitation only opens for the account with the invited email, and candidates see all their invitations in one place.
 
 ## What to validate next
+
+0. **AI review agreement with experts.** Have two practitioners score 20–30 real candidates blind and compare with the AI's scores per criterion before relying on the recommendation.
 
 1. Do hiring managers finish a review in under 15 minutes per candidate?
 2. Does the verification call change any decisions, and how often does it catch an inconsistency?

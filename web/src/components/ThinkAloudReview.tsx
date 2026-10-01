@@ -7,9 +7,9 @@ import { Collapsible } from './ui';
 const SPEEDS = [1, 1.25, 1.5, 2];
 
 const DELIVERY_LABEL: Record<Delivery, string> = {
-  natural: 'Natural working',
-  unsure: 'Not sure',
-  read: 'Sounded read or rehearsed',
+  natural: 'sounds like live reasoning',
+  unsure: 'unclear',
+  read: 'sounds read or rehearsed',
 };
 
 function clock(ms: number) {
@@ -34,13 +34,10 @@ function primeSeeking(audio: HTMLAudioElement) {
 export function ThinkAloudReview({
   response,
   delivery,
-  canObserve,
-  onDelivery,
 }: {
   response: StageResponseView;
-  delivery: Delivery | undefined;
-  canObserve: boolean;
-  onDelivery: (value: Delivery) => void;
+  /** The AI's read of the recording, once reviewed. */
+  delivery: { label: Delivery; reasons: string } | null;
 }) {
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
   const [speed, setSpeed] = useState(1);
@@ -144,10 +141,15 @@ export function ThinkAloudReview({
         </div>
       )}
 
-      <Collapsible title="What to listen for" defaultOpen className="inset listen-for">
+      {delivery && (
+        <div className={`delivery-box delivery-${delivery.label}`}>
+          <strong>AI's read of the recording: {DELIVERY_LABEL[delivery.label]}.</strong> {delivery.reasons}
+        </div>
+      )}
+      <Collapsible title="How the AI judges delivery" className="inset listen-for">
         <div className="two-col small">
           <div>
-            <strong>Real working usually has</strong>
+            <strong>Live reasoning usually has</strong>
             <ul>
               <li>This scenario's own numbers, read and used</li>
               <li>Sums done out loud, with pauses</li>
@@ -156,38 +158,20 @@ export function ThinkAloudReview({
             </ul>
           </div>
           <div>
-            <strong>Worth probing on the call</strong>
+            <strong>Reading usually has</strong>
             <ul>
               <li>Long silence, then a fluent, complete answer</li>
               <li>Even, reading-aloud cadence throughout</li>
               <li>Numbers or facts that aren't in the scenario</li>
-              <li>Scratchpad fills in big blocks while they're quiet</li>
+              <li>Scratchpad filling in big blocks while they're quiet</li>
             </ul>
           </div>
         </div>
         <p className="small muted">
-          Accent, fluency and confidence are not signals. A doubt here is a question for the verification call, never a
-          reason to reject on its own.
+          Accent, fluency and confidence are never assessed. "Sounds read" puts the question first on the verification
+          call; it is a question to ask, not proof.
         </p>
       </Collapsible>
-
-      <fieldset className="delivery" disabled={!canObserve}>
-        <legend className="small">How did the reasoning sound?</legend>
-        <div className="row-gap">
-          {(Object.keys(DELIVERY_LABEL) as Delivery[]).map((value) => (
-            <label key={value} className={`choice compact ${delivery === value ? 'selected' : ''}`}>
-              <input
-                type="radio"
-                name={`delivery-${response.revealedAt}`}
-                checked={delivery === value}
-                onChange={() => onDelivery(value)}
-              />
-              {DELIVERY_LABEL[value]}
-            </label>
-          ))}
-        </div>
-        <p className="small muted">"Not sure" or "read" moves this question to the top of the verification call.</p>
-      </fieldset>
     </div>
   );
 }

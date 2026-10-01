@@ -2,6 +2,7 @@ import { existsSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
+import { aiConfigFromEnv } from './ai/client';
 import { createApi } from './app';
 import { openDb } from './db';
 
@@ -16,7 +17,16 @@ const db = openDb(path.join(dataDir, 'proofwork.db'));
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY ?? 'loopback');
-app.use('/api', createApi({ db, uploadDir, secureCookies: isProduction && process.env.INSECURE_COOKIES !== '1' }));
+const ai = aiConfigFromEnv();
+if (!ai.client) console.warn('OPENROUTER_API_KEY is not set: AI reviews will fail until it is.');
+const { router, reviews } = createApi({
+  db,
+  uploadDir,
+  ai,
+  secureCookies: isProduction && process.env.INSECURE_COOKIES !== '1',
+});
+app.use('/api', router);
+reviews.resume();
 
 if (isProduction) {
   const webDir = path.join(root, 'dist', 'web');

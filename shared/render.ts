@@ -41,7 +41,10 @@ export function stageOutline(family: RoleFamily) {
     id: stage.id,
     kind: stage.kind,
     title: stage.title,
+    summary: stage.summary,
     timeLimitSec: stage.timeLimitSec,
     scored: stage.scored,
+    thinkAloud: Boolean(stage.thinkAloud),
+    dependsOn: stage.dependsOn ?? null,
   }));
 }

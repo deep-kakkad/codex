@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from 'react';
-import type { CandidateStatus, Decision, StageKind } from '../../../shared/types';
+import type { CandidateStatus, Decision, Recommendation, StageKind } from '../../../shared/types';
 import { STAGE_KIND_LABEL } from '../../../shared/types';
 
 const STATUS_LABEL: Record<CandidateStatus, string> = {
@@ -19,6 +19,18 @@ const DECISION_LABEL: Record<Decision, string> = { advance: 'Advance', hold: 'Ho
 export function DecisionBadge({ decision }: { decision: Decision | null }) {
   if (!decision) return <span className="muted">—</span>;
   return <span className={`badge badge-decision-${decision}`}>{DECISION_LABEL[decision]}</span>;
+}
+
+const RECOMMENDATION_LABEL: Record<Recommendation, string> = {
+  advance: 'Advance',
+  hold: 'Hold',
+  reject: 'Do not advance',
+};
+
+/** The AI's rubric-based suggestion; the decision stays with the recruiter. */
+export function RecommendationBadge({ value }: { value: Recommendation | null }) {
+  if (!value) return <span className="muted">—</span>;
+  return <span className={`badge badge-decision-${value}`}>{RECOMMENDATION_LABEL[value]}</span>;
 }
 
 export function KindBadge({ kind }: { kind: StageKind }) {

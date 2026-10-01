@@ -3,19 +3,18 @@ import path from 'node:path';
 import { Router } from 'express';
 import type { PreviewStage, RoleFamilyPreview, TeamMember } from '../../shared/api';
 import { getRoleFamily } from '../../shared/roleFamilies';
-import { computeScore, sanitizeScores } from '../../shared/scoring';
-import type { Currency, Delivery, RoleFamily } from '../../shared/types';
+import type { Currency } from '../../shared/types';
 import { buildContext, generateVariant, randomSeed } from '../../shared/variants';
 import type { AppDeps } from '../app';
 import { audioParts } from '../candidateFlow';
 import { createUser, currentUser, randomToken, requireManager, requireUser } from '../auth';
-import { type AssessmentRow, all, one, run, type ResponseRow, type ReviewRow } from '../db';
+import { type AssessmentRow, all, one, run, type ResponseRow } from '../db';
+import { familyFor, resolveSelection } from '../families';
 import { badRequest, conflict, email, notFound, oneOf, optionalText, str } from '../http';
 import {
   assessmentSummary,
   candidateList,
   candidateReport,
-  familyFor,
   familySummary,
   listFamilies,
   loadAssessment,
@@ -25,19 +24,6 @@ import {
 const CURRENCIES = ['INR', 'USD'] as const;
 const TIME_MULTIPLIERS = [1, 1.25, 1.5, 2];
 const REVIEWABLE = ['submitted', 'reviewed', 'decided'];
-const DELIVERIES: Delivery[] = ['natural', 'unsure', 'read'];
-
-/** Keeps delivery reads only for think-aloud stages. */
-function sanitizeObservations(family: RoleFamily, input: unknown): Record<string, Delivery> {
-  const result: Record<string, Delivery> = {};
-  if (!input || typeof input !== 'object') return result;
-  for (const stage of family.stages) {
-    const value = (input as Record<string, unknown>)[stage.id];
-    if (stage.thinkAloud && DELIVERIES.includes(value as Delivery)) result[stage.id] = value as Delivery;
-  }
-  return result;
-}
-
 export function managerRoutes(deps: AppDeps) {
   const { db, now } = deps;
   const router = Router();
@@ -109,11 +95,13 @@ export function managerRoutes(deps: AppDeps) {
     if (!family) throw badRequest('Unknown role family');
     const title = str(req.body.title, 'Title', { max: 120 });
     const currency = oneOf(req.body.currency, 'Currency', CURRENCIES);
+    const stageIds = resolveSelection(family, req.body.stageIds);
     const id = randomUUID();
     run(
       db,
-      `INSERT INTO assessments (id, org_id, role_family_id, role_family_version, title, currency, created_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO assessments
+         (id, org_id, role_family_id, role_family_version, title, currency, created_by, created_at, stage_ids_json)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       id,
       user.orgId,
       family.id,
@@ -122,6 +110,7 @@ export function managerRoutes(deps: AppDeps) {
       currency,
       user.id,
       now(),
+      JSON.stringify(stageIds),
     );
     res.status(201).json({ id });
   });
@@ -132,7 +121,7 @@ export function managerRoutes(deps: AppDeps) {
     res.json({
       assessment: assessmentSummary(db, assessment),
       family: familySummary(familyFor(assessment)),
-      candidates: candidateList(db, user, assessment),
+      candidates: candidateList(db, assessment),
     });
   });
 
@@ -163,7 +152,7 @@ export function managerRoutes(deps: AppDeps) {
       multiplier,
       now(),
     );
-    const created = candidateList(db, user, assessment).find((c) => c.id === id);
+    const created = candidateList(db, assessment).find((c) => c.id === id);
     res.status(201).json({ candidate: created });
   });
 
@@ -171,7 +160,7 @@ export function managerRoutes(deps: AppDeps) {
 
   router.get('/candidates/:id', (req, res) => {
     const user = currentUser(res);
-    res.json(candidateReport(db, user, loadCandidate(db, user, req.params.id)));
+    res.json(candidateReport(db, loadCandidate(db, user, req.params.id)));
   });
 
   router.get('/candidates/:id/audio/:stageId', (req, res) => {
@@ -196,59 +185,13 @@ export function managerRoutes(deps: AppDeps) {
     res.sendFile(path.resolve(deps.uploadDir, file));
   });
 
-  router.put('/candidates/:id/review', (req, res) => {
+  // Re-runs a failed (or any) AI review, e.g. after fixing the API key.
+  router.post('/candidates/:id/ai-review', (req, res) => {
     const user = currentUser(res);
     const candidate = loadCandidate(db, user, req.params.id);
     if (!REVIEWABLE.includes(candidate.status)) throw conflict('The candidate has not finished yet');
-    const family = familyFor(loadAssessment(db, user, candidate.assessment_id));
-
-    const scores = sanitizeScores(family, req.body.scores);
-    const notes = optionalText(req.body.notes, 'Notes', 10_000) ?? '';
-    const recommendation =
-      req.body.recommendation == null
-        ? null
-        : oneOf(req.body.recommendation, 'Recommendation', ['advance', 'hold', 'reject'] as const);
-    const submitting = req.body.submit === true;
-    const observations = sanitizeObservations(family, req.body.observations);
-
-    const existing = one<ReviewRow>(
-      db,
-      'SELECT * FROM reviews WHERE candidate_id = ? AND reviewer_id = ?',
-      candidate.id,
-      user.id,
-    );
-    if (submitting) {
-      if (!computeScore(family, scores).complete) throw badRequest('Score every criterion before submitting');
-      if (!recommendation) throw badRequest('Choose a recommendation before submitting');
-    }
-    const submittedAt = existing?.submitted_at ?? (submitting ? now() : null);
-
-    run(
-      db,
-      `INSERT INTO reviews
-         (id, candidate_id, reviewer_id, scores_json, observations_json, notes, recommendation, submitted_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON CONFLICT (candidate_id, reviewer_id) DO UPDATE SET
-         scores_json = excluded.scores_json,
-         observations_json = excluded.observations_json,
-         notes = excluded.notes,
-         recommendation = excluded.recommendation,
-         submitted_at = excluded.submitted_at,
-         updated_at = excluded.updated_at`,
-      existing?.id ?? randomUUID(),
-      candidate.id,
-      user.id,
-      JSON.stringify(scores),
-      JSON.stringify(observations),
-      notes,
-      recommendation,
-      submittedAt,
-      now(),
-    );
-    if (submittedAt && candidate.status === 'submitted') {
-      run(db, "UPDATE candidates SET status = 'reviewed' WHERE id = ?", candidate.id);
-    }
-    res.json(candidateReport(db, user, loadCandidate(db, user, candidate.id)));
+    deps.reviews.retry(candidate.id);
+    res.status(202).json(candidateReport(db, loadCandidate(db, user, candidate.id)));
   });
 
   router.put('/candidates/:id/verification', (req, res) => {
@@ -281,7 +224,7 @@ export function managerRoutes(deps: AppDeps) {
       notes,
       now(),
     );
-    res.json(candidateReport(db, user, loadCandidate(db, user, candidate.id)));
+    res.json(candidateReport(db, loadCandidate(db, user, candidate.id)));
   });
 
   router.put('/candidates/:id/decision', (req, res) => {
@@ -304,7 +247,7 @@ export function managerRoutes(deps: AppDeps) {
       const decision = oneOf(req.body.decision, 'Decision', ['advance', 'hold', 'reject'] as const);
       run(db, "UPDATE candidates SET decision = ?, status = 'decided' WHERE id = ?", decision, candidate.id);
     }
-    res.json(candidateReport(db, user, loadCandidate(db, user, candidate.id)));
+    res.json(candidateReport(db, loadCandidate(db, user, candidate.id)));
   });
 
   // Team -------------------------------------------------------------------
@@ -335,7 +278,8 @@ export function managerRoutes(deps: AppDeps) {
         name: str(req.body.name, 'Name', { max: 120 }),
         email: email(req.body.email),
         password: str(req.body.password, 'Temporary password', { min: 8, max: 200 }),
-        role: oneOf(req.body.role, 'Role', ['manager', 'reviewer'] as const),
+        // Every teammate is a recruiter; AI does the reviewing.
+        role: 'manager',
       },
       now(),
     );
