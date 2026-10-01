@@ -12,15 +12,17 @@
     "build": "vite build",
     "start": "NODE_ENV=production node --env-file-if-exists=.env --disable-warning=ExperimentalWarning --import tsx server/index.ts",
     "seed": "node --disable-warning=ExperimentalWarning --import tsx server/seed.ts",
+    "migrate": "node --disable-warning=ExperimentalWarning --import tsx server/migrate.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "lint": "prettier --check . && tsc --noEmit"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@netlify/blobs": "^11.1.2",
-    "@netlify/database": "^2.0.1",
     "express": "^5.2.1",
+    "pg": "^8.23.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-router-dom": "^7.18.4",

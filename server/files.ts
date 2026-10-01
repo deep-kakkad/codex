@@ -37,8 +37,12 @@ export function localFileStore(dir: string): FileStore {
  * Netlify Blobs. The store is looked up per operation because Lambda-style
  * functions receive fresh Blobs credentials with every invocation.
  */
-export function netlifyBlobStore(name = 'recordings'): FileStore {
-  const store = async () => (await import('@netlify/blobs')).getStore({ name, consistency: 'strong' });
+/**
+ * Inside Netlify functions the site is implicit; from elsewhere (seeding a
+ * deployed site) pass its ID and an access token.
+ */
+export function netlifyBlobStore(name = 'recordings', site?: { siteID: string; token: string }): FileStore {
+  const store = async () => (await import('@netlify/blobs')).getStore({ name, consistency: 'strong', ...(site ?? {}) });
   return {
     async put(key, data) {
       await (await store()).set(safeKey(key), new Uint8Array(data).buffer);

@@ -68,21 +68,24 @@ The spec is stored per organisation (`custom_families`) and turned into a role f
 
 The app is built for Netlify:
 
-| Piece      | Netlify feature                                                                                                      |
-| ---------- | -------------------------------------------------------------------------------------------------------------------- |
-| Web client | Static site (`dist/web`)                                                                                             |
-| API        | Function on `/api/*` (`netlify/functions/api.mts`, Express via serverless-http)                                      |
-| Database   | Netlify Database (Postgres), migrations in `netlify/database/migrations/` applied on every deploy                    |
-| Recordings | Netlify Blobs (`recordings` store)                                                                                   |
-| AI reviews | Background function (`/internal/review`, up to 15 minutes) plus a sweep every 10 minutes for stuck or missed reviews |
-| Scenarios  | Background function (`/internal/generate-family`) for AI-written scenarios, covered by the same sweep                |
-| Demo data  | Background function (`/internal/seed-demo`), run once when `DEMO_SEED=1`                                             |
+| Piece      | Netlify feature                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Web client | Static site (`dist/web`)                                                                                               |
+| API        | Function on `/api/*` (`netlify/functions/api.mts`, Express via serverless-http)                                        |
+| Database   | Postgres on [Neon](https://neon.tech) over its HTTP driver (`DATABASE_URL`); migrations applied with `npm run migrate` |
+| Recordings | Netlify Blobs (`recordings` store)                                                                                     |
+| AI reviews | Background function (`/internal/review`, up to 15 minutes) plus a sweep every 10 minutes for stuck or missed reviews   |
+| Scenarios  | Background function (`/internal/generate-family`) for AI-written scenarios, covered by the same sweep                  |
+| Demo data  | `npm run seed -- --remote` from your machine, or the `/internal/seed-demo` background function when `DEMO_SEED=1`      |
 
 Steps:
 
-1. Create a site from this repository (or `netlify deploy --build --prod` from a linked folder). Netlify Database needs a credit-based plan (Free included).
-2. Set environment variables: `OPENROUTER_API_KEY`, and `DEMO_SEED=1` if you want the demo accounts. Optionally `AI_REVIEW_MODEL` and `AI_AUDIO_MODEL`.
-3. Deploy. The database is provisioned and migrated during the deploy. With `DEMO_SEED=1`, the first API request creates the demo workspace and its two submitted candidates are reviewed by AI within a minute or two.
+1. Create a Neon database (`npx neon-new` makes one you can claim later, or create a project at neon.tech) and migrate it: `DATABASE_URL=... npm run migrate`. Re-run after adding a migration.
+2. Create a site (`netlify sites:create`) and set its environment variables: `DATABASE_URL`, `OPENROUTER_API_KEY`, optionally `AI_REVIEW_MODEL` and `AI_AUDIO_MODEL`.
+3. Demo accounts: `DATABASE_URL=... NETLIFY_SITE_ID=... NETLIFY_AUTH_TOKEN=... npm run seed -- --remote` (recordings go to the site's Blobs). Or set `DEMO_SEED=1` and the first API request starts a background function that does it.
+4. Deploy: `netlify deploy --prod --site <id>`.
+
+The demo is live at https://proofwork-hiring.netlify.app (logins above).
 
 Recordings are capped at 32 kbps so a 9-minute think-aloud stays around 2 MB, well inside Netlify's 6 MB function payload limit.
 
@@ -93,12 +96,13 @@ Recordings are capped at 32 kbps so a 9-minute think-aloud stays around 2 MB, we
 | `npm run dev`               | API and Vite dev server on one port (`PORT`, default 3000)                                                 |
 | `npm run build`             | Builds the web client to `dist/web`                                                                        |
 | `npm start`                 | Production server; serves the API and `dist/web`                                                           |
-| `npm run seed [-- --reset]` | Demo data (`--reset` wipes `./data` first)                                                                 |
+| `npm run seed [-- --reset]` | Demo data (`--reset` wipes `./data` first; `--remote` seeds a deployed site)                               |
+| `npm run migrate`           | Applies migrations to `DATABASE_URL` (Neon)                                                                |
 | `npm test`                  | Vitest: content, scoring, API and AI review (fake AI, PGlite; set `TEST_DATABASE_URL` for a real Postgres) |
 | `npm run typecheck`         | `tsc --noEmit`                                                                                             |
 | `npm run lint`              | Prettier check and typecheck                                                                               |
 
-Local environment variables (read from `.env` if present): `OPENROUTER_API_KEY`, `AI_REVIEW_MODEL`, `AI_AUDIO_MODEL`, `PORT`, `DATA_DIR` (default `./data`: a PGlite database and recordings), `DATABASE_URL` (use a real Postgres instead of PGlite), `DEMO_SEED=1` (create the demo workspace on start), `TRUST_PROXY` (default `loopback`) and `INSECURE_COOKIES=1`. Session cookies are `Secure` in production, so they need HTTPS; set `INSECURE_COOKIES=1` to run production over plain HTTP locally. Behind an outbound HTTP proxy, also set `NODE_USE_ENV_PROXY=1` so Node's `fetch` uses `HTTPS_PROXY`.
+Local environment variables (read from `.env` if present): `OPENROUTER_API_KEY`, `AI_REVIEW_MODEL`, `AI_AUDIO_MODEL`, `PORT`, `DATA_DIR` (default `./data`: a PGlite database and recordings), `DATABASE_URL` (use a real Postgres instead of PGlite; migrate it with `npm run migrate`), `DEMO_SEED=1` (create the demo workspace on start), `TRUST_PROXY` (default `loopback`) and `INSECURE_COOKIES=1`. Session cookies are `Secure` in production, so they need HTTPS; set `INSECURE_COOKIES=1` to run production over plain HTTP locally. Behind an outbound HTTP proxy, also set `NODE_USE_ENV_PROXY=1` so Node's `fetch` uses `HTTPS_PROXY`.
 
 ## Layout
 
@@ -114,7 +118,8 @@ server/
   families.ts           built-in and generated role families, activity selection per assessment
   report.ts             recruiter report assembly
   routes/               recruiter auth, candidate accounts, candidate flow, recruiter APIs
-  db.ts                 async Postgres helpers (Netlify Database in production, PGlite locally)
+  db.ts                 async Postgres helpers (Neon in production, PGlite locally)
+  migrate.ts            applies the SQL migrations to DATABASE_URL
   files.ts              recordings storage (Netlify Blobs or a local folder)
   demo.ts               the demo workspace
 netlify/                functions, shared runtime and database migrations

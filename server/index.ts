@@ -14,11 +14,11 @@ const port = Number(process.env.PORT ?? 3000);
 const dataDir = path.resolve(process.env.DATA_DIR ?? path.join(root, 'data'));
 mkdirSync(dataDir, { recursive: true });
 
-// A real Postgres if DATABASE_URL is set (e.g. your Netlify database), otherwise PGlite on disk.
+// A real Postgres if DATABASE_URL is set (migrated with `npm run migrate`), otherwise PGlite on disk.
 async function openDatabase(): Promise<DB> {
   if (process.env.DATABASE_URL) {
-    const { getDatabase } = await import('@netlify/database');
-    return fromPgPool(getDatabase({ connectionString: process.env.DATABASE_URL }).pool);
+    const { default: pg } = await import('pg');
+    return fromPgPool(new pg.Pool({ connectionString: process.env.DATABASE_URL }));
   }
   const { openLocalDb } = await import('./localDb');
   return openLocalDb(path.join(dataDir, 'pg'));
