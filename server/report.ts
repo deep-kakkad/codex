@@ -24,6 +24,7 @@ import { buildContext } from '../shared/variants';
 import type { SessionUser } from './auth';
 import { audioParts } from './candidateFlow';
 import { aiReviewView } from './ai/queue';
+import { adjustedScores, overridesFor } from './overrides';
 import { familyFor } from './families';
 import { type AssessmentRow, type CandidateRow, type DB, all, one, type ResponseRow, type VerificationRow } from './db';
 import { notFound } from './http';
@@ -136,6 +137,7 @@ export async function candidateList(db: DB, assessment: AssessmentRow): Promise<
         aiScore: ai?.result?.overall ?? null,
         aiStatus: ai?.status ?? null,
         aiRecommendation: ai?.result?.recommendation ?? null,
+        adjustedScore: adjustedScores(family, ai?.result ?? null, await overridesFor(db, candidate.id))?.overall ?? null,
         notableSignals: responses.filter((r) =>
           hasNotableSignals(kindOf.get(r.stage_id) ?? 'scenario', parseSignals(r.signals_json), answerChars(r)),
         ).length,
@@ -205,6 +207,7 @@ export async function candidateReport(db: DB, candidate: CandidateRow): Promise<
   }
 
   const aiReview = await aiReviewView(db, candidate.id);
+  const overrides = await overridesFor(db, candidate.id);
 
   const scriptResponses: ResponseForScript[] = stages.flatMap((stage) => {
     const r = byStage.get(stage.id);
@@ -265,6 +268,8 @@ export async function candidateReport(db: DB, candidate: CandidateRow): Promise<
     brief: family.brief(ctx),
     stages,
     aiReview,
+    overrides,
+    adjusted: adjustedScores(family, aiReview?.result ?? null, overrides),
     verification: {
       script: buildVerificationScript(
         family,

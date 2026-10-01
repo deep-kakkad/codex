@@ -8,6 +8,7 @@ import type { AppDeps } from '../app';
 import { audioParts } from '../candidateFlow';
 import { createUser, currentUser, randomToken, requireManager, requireUser } from '../auth';
 import { type AssessmentRow, all, one, run, type ResponseRow } from '../db';
+import { aiReviewView } from '../ai/queue';
 import { familyFor, resolveSelection } from '../families';
 import { readChunks } from '../files';
 import { badRequest, conflict, email, notFound, oneOf, optionalText, str } from '../http';
@@ -185,6 +186,53 @@ export function managerRoutes(deps: AppDeps) {
     if (!audio?.length) throw notFound('No recording for this question');
     res.set('Cache-Control', 'private, max-age=3600');
     res.type(mime ?? 'application/octet-stream').send(audio);
+  });
+
+  // A recruiter disagrees with one AI score: their score and why.
+  router.put('/candidates/:id/overrides', async (req, res) => {
+    const user = currentUser(res);
+    const candidate = await loadCandidate(db, user, req.params.id);
+    const family = familyFor(await loadAssessment(db, user, candidate.assessment_id));
+    const stageId = str(req.body.stageId, 'Question');
+    const criterionId = str(req.body.criterionId, 'Criterion');
+    const stage = family.stages.find((s) => s.id === stageId);
+    if (!stage?.rubric.some((c) => c.id === criterionId)) throw badRequest('Unknown question or criterion');
+    const score = Number(req.body.score);
+    if (!Number.isInteger(score) || score < 1 || score > 4) throw badRequest('Score must be 1, 2, 3 or 4');
+    const note = str(req.body.note, 'A reason', { min: 3, max: 2000 });
+    const review = await aiReviewView(db, candidate.id);
+    const aiScore = review?.result?.stages.find((s) => s.stageId === stageId)?.criteria[criterionId]?.score;
+    if (aiScore === undefined) throw conflict('There is no AI score to disagree with yet');
+    await run(
+      db,
+      `INSERT INTO score_overrides (candidate_id, stage_id, criterion_id, user_id, ai_score, score, note, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (candidate_id, stage_id, criterion_id) DO UPDATE SET
+         user_id = excluded.user_id, ai_score = excluded.ai_score, score = excluded.score,
+         note = excluded.note, updated_at = excluded.updated_at`,
+      candidate.id,
+      stageId,
+      criterionId,
+      user.id,
+      aiScore,
+      score,
+      note,
+      now(),
+    );
+    res.json(await candidateReport(db, candidate));
+  });
+
+  router.delete('/candidates/:id/overrides/:stageId/:criterionId', async (req, res) => {
+    const user = currentUser(res);
+    const candidate = await loadCandidate(db, user, req.params.id);
+    await run(
+      db,
+      'DELETE FROM score_overrides WHERE candidate_id = ? AND stage_id = ? AND criterion_id = ?',
+      candidate.id,
+      req.params.stageId,
+      req.params.criterionId,
+    );
+    res.json(await candidateReport(db, candidate));
   });
 
   // Re-runs a failed (or any) AI review, e.g. after fixing the API key.

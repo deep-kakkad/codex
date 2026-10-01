@@ -95,6 +95,8 @@ export interface CandidateListItem {
   aiScore: number | null;
   aiStatus: AiReviewStatus | null;
   aiRecommendation: Recommendation | null;
+  /** The score after recruiter overrides; null when nobody disagreed with the AI. */
+  adjustedScore: number | null;
   notableSignals: number;
   verification: { identity: string | null; consistency: string | null } | null;
   decision: Decision | null;
@@ -175,6 +177,16 @@ export interface AiReviewResult {
   models: { review: string; audio: string };
 }
 
+export interface ScoreOverride {
+  stageId: string;
+  criterionId: string;
+  aiScore: number;
+  score: number;
+  note: string;
+  userName: string;
+  updatedAt: number;
+}
+
 export interface AiReviewView {
   status: AiReviewStatus;
   attempts: number;
@@ -211,6 +223,10 @@ export interface CandidateReport {
   stages: ReportStage[];
   /** Null until the candidate has submitted. */
   aiReview: AiReviewView | null;
+  /** Recruiters' disagreements with individual AI scores. */
+  overrides: ScoreOverride[];
+  /** Scores with overrides applied; null when there are none. */
+  adjusted: { overall: number | null; byStage: Record<string, number | null>; recommendation: Recommendation | null } | null;
   verification: { script: VerificationScript; record: VerificationRecord | null };
 }
 

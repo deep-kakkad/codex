@@ -5,6 +5,7 @@ import type {
   AiStageReview,
   CandidateReport,
   ReportStage,
+  ScoreOverride,
   VerificationRecord,
 } from '../../../shared/api';
 import { formatDuration } from '../../../shared/signals';
@@ -129,6 +130,10 @@ function ReviewTab({
             stage={stage}
             ai={result?.stages.find((s) => s.stageId === stage.id) ?? null}
             stageScore={result?.byStage[stage.id] ?? null}
+            adjustedScore={report.adjusted?.byStage[stage.id] ?? null}
+            overrides={report.overrides.filter((o) => o.stageId === stage.id)}
+            candidateId={report.candidate.id}
+            onReport={onReport}
           />
         ))}
       </div>
@@ -208,6 +213,17 @@ function AiSummary({
         <Score value={r.overall} />
         <RecommendationBadge value={r.recommendation} />
       </div>
+      {report.adjusted && (
+        <div className="adjusted small">
+          <span>
+            Adjusted by your team: <Score value={report.adjusted.overall} />
+          </span>
+          <RecommendationBadge value={report.adjusted.recommendation} />
+          <span className="muted">
+            {report.overrides.length} score{report.overrides.length === 1 ? '' : 's'} changed
+          </span>
+        </div>
+      )}
       <p className="small">{r.summary}</p>
       {r.strengths.length > 0 && (
         <>
@@ -251,10 +267,18 @@ function StageReview({
   stage,
   ai,
   stageScore,
+  adjustedScore,
+  overrides,
+  candidateId,
+  onReport,
 }: {
   stage: ReportStage;
   ai: AiStageReview | null;
   stageScore: number | null;
+  adjustedScore: number | null;
+  overrides: ScoreOverride[];
+  candidateId: string;
+  onReport: (r: CandidateReport) => void;
 }) {
   const r = stage.response;
   return (
@@ -265,7 +289,18 @@ function StageReview({
           <KindBadge kind={stage.kind} />
           {stage.thinkAloud && <span className="badge badge-think">Think aloud</span>}
         </div>
-        {stage.scored ? <Score value={stageScore} /> : <span className="small muted">Not scored</span>}
+        {stage.scored ? (
+          <span className="stage-scores">
+            <Score value={stageScore} />
+            {overrides.length > 0 && adjustedScore !== null && (
+              <span className="small muted" title="After your team's changes">
+                → <Score value={adjustedScore} />
+              </span>
+            )}
+          </span>
+        ) : (
+          <span className="small muted">Not scored</span>
+        )}
       </header>
 
       {!r ? (
@@ -361,6 +396,7 @@ function StageReview({
           {ai.summary && <p className="ai-stage-summary">{ai.summary}</p>}
           {stage.rubric.map((criterion) => {
             const scored = ai.criteria[criterion.id];
+            const override = overrides.find((o) => o.criterionId === criterion.id);
             return (
               <div key={criterion.id} className="criterion">
                 <div className="criterion-label">
@@ -369,7 +405,10 @@ function StageReview({
                 </div>
                 <div className="anchors">
                   {criterion.anchors.map((anchor, i) => (
-                    <div key={i} className={`anchor static ${scored?.score === i + 1 ? 'selected' : ''}`}>
+                    <div
+                      key={i}
+                      className={`anchor static ${scored?.score === i + 1 ? 'selected' : ''} ${override?.score === i + 1 ? 'overridden' : ''}`}
+                    >
                       <span className="anchor-score">{i + 1}</span>
                       <span className="anchor-text">{anchor}</span>
                     </div>
@@ -379,6 +418,16 @@ function StageReview({
                   <div className="ai-evidence small">
                     {scored.evidence && <q>{scored.evidence}</q>} {scored.rationale}
                   </div>
+                )}
+                {scored && (
+                  <OverrideControl
+                    candidateId={candidateId}
+                    stageId={stage.id}
+                    criterionId={criterion.id}
+                    aiScore={scored.score}
+                    override={override}
+                    onReport={onReport}
+                  />
                 )}
               </div>
             );
@@ -390,6 +439,107 @@ function StageReview({
         <Blocks blocks={stage.reviewerGuide} />
       </Collapsible>
     </section>
+  );
+}
+
+/** "I disagree": a recruiter's own score for one criterion, with a reason. */
+function OverrideControl({
+  candidateId,
+  stageId,
+  criterionId,
+  aiScore,
+  override,
+  onReport,
+}: {
+  candidateId: string;
+  stageId: string;
+  criterionId: string;
+  aiScore: number;
+  override: ScoreOverride | undefined;
+  onReport: (r: CandidateReport) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [score, setScore] = useState(override?.score ?? aiScore);
+  const [note, setNote] = useState(override?.note ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const base = `/api/candidates/${candidateId}/overrides`;
+
+  async function act(fn: () => Promise<CandidateReport>) {
+    setBusy(true);
+    try {
+      onReport(await fn());
+      setEditing(false);
+      setError(null);
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!editing) {
+    return override ? (
+      <div className="override small">
+        <strong>
+          {override.userName} changed this from {override.aiScore} to {override.score}:
+        </strong>{' '}
+        {override.note}{' '}
+        <button type="button" className="link-button" onClick={() => setEditing(true)}>
+          Edit
+        </button>{' '}
+        <button
+          type="button"
+          className="link-button"
+          disabled={busy}
+          onClick={() => act(() => api.del(`${base}/${stageId}/${criterionId}`))}
+        >
+          Remove
+        </button>
+        <ErrorNote error={error} />
+      </div>
+    ) : (
+      <button type="button" className="link-button small" onClick={() => setEditing(true)}>
+        Disagree with this score?
+      </button>
+    );
+  }
+
+  return (
+    <div className="override-form">
+      <div className="row-gap small">
+        <span>Your score:</span>
+        {[1, 2, 3, 4].map((value) => (
+          <button
+            key={value}
+            type="button"
+            className={`btn btn-sm ${score === value ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setScore(value)}
+          >
+            {value}
+          </button>
+        ))}
+        <span className="muted">AI gave {aiScore}</span>
+      </div>
+      <label className="field">
+        <span className="small">Why? (helps calibrate the AI)</span>
+        <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} />
+      </label>
+      <ErrorNote error={error} />
+      <div className="row-gap">
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          disabled={busy || note.trim().length < 3}
+          onClick={() => act(() => api.put(base, { stageId, criterionId, score, note }))}
+        >
+          Save
+        </button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEditing(false)}>
+          Cancel
+        </button>
+      </div>
+    </div>
   );
 }
 

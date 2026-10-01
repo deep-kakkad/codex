@@ -103,7 +103,14 @@ export function AssessmentPage() {
                   <td className="small">{formatDate(c.submittedAt)}</td>
                   <td>
                     {c.aiStatus === 'done' ? (
-                      <Score value={c.aiScore} />
+                      <span className="stage-scores">
+                        <Score value={c.aiScore} />
+                        {c.adjustedScore !== null && (
+                          <span className="small muted" title="After your team's changes">
+                            → <Score value={c.adjustedScore} />
+                          </span>
+                        )}
+                      </span>
                     ) : (
                       <span className="small muted">{c.aiStatus ? AI_STATUS_LABEL[c.aiStatus] : '—'}</span>
                     )}

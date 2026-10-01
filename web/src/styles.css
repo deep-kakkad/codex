@@ -1681,3 +1681,50 @@ blockquote cite {
 .delivery-box.delivery-read {
   background: var(--danger-soft);
 }
+
+/* Recruiter overrides --------------------------------------------------- */
+
+.link-button {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  font: inherit;
+}
+.link-button:disabled {
+  opacity: 0.5;
+}
+.override {
+  margin-top: 0.4rem;
+  padding: 0.45rem 0.6rem;
+  border-left: 3px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.override-form {
+  margin-top: 0.5rem;
+  padding: 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.override-form .field {
+  margin: 0.5rem 0;
+}
+.anchor.overridden {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 2px var(--warn);
+}
+.adjusted {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin: -0.4rem 0 0.75rem;
+}
+.stage-scores {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: baseline;
+}

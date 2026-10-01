@@ -824,6 +824,69 @@ describe('AI review', () => {
     expect(report.aiReview.error).toMatch(/No valid score/);
   });
 
+  it('lets recruiters disagree with an AI score, keeping both', async () => {
+    const ctx = await finishedCandidate();
+    await reviews.idle();
+    const url = `/api/candidates/${ctx.candidate.id}/overrides`;
+
+    await ctx.manager.put(url).send({ stageId: 'first-read', criterionId: 'numbers', score: 4 }).expect(400); // no reason
+    await ctx.manager
+      .put(url)
+      .send({ stageId: 'first-read', criterionId: 'nope', score: 4, note: 'x'.repeat(5) })
+      .expect(400);
+    await ctx.manager
+      .put(url)
+      .send({ stageId: 'first-read', criterionId: 'numbers', score: 9, note: 'too high' })
+      .expect(400);
+
+    const report = (
+      await ctx.manager
+        .put(url)
+        .send({ stageId: 'first-read', criterionId: 'numbers', score: 4, note: 'Quantified the over-count live.' })
+        .expect(200)
+    ).body;
+    expect(report.overrides).toEqual([
+      expect.objectContaining({
+        stageId: 'first-read',
+        criterionId: 'numbers',
+        aiScore: 3,
+        score: 4,
+        userName: 'Maya',
+      }),
+    ]);
+    // first-read: numbers counts ×2 → (4·2 + 3 + 3) / 4 = 3.5; everything else stays 3.
+    expect(report.adjusted.byStage['first-read']).toBe(3.5);
+    expect(report.adjusted.overall).toBeGreaterThan(report.aiReview.result.overall);
+    expect(
+      report.aiReview.result.stages.find((s: { stageId: string }) => s.stageId === 'first-read').criteria.numbers.score,
+    ).toBe(3);
+
+    const list = (await ctx.manager.get(`/api/assessments/${ctx.assessmentId}`)).body.candidates[0];
+    expect(list.adjustedScore).toBe(report.adjusted.overall);
+
+    const cleared = (await ctx.manager.delete(`${url}/first-read/numbers`).expect(200)).body;
+    expect(cleared.overrides).toEqual([]);
+    expect(cleared.adjusted).toBeNull();
+
+    const outsider = await signup('Other Co', 'eve@other.test');
+    await outsider
+      .put(url)
+      .send({ stageId: 'first-read', criterionId: 'numbers', score: 1, note: 'nope nope' })
+      .expect(404);
+  });
+
+  it('refuses an override before the AI has scored', async () => {
+    const ai2 = ai.client;
+    ai.client = null;
+    const ctx = await finishedCandidate();
+    await reviews.idle();
+    await ctx.manager
+      .put(`/api/candidates/${ctx.candidate.id}/overrides`)
+      .send({ stageId: 'first-read', criterionId: 'numbers', score: 4, note: 'too early' })
+      .expect(409);
+    ai.client = ai2;
+  });
+
   it('starts only after the last answer, and not before', async () => {
     const ctx = await setup();
     await ctx.manager.post(`/api/candidates/${ctx.candidate.id}/ai-review`).expect(409);
