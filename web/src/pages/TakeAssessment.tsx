@@ -33,8 +33,8 @@ export function TakeAssessment() {
       apply(await api.get<CandidateSession>(base));
       setGate(null);
     } catch (e) {
-      // Not signed in as the invited candidate: show who invited them and how to sign in.
-      if (e instanceof ApiError && (e.status === 401 || e.status === 403)) {
+      // The invitation is linked to a candidate account: show who invited them and how to sign in.
+      if (e instanceof ApiError && e.status === 403) {
         try {
           const invite = await api.get<InvitePreview>(`${base}/invite`);
           setGate({ invite, wrongAccount: e.status === 403 ? e.message : null });
@@ -181,7 +181,13 @@ function Intro({
             Other questions work best as a short voice note, like explaining to a colleague. You can always type
             instead.
           </li>
-          <li>The company is fictional. Your version of the numbers is unique to you. A calculator is fine.</li>
+          <li>
+            The company is fictional.{assessment.uniqueNumbers && ' Your version of the numbers is unique to you.'} A
+            calculator is fine.
+          </li>
+          {!candidate.linkedToAccount && (
+            <li>No account or download needed. If you need to stop, come back to this same link to pick up.</li>
+          )}
         </ul>
         <div className="outline">
           {assessment.outline.map((step, i) => (
@@ -815,6 +821,13 @@ function StageScreen({
 // Done -------------------------------------------------------------------
 
 function Done({ session }: { session: CandidateSession }) {
+  const { candidate } = useAuth();
+  const accountQuery = new URLSearchParams({
+    as: 'candidate',
+    email: session.candidate.email,
+    name: session.candidate.name,
+    next: '/candidate',
+  }).toString();
   return (
     <main className="candidate-main narrow center">
       <div className="done-mark" aria-hidden="true">
@@ -826,9 +839,22 @@ function Done({ session }: { session: CandidateSession }) {
         next steps. If they'd like to go further, they'll set up a short call about your own answers. Please have a
         photo ID ready for it.
       </p>
-      <p className="muted">
-        You can close this page, or <Link to="/candidate">see all your assessments</Link>.
-      </p>
+      {candidate ? (
+        <p className="muted">
+          You can close this page, or <Link to="/candidate">see all your assessments</Link>.
+        </p>
+      ) : (
+        <div className="card account-offer">
+          <h2>Want to keep track of your assessments?</h2>
+          <p className="muted">
+            Optional. Create a free candidate account with {session.candidate.email} to see every assessment you're
+            invited to in one place. You can also just close this page.
+          </p>
+          <Link to={`/signup?${accountQuery}`} className="btn btn-secondary">
+            Create an account
+          </Link>
+        </div>
+      )}
     </main>
   );
 }
@@ -854,10 +880,10 @@ function SignInGate({
           {invite.orgName} has invited you to a practical assessment for <strong>{invite.title}</strong>.
         </p>
         <div className="card">
-          {wrongAccount ? (
+          {candidate ? (
             <>
               <p>
-                You're signed in as <strong>{candidate?.email}</strong>. {wrongAccount}
+                You're signed in as <strong>{candidate.email}</strong>. {wrongAccount}
               </p>
               <button
                 className="btn btn-secondary"
@@ -869,17 +895,12 @@ function SignInGate({
           ) : (
             <>
               <p>
-                To keep your progress safe and your answers private, take it from a candidate account. Use{' '}
-                <strong>{invite.email}</strong>, the address the invitation was sent to.
+                You've already linked this invitation to your candidate account, so your answers stay private. Log in
+                with <strong>{invite.email}</strong> to continue.
               </p>
-              <div className="row-gap">
-                <Link to={`/signup?${query}`} className="btn btn-primary">
-                  Create a candidate account
-                </Link>
-                <Link to={`/login?${query}`} className="btn btn-secondary">
-                  I already have one
-                </Link>
-              </div>
+              <Link to={`/login?${query}`} className="btn btn-primary">
+                Log in to continue
+              </Link>
             </>
           )}
         </div>

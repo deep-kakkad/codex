@@ -18,7 +18,14 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const location = useLocation();
   const [params] = useSearchParams();
   const [type, setType] = useState<AccountType>(params.get('as') === 'candidate' ? 'candidate' : 'recruiter');
-  const [form, setForm] = useState({ orgName: '', name: '', email: params.get('email') ?? '', password: '' });
+  // "Try the live demo" fills in the public demo recruiter account.
+  const demo = params.get('demo') === '1';
+  const [form, setForm] = useState({
+    orgName: '',
+    name: params.get('name') ?? '',
+    email: demo ? 'demo@proofwork.test' : (params.get('email') ?? ''),
+    password: demo ? 'demo-password' : '',
+  });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const next =

@@ -261,7 +261,7 @@ export interface CandidateReport {
     decision: Decision | null;
   };
   assessment: { id: string; title: string; currency: Currency };
-  family: { id: string; name: string };
+  family: { id: string; name: string; generated: boolean };
   brief: Block[];
   stages: ReportStage[];
   /** Null until the candidate has submitted. */

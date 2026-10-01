@@ -263,7 +263,7 @@ export async function candidateReport(db: DB, candidate: CandidateRow): Promise<
       decision: candidate.decision as Decision | null,
     },
     assessment: { id: assessment.id, title: assessment.title, currency: assessment.currency },
-    family: { id: family.id, name: family.name },
+    family: { id: family.id, name: family.name, generated: Boolean(family.generated) },
     brief: family.brief(ctx),
     stages,
     aiReview,

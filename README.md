@@ -32,13 +32,15 @@ The seed leaves two candidates submitted; with the key set, the server reviews t
 - **AI-written scenarios for any other role.** Describe the role and what good looks like; AI writes a scenario in the same format (brief with numbers, think-aloud questions, a decision with situation changes, a critique with planted flaws, an AI-allowed task, answer key and rubrics). It runs in the background for a few minutes, then appears in the role library, private to the organisation, marked AI-generated. Every candidate gets the same numbers, and the recruiter should read the answer key before using it.
 - **Invites.** Add a candidate by name and email and send them the private link. Extra time can be set per candidate.
 - **AI review.** For every answer: what the candidate saw, their recording (with speed control and a scratchpad timeline that seeks the audio), the transcript, the AI's read of the delivery, and each rubric criterion with the anchor it chose, a verbatim quote and its reasoning. Plus an overall score, recommendation, strengths, concerns and how they worked with versus without AI. Failed reviews show why and can be re-run.
-- **Decision.** Advance, hold or reject. The AI recommends; the recruiter decides.
+- **Verdict first.** Each report opens with the overall score, recommendation, strengths, concerns and how they worked with versus without AI, a scorecard per question (with flags for audio that sounded read, timeouts and integrity signals), and the decision buttons. The detail follows.
+- **Compare.** Tick two to four finished candidates and see them side by side, question by question, with the highest score in each row highlighted and each criterion's quoted evidence one click away.
+- **Decision.** Advance, hold or reject. The AI recommends; the recruiter decides. If the AI review is unavailable, the report says why in plain words and the answers are still there to decide on.
 - **Verification call (optional).** A printable 10–15 minute script with an ID check and follow-ups built from the candidate's own answers. Questions whose audio sounded read go first, and the AI adds its own suggested questions.
 - **Team.** Add other recruiters.
 
 **Candidates**
 
-- Their own account and a dashboard of every assessment they've been invited to. An invite link only works for the account with the invited email.
+- No account needed: the private invite link opens the assessment directly, and they can come back to it to pick up. An account is optional, offered at the end, and gives a dashboard of every assessment they're invited to. Once a candidate links an invitation to their account, it needs that login.
 - A clear intro: what's recorded, that AI reviews the answers and people decide, how AI may be used.
 - An untimed scenario brief, then one question at a time. Timers are enforced by the server, drafts autosave, and there are breaks between questions.
 - **Think-aloud questions**: audio records from the moment the question opens until it's submitted, next to a scratchpad. Chunks upload every 4 seconds, so a crash or reload loses at most a few seconds. Candidates without a microphone type their working instead.

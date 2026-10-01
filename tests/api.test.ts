@@ -609,38 +609,80 @@ describe('think-aloud', () => {
 });
 
 describe('candidate accounts', () => {
-  it('requires the invited candidate to sign in, then links the invitation to their account', async () => {
+  it('opens from the invite link alone, without an account', async () => {
+    const manager = await signup();
+    const { body: created } = await manager
+      .post('/api/assessments')
+      .send({ title: 'Growth Marketer', roleFamilyId: 'performance-marketing', currency: 'INR' })
+      .expect(201);
+    const { body: invited } = await manager
+      .post(`/api/assessments/${created.id}/candidates`)
+      .send({ name: 'Ravi Kumar', email: 'ravi@example.com' })
+      .expect(201);
+    const link = request.agent(app);
+    const token = invited.candidate.token;
+
+    const intro = (await link.get(c(token)).expect(200)).body as CandidateSession;
+    expect(intro.candidate).toMatchObject({ email: 'ravi@example.com', linkedToAccount: false });
+    expect(intro.assessment.uniqueNumbers).toBe(true);
+    await link
+      .post(`${c(token)}/start`)
+      .send({ idName: 'Ravi Kumar', consent: true })
+      .expect(200);
+    // A fresh browser with the same link picks up where they left off.
+    const resumed = (await request(app).get(c(token)).expect(200)).body as CandidateSession;
+    expect(resumed.state.phase).toBe('ready');
+
+    // Signed in as someone else, the link still works but is not claimed by that account.
+    const stranger = request.agent(app);
+    await stranger
+      .post('/api/candidate/auth/signup')
+      .send({ name: 'Eve', email: 'eve@example.com', password: 'candidate-pass' })
+      .expect(201);
+    await stranger.get(c(token)).expect(200);
+    expect((await stranger.get('/api/candidate/assessments')).body.assessments).toEqual([]);
+
+    // Creating an account with the invited email afterwards lists it on their dashboard.
+    const later = request.agent(app);
+    await later
+      .post('/api/candidate/auth/signup')
+      .send({ name: 'Ravi Kumar', email: 'ravi@example.com', password: 'candidate-pass' })
+      .expect(201);
+    const mine = (await later.get('/api/candidate/assessments').expect(200)).body.assessments;
+    expect(mine).toEqual([expect.objectContaining({ token, status: 'in_progress' })]);
+  });
+
+  it('keeps an invitation private once a candidate account has claimed it', async () => {
     const { candidate, manager, assessmentId } = await setup();
     const token = candidate.token;
 
-    // The invite page can say who invited them without signing in...
+    // The invite page can say who invited them.
     const invite = (
       await request(app)
         .get(`${c(token)}/invite`)
         .expect(200)
     ).body;
     expect(invite).toMatchObject({ orgName: 'Acme', candidateName: 'Asha Rao', email: 'asha@example.com' });
-    // ...but nothing else is reachable anonymously.
-    await request(app).get(c(token)).expect(401);
 
-    // Someone else's account can't use the link.
+    // Opening it while signed in with the invited email links it to that account...
+    const mine = (await as(token).get('/api/candidate/assessments').expect(200)).body.assessments;
+    expect(mine).toEqual([expect.objectContaining({ token, title: 'Growth Marketer, Bengaluru', status: 'invited' })]);
+    const session = (await as(token).get(c(token)).expect(200)).body as CandidateSession;
+    expect(session.candidate.linkedToAccount).toBe(true);
+
+    // ...after which the link alone, or another account, can't open it.
+    const refused = await request(app).get(c(token)).expect(403);
+    expect(refused.body.error).toContain('asha@example.com');
     const stranger = request.agent(app);
     await stranger
       .post('/api/candidate/auth/signup')
       .send({ name: 'Eve', email: 'eve@example.com', password: 'candidate-pass' })
       .expect(201);
-    const refused = await stranger.get(c(token)).expect(403);
-    expect(refused.body.error).toContain('asha@example.com');
-
-    // The invited account sees it on their dashboard and can start.
-    const mine = (await as(token).get('/api/candidate/assessments').expect(200)).body.assessments;
-    expect(mine).toEqual([expect.objectContaining({ token, title: 'Growth Marketer, Bengaluru', status: 'invited' })]);
-    await as(token).get(c(token)).expect(200);
-    expect((await stranger.get('/api/candidate/assessments')).body.assessments).toEqual([]);
+    await stranger.get(c(token)).expect(403);
 
     // Recruiter and candidate sessions are separate.
     await as(token).get('/api/assessments').expect(401);
-    await manager.get(c(token)).expect(401);
+    await manager.get(c(token)).expect(403);
     await manager.get(`/api/assessments/${assessmentId}`).expect(200);
   });
 

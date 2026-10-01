@@ -24,11 +24,20 @@ export type CandidatePhaseView =
 
 export interface CandidateSession {
   serverNow: number;
-  candidate: { name: string; status: CandidateStatus; timeMultiplier: number };
+  candidate: {
+    name: string;
+    email: string;
+    /** False when they are taking it from the link alone, without an account. */
+    linkedToAccount: boolean;
+    status: CandidateStatus;
+    timeMultiplier: number;
+  };
   assessment: {
     title: string;
     orgName: string;
     roleFamilyName: string;
+    /** Practitioner-written scenarios vary the numbers per candidate; generated ones don't. */
+    uniqueNumbers: boolean;
     totalMinutes: number;
     outline: { kind: StageKind; minutes: number; thinkAloud: boolean }[];
   };

@@ -18,7 +18,7 @@ import {
   start,
   submit,
 } from '../candidateFlow';
-import { type SessionCandidate, requireCandidate } from '../auth';
+import { CANDIDATE_COOKIE, type SessionCandidate, candidateForSession, readCookie } from '../auth';
 import { run } from '../db';
 import { HttpError, badRequest, jsonBody, str } from '../http';
 
@@ -28,6 +28,8 @@ function session(deps: FlowDeps, ctx: CandidateContext, state: CandidatePhase): 
     serverNow: deps.now(),
     candidate: {
       name: ctx.candidate.name,
+      email: ctx.candidate.email,
+      linkedToAccount: Boolean(ctx.candidate.account_id),
       status: ctx.candidate.status as CandidateStatus,
       timeMultiplier: ctx.candidate.time_multiplier,
     },
@@ -35,6 +37,7 @@ function session(deps: FlowDeps, ctx: CandidateContext, state: CandidatePhase): 
       title: ctx.assessment.title,
       orgName: ctx.orgName,
       roleFamilyName: ctx.family.name,
+      uniqueNumbers: !ctx.family.generated,
       totalMinutes: Math.round(minutes.reduce((a, b) => a + b, 0)),
       outline: ctx.family.stages.map((stage, i) => ({
         kind: stage.kind,
@@ -48,27 +51,36 @@ function session(deps: FlowDeps, ctx: CandidateContext, state: CandidatePhase): 
 }
 
 /**
- * The invite link works only for the candidate account with the invited
- * email. The first visit links the invitation to that account.
+ * The invite link is the candidate's key: it is a long random secret that
+ * only the invited person receives, so it opens the assessment without an
+ * account. Accounts are optional. A signed-in candidate with the invited
+ * email has the invitation linked to their account on first visit, and from
+ * then on it needs that account, so a forwarded link can't be used to read or
+ * continue their answers.
  */
-async function claim(deps: AppDeps, ctx: CandidateContext, me: SessionCandidate) {
+async function authorize(deps: AppDeps, ctx: CandidateContext, me: SessionCandidate | null) {
   const { candidate } = ctx;
-  if (candidate.account_id === me.id) return;
-  if (candidate.account_id || candidate.email.toLowerCase() !== me.email.toLowerCase()) {
-    throw new HttpError(403, `This invitation was sent to ${candidate.email}. Log in with that email to continue.`);
+  if (me && candidate.account_id === me.id) return;
+  if (candidate.account_id) {
+    throw new HttpError(
+      403,
+      `This invitation is linked to a candidate account. Log in as ${candidate.email} to continue.`,
+    );
   }
-  await run(deps.db, 'UPDATE candidates SET account_id = ? WHERE id = ? AND account_id IS NULL', me.id, candidate.id);
-  candidate.account_id = me.id;
+  if (me && candidate.email.toLowerCase() === me.email.toLowerCase()) {
+    await run(deps.db, 'UPDATE candidates SET account_id = ? WHERE id = ? AND account_id IS NULL', me.id, candidate.id);
+    candidate.account_id = me.id;
+  }
 }
 
 export function candidateRoutes(deps: AppDeps) {
   const router = Router();
   const json = jsonBody('512kb');
 
-  /** Loads the invitation and checks it belongs to the signed-in candidate. */
+  /** Loads the invitation; the link opens it unless an account has claimed it. */
   const load = async (req: Request<{ token: string }>) => {
     const ctx = await loadByToken(deps.db, req.params.token);
-    await claim(deps, ctx, await requireCandidate(deps.db, req, deps.now()));
+    await authorize(deps, ctx, await candidateForSession(deps.db, readCookie(req, CANDIDATE_COOKIE), deps.now()));
     return ctx;
   };
 

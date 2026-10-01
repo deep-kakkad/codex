@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type {
-  AiReviewView,
   AiStageReview,
   CandidateReport,
   ReportStage,
@@ -13,6 +12,7 @@ import type { Decision } from '../../../shared/types';
 import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Blocks } from '../components/Blocks';
+import { Icon } from '../components/Icon';
 import { ThinkAloudReview } from '../components/ThinkAloudReview';
 import {
   Collapsible,
@@ -53,8 +53,9 @@ export function CandidateReportPage() {
     <>
       <div className="page-head">
         <div>
-          <Link to={`/app/assessments/${report.assessment.id}`} className="small muted">
-            ← {report.assessment.title}
+          <Link to={`/app/assessments/${report.assessment.id}`} className="back-link">
+            <Icon name="back" size={14} />
+            {report.assessment.title}
           </Link>
           <h1>
             {candidate.name} <StatusBadge status={candidate.status} />
@@ -71,7 +72,7 @@ export function CandidateReportPage() {
       <div className="tabs" role="tablist">
         {(
           [
-            ['review', 'AI review'],
+            ['review', 'Review'],
             ['verification', 'Verification call'],
             ['scenario', "This candidate's scenario"],
           ] as [Tab, string][]
@@ -93,7 +94,9 @@ export function CandidateReportPage() {
       {tab === 'scenario' && (
         <div className="card">
           <p className="callout callout-info">
-            Numbers and names are generated for this candidate. Other candidates saw a different version.
+            {report.family.generated
+              ? 'Every candidate on this assessment saw this same scenario.'
+              : 'Numbers and names are generated for this candidate. Other candidates saw a different version.'}
           </p>
           <Blocks blocks={report.brief} />
         </div>
@@ -115,52 +118,51 @@ function ReviewTab({
 }) {
   const result = report.aiReview?.result ?? null;
   return (
-    <div className="review-layout">
-      <div className="review-main">
-        {!finished && (
-          <div className="callout callout-info">
-            {report.candidate.status === 'invited'
-              ? "This candidate hasn't started yet."
-              : 'This candidate is still working. The AI review starts as soon as they submit.'}
-          </div>
-        )}
-        {report.stages.map((stage) => (
-          <StageReview
-            key={stage.id}
-            stage={stage}
-            ai={result?.stages.find((s) => s.stageId === stage.id) ?? null}
-            stageScore={result?.byStage[stage.id] ?? null}
-            adjustedScore={report.adjusted?.byStage[stage.id] ?? null}
-            overrides={report.overrides.filter((o) => o.stageId === stage.id)}
-            candidateId={report.candidate.id}
-            onReport={onReport}
-          />
-        ))}
-      </div>
-
-      <aside className="review-side">
-        <div className="card sticky">
-          <AiSummary report={report} review={report.aiReview} onReport={onReport} />
-          <DecisionControl report={report} onReport={onReport} />
-        </div>
-      </aside>
-    </div>
+    <>
+      <Verdict report={report} finished={finished} onReport={onReport} />
+      <h2 className="section-title answers-title">Answers, question by question</h2>
+      {report.stages.map((stage) => (
+        <StageReview
+          key={stage.id}
+          stage={stage}
+          ai={result?.stages.find((s) => s.stageId === stage.id) ?? null}
+          stageScore={result?.byStage[stage.id] ?? null}
+          adjustedScore={report.adjusted?.byStage[stage.id] ?? null}
+          overrides={report.overrides.filter((o) => o.stageId === stage.id)}
+          candidateId={report.candidate.id}
+          onReport={onReport}
+        />
+      ))}
+    </>
   );
 }
 
-function AiSummary({
+/** Plain-language reason for a failed review; the raw error stays available underneath. */
+function friendlyReviewError(error: string | null): string {
+  const text = error ?? '';
+  if (/not configured/i.test(text)) return "AI review isn't set up on this workspace yet.";
+  if (/402|credit/i.test(text)) return 'The AI service has run out of credits.';
+  if (/429|rate limit|busy/i.test(text)) return 'The AI service is busy right now.';
+  if (/timed? ?out|timeout/i.test(text)) return 'The AI review took too long and stopped.';
+  return 'Something went wrong while the AI was reviewing.';
+}
+
+/** The answer to "should we move forward?", before any of the detail. */
+function Verdict({
   report,
-  review,
+  finished,
   onReport,
 }: {
   report: CandidateReport;
-  review: AiReviewView | null;
+  finished: boolean;
   onReport: (r: CandidateReport) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const review = report.aiReview;
+  const r = review?.result ?? null;
 
-  async function retry() {
+  async function rerun() {
     setBusy(true);
     try {
       onReport(await api.post<CandidateReport>(`/api/candidates/${report.candidate.id}/ai-review`));
@@ -172,94 +174,170 @@ function AiSummary({
     }
   }
 
-  if (!review) {
-    return (
-      <>
-        <h3>AI review</h3>
-        <p className="small muted">Runs automatically once the candidate submits.</p>
-      </>
-    );
-  }
-  if (review.status === 'pending' || review.status === 'running') {
-    return (
-      <>
-        <h3>AI review</h3>
-        <p className="reviewing">
-          <span className="spinner" aria-hidden="true" />
-          {review.status === 'pending' ? 'Queued…' : 'Transcribing audio and scoring answers…'}
+  let body: ReactNode;
+  if (!finished) {
+    const reached = report.stages.filter((s) => s.response).length;
+    body = (
+      <div className="verdict-state">
+        <h2>{report.candidate.status === 'invited' ? "Hasn't started yet" : 'Still working'}</h2>
+        <p className="muted">
+          {report.candidate.status === 'invited'
+            ? 'Send them their link. The AI review starts as soon as they submit.'
+            : `On question ${reached} of ${report.stages.length}. The AI review starts as soon as they submit.`}
         </p>
-        <p className="small muted">This usually takes a minute or two. The page updates by itself.</p>
-      </>
+      </div>
     );
-  }
-  if (review.status === 'failed' || !review.result) {
-    return (
-      <>
-        <h3>AI review</h3>
-        <div className="alert alert-error small">The review failed: {review.error ?? 'unknown error'}</div>
+  } else if (!review || review.status === 'pending' || review.status === 'running') {
+    body = (
+      <div className="verdict-state">
+        <h2 className="reviewing">
+          <span className="spinner" aria-hidden="true" />
+          {review?.status === 'running' ? 'Transcribing audio and scoring answers…' : 'AI review queued…'}
+        </h2>
+        <p className="muted">This usually takes a minute or two. The page updates by itself.</p>
+      </div>
+    );
+  } else if (review.status === 'failed' || !r) {
+    body = (
+      <div className="verdict-state">
+        <h2>No AI review yet</h2>
+        <p>
+          {friendlyReviewError(review.error)} Every answer and recording is below, and you can still make a decision.
+        </p>
+        <div className="row-gap">
+          <button className="btn btn-secondary btn-sm" onClick={rerun} disabled={busy}>
+            {busy ? 'Starting…' : 'Try the AI review again'}
+          </button>
+          {review.error && (
+            <details className="tiny muted error-details">
+              <summary>Technical details</summary>
+              {review.error}
+            </details>
+          )}
+        </div>
         <ErrorNote error={error} />
-        <button className="btn btn-primary btn-sm" onClick={retry} disabled={busy}>
-          {busy ? 'Starting…' : 'Run the review again'}
-        </button>
-      </>
+      </div>
+    );
+  } else {
+    const overall = report.adjusted?.overall ?? r.overall;
+    const recommendation = report.adjusted?.recommendation ?? r.recommendation;
+    body = (
+      <div className="verdict-grid">
+        <div className="verdict-score">
+          <div className="tiny muted">Overall</div>
+          <div className="verdict-number">
+            <Score value={overall} />
+          </div>
+          <RecommendationBadge value={recommendation} />
+          {report.adjusted && (
+            <div className="tiny muted">
+              AI scored <Score value={r.overall} />; {report.overrides.length} score
+              {report.overrides.length === 1 ? '' : 's'} changed by your team
+            </div>
+          )}
+        </div>
+        <div className="verdict-body">
+          <p className="verdict-summary">{r.summary}</p>
+          <div className="verdict-lists">
+            {r.strengths.length > 0 && (
+              <div>
+                <h4>Strengths</h4>
+                <ul className="icon-list good">
+                  {r.strengths.map((s, i) => (
+                    <li key={i}>
+                      <Icon name="check" size={14} />
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {r.concerns.length > 0 && (
+              <div>
+                <h4>Concerns</h4>
+                <ul className="icon-list warn">
+                  {r.concerns.map((s, i) => (
+                    <li key={i}>
+                      <Icon name="x" size={14} />
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+          {r.withAndWithoutAi && (
+            <div className="with-ai">
+              <h4>
+                <Icon name="sparkle" size={14} /> With and without AI
+              </h4>
+              <p>{r.withAndWithoutAi}</p>
+            </div>
+          )}
+        </div>
+      </div>
     );
   }
 
-  const r = review.result;
   return (
-    <>
-      <h3>AI review</h3>
-      <div className="overall">
-        <Score value={r.overall} />
-        <RecommendationBadge value={r.recommendation} />
+    <section className="card verdict">
+      <div className="verdict-top">
+        <div className="verdict-content">{body}</div>
+        <aside className="verdict-decide">
+          <DecisionControl report={report} onReport={onReport} />
+          {r && review?.status === 'done' && (
+            <>
+              <p className="tiny subtle">
+                Reviewed {formatDate(review.updatedAt)} by {r.models.review}. The recommendation is the rubric average;
+                the decision is yours.
+              </p>
+              <button className="btn btn-ghost btn-sm" onClick={rerun} disabled={busy}>
+                Re-run AI review
+              </button>
+              <ErrorNote error={error} />
+            </>
+          )}
+        </aside>
       </div>
-      {report.adjusted && (
-        <div className="adjusted small">
-          <span>
-            Adjusted by your team: <Score value={report.adjusted.overall} />
-          </span>
-          <RecommendationBadge value={report.adjusted.recommendation} />
-          <span className="muted">
-            {report.overrides.length} score{report.overrides.length === 1 ? '' : 's'} changed
-          </span>
-        </div>
-      )}
-      <p className="small">{r.summary}</p>
-      {r.strengths.length > 0 && (
-        <>
-          <h4>Strengths</h4>
-          <ul className="small">
-            {r.strengths.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </>
-      )}
-      {r.concerns.length > 0 && (
-        <>
-          <h4>Concerns</h4>
-          <ul className="small">
-            {r.concerns.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </>
-      )}
-      {r.withAndWithoutAi && (
-        <>
-          <h4>With and without AI</h4>
-          <p className="small">{r.withAndWithoutAi}</p>
-        </>
-      )}
-      <p className="small muted">
-        Reviewed {formatDate(review.updatedAt)} by {r.models.review} (audio: {r.models.audio}). The recommendation
-        reflects the rubric average; the decision is yours.
-      </p>
-      <ErrorNote error={error} />
-      <button className="btn btn-ghost btn-sm" onClick={retry} disabled={busy}>
-        Re-run review
-      </button>
-    </>
+      <Scorecard report={report} />
+    </section>
+  );
+}
+
+/** One chip per question: score and anything worth a closer look. Click to jump. */
+function Scorecard({ report }: { report: CandidateReport }) {
+  const result = report.aiReview?.result ?? null;
+  return (
+    <div className="scorecard" aria-label="Scores by question">
+      {report.stages.map((stage) => {
+        const ai = result?.stages.find((s) => s.stageId === stage.id) ?? null;
+        const score = report.adjusted?.byStage[stage.id] ?? result?.byStage[stage.id] ?? null;
+        const response = stage.response;
+        const flags = [
+          ai?.delivery?.label === 'read' && 'sounds read',
+          response?.closedReason === 'timeout' && 'ran out of time',
+          response?.signalNotes.some((n) => n.level === 'notable') && 'probe live',
+        ].filter(Boolean) as string[];
+        return (
+          <a
+            key={stage.id}
+            href={`#stage-${stage.id}`}
+            className={`score-chip ${response ? '' : 'is-empty'}`}
+            onClick={(event) => {
+              event.preventDefault();
+              document.getElementById(`stage-${stage.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            <span className="score-chip-q">Q{stage.index + 1}</span>
+            <span className="score-chip-title">{stage.title}</span>
+            <span className="score-chip-value">
+              {!stage.scored ? <span className="subtle tiny">not scored</span> : <Score value={score} />}
+            </span>
+            {flags.length > 0 && <span className="score-chip-flag">{flags.join(' · ')}</span>}
+          </a>
+        );
+      })}
+    </div>
   );
 }
 
@@ -564,13 +642,14 @@ function DecisionControl({ report, onReport }: { report: CandidateReport; onRepo
   return (
     <div className="decision">
       <h4>
-        Decision <DecisionBadge decision={report.candidate.decision} />
+        Your decision <DecisionBadge decision={report.candidate.decision} />
       </h4>
-      <div className="row-gap">
+      <div className="decision-buttons">
         {(['advance', 'hold', 'reject'] as Decision[]).map((d) => (
           <button
             key={d}
-            className={`btn btn-sm ${report.candidate.decision === d ? 'btn-primary' : 'btn-secondary'}`}
+            className={`btn decision-${d} ${report.candidate.decision === d ? 'is-chosen' : ''}`}
+            aria-pressed={report.candidate.decision === d}
             onClick={() => decide(report.candidate.decision === d ? null : d)}
           >
             {d === 'advance' ? 'Advance' : d === 'hold' ? 'Hold' : 'Reject'}

@@ -7,6 +7,7 @@ import { AssessmentPage } from './pages/AssessmentPage';
 import { AuthPage } from './pages/AuthPage';
 import { CandidateHome } from './pages/CandidateHome';
 import { CandidateReportPage } from './pages/CandidateReport';
+import { ComparePage } from './pages/ComparePage';
 import { Dashboard } from './pages/Dashboard';
 import { Landing } from './pages/Landing';
 import { NewAssessment } from './pages/NewAssessment';
@@ -15,6 +16,7 @@ import { RoleLibrary } from './pages/RoleLibrary';
 import { RolePreview } from './pages/RolePreview';
 import { TakeAssessment } from './pages/TakeAssessment';
 import { Team } from './pages/Team';
+import '@fontsource-variable/inter';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(
@@ -45,6 +47,7 @@ createRoot(document.getElementById('root')!).render(
             <Route index element={<Dashboard />} />
             <Route path="new" element={<NewAssessment />} />
             <Route path="assessments/:id" element={<AssessmentPage />} />
+            <Route path="assessments/:id/compare" element={<ComparePage />} />
             <Route path="candidates/:id" element={<CandidateReportPage />} />
             <Route path="library" element={<RoleLibrary />} />
             <Route path="library/:id" element={<RolePreview />} />
