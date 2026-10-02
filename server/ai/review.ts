@@ -82,7 +82,7 @@ Rules:
 - Never mention or infer protected characteristics, accent or fluency.
 
 Reply with JSON only:
-{"summary": "3-4 sentences", "strengths": ["..."], "concerns": ["..."], "withAndWithoutAi": "2-3 sentences", "probes": ["3 to 5 specific questions for a 10-15 minute live call, built on their own answers"]}`;
+{"headline": "the verdict in one sentence, under 18 words, as a headline above the summary", "summary": "3-4 sentences", "strengths": ["..."], "concerns": ["..."], "withAndWithoutAi": "2-3 sentences", "probes": ["3 to 5 specific questions for a 10-15 minute live call, built on their own answers"]}`;
 
 // Helpers --------------------------------------------------------------------
 
@@ -367,6 +367,7 @@ export async function reviewCandidate(deps: ReviewDeps, candidateId: string): Pr
     overall: score.overall,
     byStage: score.byStage,
     recommendation: suggestedRecommendation(score.overall),
+    headline: typeof summary.headline === 'string' ? summary.headline : '',
     summary: typeof summary.summary === 'string' ? summary.summary : '',
     strengths: stringList(summary.strengths, 6),
     concerns: stringList(summary.concerns, 6),

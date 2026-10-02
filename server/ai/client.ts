@@ -31,7 +31,8 @@ export interface AiConfig {
   audioModel: string;
 }
 
-export const DEFAULT_REVIEW_MODEL = 'anthropic/claude-sonnet-5.5';
+/** Scoring and scenario writing. Chosen for cost; set AI_REVIEW_MODEL to use a stronger model. */
+export const DEFAULT_REVIEW_MODEL = 'google/gemini-3.8-flash';
 export const DEFAULT_AUDIO_MODEL = 'google/gemini-3.8-flash';
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';

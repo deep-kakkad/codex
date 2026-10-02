@@ -51,7 +51,7 @@ The seed leaves two candidates submitted; with the key set, the server reviews t
 Runs in the background after a candidate submits (one review at a time; interrupted reviews resume on restart), through [OpenRouter](https://openrouter.ai):
 
 1. **Audio** (`AI_AUDIO_MODEL`, default `google/gemini-3.8-flash`): verbatim transcript with pauses, plus a delivery judgement (live reasoning / unclear / read) that ignores accent, fluency and nerves. Transcripts are cached, so a re-run doesn't transcribe twice.
-2. **Scoring** (`AI_REVIEW_MODEL`, default `anthropic/claude-sonnet-5.5`): one call per scored question with the brief, the question as shown, the answer and transcript, the answer key and the rubric anchors. Scores outside 1–4 are rejected.
+2. **Scoring** (`AI_REVIEW_MODEL`, default `google/gemini-3.8-flash`, chosen for cost; set `anthropic/claude-sonnet-5.5` for stronger scoring): one call per scored question with the brief, the question as shown, the answer and transcript, the answer key and the rubric anchors. Scores outside 1–4 are rejected.
 3. **Summary**: strengths, concerns, with-versus-without-AI comparison and questions for the call.
 
 The overall score is the weighted rubric average computed by the app, not by the model; the recommendation follows it (≥3.0 advance, ≥2.3 hold).

@@ -210,6 +210,8 @@ export interface AiReviewResult {
   overall: number | null;
   byStage: Record<string, number | null>;
   recommendation: Recommendation | null;
+  /** The verdict in one short sentence. Missing on reviews made before it existed. */
+  headline?: string;
   summary: string;
   strengths: string[];
   concerns: string[];
