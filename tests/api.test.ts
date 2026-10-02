@@ -1189,6 +1189,7 @@ describe('review page collaboration', () => {
     await completeAll(ctx.candidate.token);
     await reviews.idle();
     ai.score = 2;
+    clock += 60_000; // invited a minute later, so the order is well defined
     const { body: invited } = await ctx.manager
       .post(`/api/assessments/${ctx.assessmentId}/candidates`)
       .send({ name: 'Vikram Shah', email: 'vikram@example.com' })

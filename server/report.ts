@@ -112,7 +112,7 @@ export async function candidateList(db: DB, assessment: AssessmentRow, viewerId:
   const kindOf = new Map(family.stages.map((s) => [s.id, s.kind]));
   const candidates = await all<CandidateRow>(
     db,
-    'SELECT * FROM candidates WHERE assessment_id = ? ORDER BY created_at DESC',
+    'SELECT * FROM candidates WHERE assessment_id = ? ORDER BY created_at DESC, id',
     assessment.id,
   );
   return Promise.all(
