@@ -1,4 +1,4 @@
-import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type {
   AiStageReview,
@@ -288,6 +288,19 @@ function ReviewTab({
   );
 }
 
+/** True while the page header (with the candidate's name) is on screen. */
+function useHeaderVisible() {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const header = document.querySelector('.person-head');
+    if (!header || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, []);
+  return visible;
+}
+
 /** Stays at the top while scrolling: who, how they did, the team's lean, and the decision. */
 function DecisionBar({ report, onReport }: { report: CandidateReport; onReport: (r: CandidateReport) => void }) {
   const r = report.aiReview?.result ?? null;
@@ -298,15 +311,18 @@ function DecisionBar({ report, onReport }: { report: CandidateReport; onReport: 
     if (n.lean) acc[n.lean] = (acc[n.lean] ?? 0) + 1;
     return acc;
   }, {});
+  const headerVisible = useHeaderVisible();
   const leanText = (['advance', 'hold', 'reject'] as Decision[])
     .filter((d) => leans[d])
     .map((d) => `${leans[d]} ${d}`)
     .join(' · ');
   return (
-    <div className="decision-bar">
+    <div className={`decision-bar ${headerVisible ? 'header-visible' : ''}`}>
       <div className="decision-bar-who">
-        <Avatar name={report.candidate.name} size="sm" />
-        <strong>{report.candidate.name}</strong>
+        <span className="decision-bar-name">
+          <Avatar name={report.candidate.name} size="sm" />
+          <strong>{report.candidate.name}</strong>
+        </span>
         <StarToggle report={report} onReport={onReport} />
         {r && (
           <span className="decision-bar-score">
@@ -603,8 +619,24 @@ function TeamNotes({ report, onReport }: { report: CandidateReport; onReport: (r
   const [lean, setLean] = useState<Decision | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [composing, setComposing] = useState(false);
   const finished = ['submitted', 'reviewed', 'decided'].includes(report.candidate.status);
   if (!finished) return null;
+
+  if (!report.notes.length && !composing) {
+    return (
+      <section className="team-notes is-empty">
+        <span className="row-gap">
+          <Icon name="note" size={15} />
+          <strong>Team notes</strong>
+          <span className="small muted">None yet</span>
+        </span>
+        <button className="btn btn-secondary btn-sm" onClick={() => setComposing(true)}>
+          Add a note
+        </button>
+      </section>
+    );
+  }
 
   async function post(event: FormEvent) {
     event.preventDefault();
@@ -614,6 +646,7 @@ function TeamNotes({ report, onReport }: { report: CandidateReport; onReport: (r
       setBody('');
       setLean(null);
       setError(null);
+      setComposing(false);
     } catch (e) {
       setError(errorMessage(e));
     } finally {
@@ -683,9 +716,16 @@ function TeamNotes({ report, onReport }: { report: CandidateReport; onReport: (r
               </button>
             ))}
           </div>
-          <button className="btn btn-primary btn-sm" disabled={busy || !body.trim()}>
-            {busy ? 'Posting…' : 'Post note'}
-          </button>
+          <span className="row-gap">
+            {!report.notes.length && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setComposing(false)}>
+                Cancel
+              </button>
+            )}
+            <button className="btn btn-primary btn-sm" disabled={busy || !body.trim()}>
+              {busy ? 'Posting…' : 'Post note'}
+            </button>
+          </span>
         </div>
         <ErrorNote error={error} />
       </form>
@@ -745,6 +785,19 @@ function TimeBar({ used, limit, timedOut }: { used: number | null; limit: number
         {formatDuration(used)} / {formatDuration(limit)}
       </span>
     </span>
+  );
+}
+
+/** One labelled part of an answer: the same label style and spacing everywhere. */
+function AnswerPart({ label, aside, children }: { label: string; aside?: string | null; children: ReactNode }) {
+  return (
+    <div className="answer-part">
+      <div className="answer-label">
+        <span>{label}</span>
+        {aside && <span className="answer-aside">{aside}</span>}
+      </div>
+      {children}
+    </div>
   );
 }
 
@@ -851,90 +904,101 @@ function StageReview({
               ) : (
                 <>
                   {r.choiceLabel && (
-                    <p className="q-choice">
-                      <span className="tiny muted">Chose</span>
-                      <strong>{r.choiceLabel}</strong>
-                    </p>
+                    <AnswerPart label="Their choice">
+                      <p className="q-choice">{r.choiceLabel}</p>
+                    </AnswerPart>
                   )}
                   {stage.thinkAloud ? (
-                    <ThinkAloudReview response={r} delivery={ai?.delivery ?? null} />
+                    <AnswerPart
+                      label="Recording"
+                      aside={r.audio.length ? formatDuration(r.audio.reduce((sum, a) => sum + (a.sec ?? 0), 0)) : null}
+                    >
+                      <ThinkAloudReview response={r} delivery={ai?.delivery ?? null} />
+                    </AnswerPart>
                   ) : (
                     r.audio.length > 0 && (
-                      <div className="voice-notes">
-                        {r.audio.map((a) => (
-                          <AudioPlayer
-                            key={a.url}
-                            src={a.url}
-                            knownSec={a.sec}
-                            rate={rate}
-                            label={
-                              ai?.delivery ? `AI: ${DELIVERY_TEXT[ai.delivery.label].toLowerCase()}` : 'Voice note'
-                            }
-                          />
-                        ))}
-                        <SpeedPicker rate={rate} onChange={setRate} />
-                      </div>
+                      <AnswerPart label="Voice note">
+                        <div className="voice-notes">
+                          {r.audio.map((a) => (
+                            <AudioPlayer
+                              key={a.url}
+                              src={a.url}
+                              knownSec={a.sec}
+                              rate={rate}
+                              label={ai?.delivery ? `AI: ${DELIVERY_TEXT[ai.delivery.label].toLowerCase()}` : undefined}
+                            />
+                          ))}
+                          <SpeedPicker rate={rate} onChange={setRate} />
+                        </div>
+                      </AnswerPart>
                     )
                   )}
                   {ai?.transcript && (
-                    <Collapsible
-                      title="Transcript (AI)"
-                      className="inset"
-                      defaultOpen={stage.thinkAloud || inTranscript}
-                    >
-                      <div className="answer-text transcript">
-                        <Highlighted text={ai.transcript} evidence={evidence} />
-                      </div>
-                    </Collapsible>
+                    <AnswerPart label="Transcript" aside="by AI">
+                      <Collapsible
+                        title={stage.thinkAloud || inTranscript ? 'Hide transcript' : 'Show transcript'}
+                        className="inset"
+                        defaultOpen={stage.thinkAloud || inTranscript}
+                      >
+                        <div className="answer-text transcript">
+                          <Highlighted text={ai.transcript} evidence={evidence} />
+                        </div>
+                      </Collapsible>
+                    </AnswerPart>
                   )}
                   {stage.thinkAloud ? (
                     r.text &&
                     !r.scratch.length && (
-                      <div>
-                        <div className="small muted">{r.audio.length ? 'Scratchpad' : 'Typed working'}</div>
+                      <AnswerPart label={r.audio.length ? 'Scratchpad' : 'Typed working'}>
                         <div className="answer-text">
                           <Highlighted text={r.text} evidence={evidence} />
                         </div>
-                      </div>
+                      </AnswerPart>
                     )
                   ) : r.text ? (
-                    <div className="answer-text">
-                      <Highlighted text={r.text} evidence={evidence} />
-                    </div>
+                    <AnswerPart label="Written answer">
+                      <div className="answer-text">
+                        <Highlighted text={r.text} evidence={evidence} />
+                      </div>
+                    </AnswerPart>
                   ) : (
                     !r.audio.length && r.closedReason && <p className="muted">No answer.</p>
                   )}
                   {stage.kind === 'ai_allowed' && (
                     <>
-                      <Collapsible
-                        title={`Their AI conversation${r.aiTranscript ? ` (${r.aiTranscript.length.toLocaleString()} characters)` : ': none given'}`}
-                        className="inset"
+                      <AnswerPart
+                        label="Their AI conversation"
+                        aside={r.aiTranscript ? `${r.aiTranscript.length.toLocaleString()} characters` : 'none given'}
                       >
-                        <div className="answer-text transcript">
-                          {r.aiTranscript ? <Highlighted text={r.aiTranscript} evidence={evidence} /> : 'None'}
-                        </div>
-                      </Collapsible>
+                        {r.aiTranscript ? (
+                          <Collapsible title="Show conversation" className="inset">
+                            <div className="answer-text transcript">
+                              <Highlighted text={r.aiTranscript} evidence={evidence} />
+                            </div>
+                          </Collapsible>
+                        ) : (
+                          <p className="muted small">They didn't paste a conversation.</p>
+                        )}
+                      </AnswerPart>
                       {r.reflection && (
-                        <div>
-                          <div className="small muted">What they kept, changed or rejected</div>
+                        <AnswerPart label="What they kept, changed or rejected">
                           <div className="answer-text">
                             <Highlighted text={r.reflection} evidence={evidence} />
                           </div>
-                        </div>
+                        </AnswerPart>
                       )}
                     </>
                   )}
                   {r.signalNotes.length > 0 && (
-                    <div className="q-signals tiny muted">
-                      {r.signalNotes.map((note, i) => (
-                        <span
-                          key={i}
-                          title="A weak signal. Use it to decide what to probe on the call, never as proof."
-                        >
-                          {note.text}
-                        </span>
-                      ))}
-                    </div>
+                    <AnswerPart label="Signals" aside="weak hints, not proof">
+                      <div className="q-signals">
+                        {r.signalNotes.map((note, i) => (
+                          <span key={i} className={note.level === 'notable' ? 'is-notable' : ''}>
+                            {note.text}
+                          </span>
+                        ))}
+                      </div>
+                    </AnswerPart>
                   )}
                 </>
               )}

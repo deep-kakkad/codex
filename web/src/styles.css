@@ -4118,3 +4118,218 @@ kbd {
     opacity: 1;
   }
 }
+
+/* Review page: reading -------------------------------------------------------
+ * Four text sizes: headline, titles and candidates' words (1rem serif),
+ * body (sans), small. Candidates' words are serif, everything else sans.
+ * Score numerals are the only exception. */
+
+.review-grid,
+.decision-bar {
+  --fs-body: 0.92rem;
+  --fs-small: 0.82rem;
+}
+
+/* 9. The name appears in the sticky bar only once the page header has scrolled away. */
+.decision-bar.header-visible .decision-bar-name {
+  display: none;
+}
+.decision-bar-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* 10. No notes yet: one quiet line. */
+.team-notes.is-empty {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.6rem 1rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+}
+
+/* 11. Same gap between every section, same label style above each. */
+.review-main > .card,
+.review-main > .team-notes {
+  margin: 0 0 1.5rem;
+}
+.answers-head {
+  margin: 0 0 0.75rem;
+}
+.review-main .section-title,
+.team-notes .section-title {
+  font-size: 1rem;
+  font-weight: 650;
+  margin: 0;
+}
+
+/* 12. Collapse the type scale. */
+.review-grid .small,
+.review-grid .tiny,
+.decision-bar .tiny,
+.review-grid .badge,
+.q-nav-item,
+.q-nav-title,
+.q-section-label,
+.answer-label,
+.vcol h3,
+.score-bars-legend,
+.verdict2-kicker,
+.verdict2-foot,
+.crit-why,
+.crit-quote-hint,
+.q-signals,
+.note-meta,
+.time-bar .tiny {
+  font-size: var(--fs-small);
+}
+.q-take,
+.vcol,
+.score-bar-row,
+.verdict2-summary,
+.crit-label,
+.note-body p,
+.q-extra-panel,
+.q-choice,
+.team-notes,
+.q-ai-summary {
+  font-size: var(--fs-body);
+}
+.q-title,
+.q-answer .answer-text,
+.q-answer .answer-text.transcript,
+.scratch-text {
+  font-size: 1rem;
+}
+.verdict2-summary {
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 72ch;
+}
+
+/* 15. Question-type badges become quiet text; colour is kept for flags. */
+.q-title .badge {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-weight: 500;
+  color: var(--subtle);
+}
+.q-title .badge + .badge::before {
+  content: '·';
+  margin-right: 0.35rem;
+  color: var(--subtle);
+}
+.q-title {
+  gap: 0.35rem 0.5rem;
+}
+
+/* 16. The candidate's answer is the main read. */
+.q-panels {
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+}
+
+/* 17. The AI's reasoning is supporting text. */
+.crit-why {
+  color: var(--subtle);
+  line-height: 1.55;
+  margin-top: 0.35rem;
+}
+
+/* 19. Candidates' words in serif wherever they appear; the AI's in sans. */
+.q-answer .answer-text,
+.scratch-text,
+.crit-quote q,
+.crit-quote.is-linked q,
+.evidence-mark {
+  font-family: var(--serif);
+  font-optical-sizing: auto;
+}
+.crit-quote,
+.crit-quote.is-linked {
+  font-size: 0.98rem;
+  line-height: 1.5;
+}
+.q-take,
+.crit-why,
+.q-ai-summary,
+.vcol,
+.verdict2-summary {
+  font-family: var(--font);
+}
+
+/* 20. Each part of an answer gets the same small label and spacing. */
+.answer-part {
+  margin-bottom: 1.1rem;
+}
+.answer-part:last-child {
+  margin-bottom: 0;
+}
+.answer-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.answer-aside {
+  font-weight: 400;
+  color: var(--subtle);
+}
+.answer-part .answer-text {
+  margin: 0;
+}
+.answer-part .collapsible.inset {
+  margin: 0;
+}
+.answer-part .collapsible-toggle {
+  font-size: var(--fs-small);
+  color: var(--accent);
+  font-weight: 500;
+}
+.answer-part .collapsible-body {
+  margin-top: 0.5rem;
+}
+.q-choice {
+  margin: 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  font-weight: 600;
+}
+.q-signals {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0;
+  color: var(--muted);
+}
+.q-signals .is-notable {
+  color: var(--warn);
+}
+.q-answer .think-aloud-review .answer-audio:first-child {
+  margin-top: 0;
+}
+
+/* Long criterion names and the panel buttons must fit narrow screens. */
+.crit-label {
+  flex: 1;
+  min-width: 0;
+}
+.meter {
+  flex: none;
+}
+.q-extra {
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  /* Answer and scoring stack on phones (overrides the wider-answer split above). */
+  .q-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

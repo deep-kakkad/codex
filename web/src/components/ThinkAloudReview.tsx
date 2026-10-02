@@ -27,7 +27,6 @@ export function ThinkAloudReview({
   const [speed, setSpeed] = useState(1);
   const [selected, setSelected] = useState(response.scratch.length - 1);
   const parts = response.audio;
-  const totalSec = parts.reduce((sum, p) => sum + (p.sec ?? 0), 0);
   const snapshot = response.scratch[selected];
 
   /** Which part a moment (ms since the question opened) falls in. */
@@ -56,10 +55,6 @@ export function ThinkAloudReview({
 
   return (
     <div className="think-aloud-review">
-      <div className="row-between">
-        <strong>Think-aloud recording</strong>
-        <span className="small muted">{totalSec ? formatDuration(totalSec) : ''}</span>
-      </div>
       {parts.length === 0 ? (
         <p className="small muted">No recording: the candidate typed their working instead (microphone unavailable).</p>
       ) : (
