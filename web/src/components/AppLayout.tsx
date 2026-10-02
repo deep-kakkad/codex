@@ -2,15 +2,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Icon } from './Icon';
 import { Logo } from './Logo';
-
-function initials(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join('');
-}
+import { Avatar } from './ReviewBits';
 
 export function AppLayout() {
   const { user, logout } = useAuth();
@@ -46,9 +38,7 @@ export function AppLayout() {
         <div className="sidebar-foot">
           {user && (
             <>
-              <span className="avatar" aria-hidden="true">
-                {initials(user.name)}
-              </span>
+              <Avatar name={user.name} size="md" />
               <div className="sidebar-user">
                 <strong>{user.name}</strong>
                 <span>{user.email}</span>

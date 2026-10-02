@@ -120,6 +120,8 @@ export interface CandidateListItem {
   notableSignals: number;
   verification: { identity: string | null; consistency: string | null } | null;
   decision: Decision | null;
+  /** On the viewer's watch list. */
+  starred: boolean;
 }
 
 export interface FunnelStage {
@@ -182,6 +184,8 @@ export interface ReportStage {
   shown: CandidateStageView | null;
   reviewerGuide: Block[];
   rubric: Criterion[];
+  /** For a situation change: the decision question it follows. */
+  dependsOn: string | null;
   response: StageResponseView | null;
 }
 
@@ -277,6 +281,40 @@ export interface CandidateReport {
     recommendation: Recommendation | null;
   } | null;
   verification: { script: VerificationScript; record: VerificationRecord | null };
+  /** On the viewer's watch list. */
+  starred: boolean;
+  notes: ReviewNote[];
+  benchmark: Benchmark | null;
+  siblings: CandidateSiblings;
+}
+
+/** A teammate's short take on a candidate, with an optional lean. */
+export interface ReviewNote {
+  id: string;
+  userName: string;
+  body: string;
+  lean: Decision | null;
+  createdAt: number;
+  /** Written by the person viewing, who can delete it. */
+  mine: boolean;
+}
+
+/** This candidate against everyone reviewed on the same assessment. */
+export interface Benchmark {
+  /** 1 is the highest overall score; ties share a rank. */
+  rank: number;
+  of: number;
+  overallAverage: number | null;
+  /** Pool average per scored question. */
+  byStage: Record<string, number | null>;
+}
+
+/** Neighbouring reviewable candidates, in the assessment page's order. */
+export interface CandidateSiblings {
+  index: number | null;
+  total: number;
+  prev: { id: string; name: string } | null;
+  next: { id: string; name: string } | null;
 }
 
 export interface TeamMember {

@@ -1,10 +1,9 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { StageResponseView } from '../../../shared/api';
 import { formatDuration } from '../../../shared/signals';
 import type { Delivery } from '../../../shared/types';
+import { AudioPlayer, type Marker, type PlayerApi, SpeedPicker } from './AudioPlayer';
 import { Collapsible } from './ui';
-
-const SPEEDS = [1, 1.25, 1.5, 2];
 
 const DELIVERY_LABEL: Record<Delivery, string> = {
   natural: 'sounds like live reasoning',
@@ -16,21 +15,6 @@ function clock(ms: number) {
   return formatDuration(Math.round(ms / 1000)) || '0s';
 }
 
-/**
- * MediaRecorder WebM files carry no duration or seek index, so browsers can't
- * seek until they've scanned the file. Jumping far past the end forces the
- * scan; then we return to the start.
- */
-function primeSeeking(audio: HTMLAudioElement) {
-  if (audio.duration !== Infinity) return;
-  const reset = () => {
-    audio.removeEventListener('durationchange', reset);
-    audio.currentTime = 0;
-  };
-  audio.addEventListener('durationchange', reset);
-  audio.currentTime = 1e101;
-}
-
 export function ThinkAloudReview({
   response,
   delivery,
@@ -39,31 +23,35 @@ export function ThinkAloudReview({
   /** The AI's read of the recording, once reviewed. */
   delivery: { label: Delivery; reasons: string } | null;
 }) {
-  const audioRefs = useRef<(HTMLAudioElement | null)[]>([]);
+  const players = useRef<(PlayerApi | null)[]>([]);
   const [speed, setSpeed] = useState(1);
   const [selected, setSelected] = useState(response.scratch.length - 1);
   const parts = response.audio;
   const totalSec = parts.reduce((sum, p) => sum + (p.sec ?? 0), 0);
   const snapshot = response.scratch[selected];
 
-  function setRate(rate: number) {
-    setSpeed(rate);
-    audioRefs.current.forEach((a) => a && (a.playbackRate = rate));
-  }
-
-  /** Plays the recording from the moment a scratchpad snapshot was taken. */
-  function seekTo(t: number) {
+  /** Which part a moment (ms since the question opened) falls in. */
+  const partAt = (t: number) => {
     let index = -1;
     parts.forEach((p, i) => {
       if ((p.startMs ?? 0) <= t) index = i;
     });
-    const audio = audioRefs.current[index];
-    if (!audio) return;
-    audioRefs.current.forEach((a) => a && a !== audio && a.pause());
-    // Start a few seconds early so the reviewer hears what led up to the note.
-    audio.currentTime = Math.max(0, (t - (parts[index].startMs ?? 0)) / 1000 - 5);
-    audio.playbackRate = speed;
-    void audio.play();
+    return index;
+  };
+  // Stable per-part callbacks so each player registers once.
+  const registers = useMemo(() => parts.map((_, i) => (api: PlayerApi | null) => (players.current[i] = api)), [parts]);
+  const markersFor = (i: number): Marker[] =>
+    response.scratch
+      .filter((s) => partAt(s.t) === i)
+      .map((s) => ({ sec: (s.t - (parts[i].startMs ?? 0)) / 1000, label: `Scratchpad at ${clock(s.t)}` }));
+
+  /** Plays the recording from a few seconds before a scratchpad snapshot was taken. */
+  function seekTo(t: number) {
+    const index = partAt(t);
+    const player = players.current[index];
+    if (!player) return;
+    players.current.forEach((p, i) => i !== index && p?.pause());
+    player.playFrom((t - (parts[index].startMs ?? 0)) / 1000 - 5);
   }
 
   return (
@@ -84,31 +72,17 @@ export function ThinkAloudReview({
                   {i > 0 && ' (after a page reload; a few seconds before it may be missing)'}
                 </span>
               )}
-              <audio
-                ref={(el) => {
-                  audioRefs.current[i] = el;
-                }}
-                controls
-                preload="metadata"
+              <AudioPlayer
                 src={part.url}
-                className="audio"
-                onLoadedMetadata={(e) => primeSeeking(e.currentTarget)}
+                knownSec={part.sec}
+                rate={speed}
+                markers={markersFor(i)}
+                register={registers[i]}
+                onPlay={() => players.current.forEach((p, j) => j !== i && p?.pause())}
               />
             </div>
           ))}
-          <div className="row-gap small" role="group" aria-label="Playback speed">
-            <span className="muted">Speed</span>
-            {SPEEDS.map((rate) => (
-              <button
-                key={rate}
-                type="button"
-                className={`btn btn-sm ${speed === rate ? 'btn-primary' : 'btn-secondary'}`}
-                onClick={() => setRate(rate)}
-              >
-                {rate}×
-              </button>
-            ))}
-          </div>
+          <SpeedPicker rate={speed} onChange={setSpeed} />
         </>
       )}
 
@@ -120,7 +94,7 @@ export function ThinkAloudReview({
               <button
                 key={i}
                 type="button"
-                className={`btn btn-sm ${i === selected ? 'btn-primary' : 'btn-secondary'}`}
+                className={`chip-button ${i === selected ? 'is-active' : ''}`}
                 onClick={() => {
                   setSelected(i);
                   if (parts.length) seekTo(s.t);

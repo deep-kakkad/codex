@@ -4,6 +4,7 @@ import type { AiReviewStatus, AssessmentDetail, AssessmentFunnel, CandidateListI
 import { api, errorMessage } from '../api';
 import { Funnel } from '../components/Funnel';
 import { Icon } from '../components/Icon';
+import { Avatar } from '../components/ReviewBits';
 import { useAuth } from '../auth';
 import {
   CopyButton,
@@ -46,6 +47,7 @@ export function AssessmentPage() {
   const { data, setData, error } = useApi<AssessmentDetail>(`/api/assessments/${id}`);
   const { data: funnel } = useApi<AssessmentFunnel>(`/api/assessments/${id}/funnel`);
   const [selected, setSelected] = useState<string[]>([]);
+  const [onlyStarred, setOnlyStarred] = useState(false);
 
   if (error) return <ErrorNote error={error} />;
   if (!data) return <p className="muted">Loading…</p>;
@@ -114,9 +116,18 @@ export function AssessmentPage() {
       ) : (
         <div className="card flush">
           <div className="card-head">
-            <h2>
-              Candidates <span className="muted num">{candidates.length}</span>
-            </h2>
+            <div className="row-gap">
+              <h2>Candidates</h2>
+              <div className="segmented-filter" role="group" aria-label="Show">
+                <button className={!onlyStarred ? 'is-active' : ''} onClick={() => setOnlyStarred(false)}>
+                  All <span className="num">{candidates.length}</span>
+                </button>
+                <button className={onlyStarred ? 'is-active' : ''} onClick={() => setOnlyStarred(true)}>
+                  <Icon name="star" size={12} filled /> Starred{' '}
+                  <span className="num">{candidates.filter((c) => c.starred).length}</span>
+                </button>
+              </div>
+            </div>
             {comparable.length >= 2 && (
               <span className="small muted">Tick finished candidates to compare them side by side.</span>
             )}
@@ -138,84 +149,117 @@ export function AssessmentPage() {
                 </tr>
               </thead>
               <tbody>
-                {candidates.map((c) => {
-                  const canCompare = COMPARABLE.includes(c.status);
-                  const isSelected = selected.includes(c.id);
-                  return (
-                    <tr key={c.id} className={isSelected ? 'is-selected' : ''}>
-                      <td className="check-cell">
-                        {canCompare && (
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            disabled={!isSelected && selected.length >= MAX_COMPARE}
-                            onChange={() => toggle(c.id)}
-                            aria-label={`Compare ${c.name}`}
-                          />
-                        )}
-                      </td>
-                      <td>
-                        <Link to={`/app/candidates/${c.id}`} className="strong-link">
-                          {c.name}
-                        </Link>
-                        <div className="tiny muted">
-                          {c.email}
-                          {c.timeMultiplier > 1 && ` · ${c.timeMultiplier}× time`}
-                        </div>
-                      </td>
-                      <td>
-                        <StatusBadge status={c.status} />
-                        {c.submittedAt && <div className="tiny subtle">Submitted {formatDate(c.submittedAt)}</div>}
-                      </td>
-                      <td>
-                        {c.aiStatus === 'done' ? (
-                          <span className="score-cell">
-                            <Score value={c.adjustedScore ?? c.aiScore} />
-                            <RecommendationBadge value={c.aiRecommendation} />
-                          </span>
-                        ) : (
-                          <span className="small muted">{c.aiStatus ? AI_STATUS_LABEL[c.aiStatus] : '—'}</span>
-                        )}
-                      </td>
-                      <td>
-                        {c.notableSignals > 0 ? (
-                          <span
-                            className="badge badge-warn"
-                            title="Answers with notable integrity signals: probe these live"
-                          >
-                            {c.notableSignals} to probe
-                          </span>
-                        ) : (
-                          <span className="subtle">—</span>
-                        )}
-                      </td>
-                      <td className="small">
-                        {c.verification ? (
-                          [
-                            c.verification.identity && IDENTITY_LABEL[c.verification.identity],
-                            c.verification.consistency && CONSISTENCY_LABEL[c.verification.consistency],
-                          ]
-                            .filter(Boolean)
-                            .join(', ') || 'Notes only'
-                        ) : (
-                          <span className="subtle">—</span>
-                        )}
-                      </td>
-                      <td>
-                        <DecisionBadge decision={c.decision} />
-                      </td>
-                      <td className="right">
-                        {c.status === 'invited' || c.status === 'in_progress' ? (
-                          <CopyButton text={candidateLink(c.token)} />
-                        ) : (
-                          <Link to={`/app/candidates/${c.id}`} className="btn btn-secondary btn-sm">
-                            Review
-                          </Link>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {onlyStarred && !candidates.some((c) => c.starred) && (
+                  <tr>
+                    <td colSpan={8} className="muted small center">
+                      No starred candidates yet. Star someone to keep them on your watch list.
+                    </td>
+                  </tr>
+                )}
+                {candidates
+                  .filter((c) => !onlyStarred || c.starred)
+                  .map((c) => {
+                    const canCompare = COMPARABLE.includes(c.status);
+                    const isSelected = selected.includes(c.id);
+                    return (
+                      <tr key={c.id} className={isSelected ? 'is-selected' : ''}>
+                        <td className="check-cell">
+                          {canCompare && (
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              disabled={!isSelected && selected.length >= MAX_COMPARE}
+                              onChange={() => toggle(c.id)}
+                              aria-label={`Compare ${c.name}`}
+                            />
+                          )}
+                        </td>
+                        <td>
+                          <div className="person-cell">
+                            <Avatar name={c.name} size="md" />
+                            <div>
+                              <div className="row-gap name-line">
+                                <Link to={`/app/candidates/${c.id}`} className="strong-link">
+                                  {c.name}
+                                </Link>
+                                <button
+                                  type="button"
+                                  className={`star-toggle star-sm ${c.starred ? 'is-on' : ''}`}
+                                  aria-pressed={c.starred}
+                                  title={c.starred ? 'Remove from your watch list' : 'Add to your watch list'}
+                                  onClick={async () => {
+                                    await api.put(`/api/candidates/${c.id}/star`, { starred: !c.starred });
+                                    setData({
+                                      ...data,
+                                      candidates: candidates.map((x) =>
+                                        x.id === c.id ? { ...x, starred: !c.starred } : x,
+                                      ),
+                                    });
+                                  }}
+                                >
+                                  <Icon name="star" size={13} filled={c.starred} />
+                                </button>
+                              </div>
+                              <div className="tiny muted">
+                                {c.email}
+                                {c.timeMultiplier > 1 && ` · ${c.timeMultiplier}× time`}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <StatusBadge status={c.status} />
+                          {c.submittedAt && <div className="tiny subtle">Submitted {formatDate(c.submittedAt)}</div>}
+                        </td>
+                        <td>
+                          {c.aiStatus === 'done' ? (
+                            <span className="score-cell">
+                              <Score value={c.adjustedScore ?? c.aiScore} />
+                              <RecommendationBadge value={c.aiRecommendation} />
+                            </span>
+                          ) : (
+                            <span className="small muted">{c.aiStatus ? AI_STATUS_LABEL[c.aiStatus] : '—'}</span>
+                          )}
+                        </td>
+                        <td>
+                          {c.notableSignals > 0 ? (
+                            <span
+                              className="badge badge-warn"
+                              title="Answers with notable integrity signals: probe these live"
+                            >
+                              {c.notableSignals} to probe
+                            </span>
+                          ) : (
+                            <span className="subtle">—</span>
+                          )}
+                        </td>
+                        <td className="small">
+                          {c.verification ? (
+                            [
+                              c.verification.identity && IDENTITY_LABEL[c.verification.identity],
+                              c.verification.consistency && CONSISTENCY_LABEL[c.verification.consistency],
+                            ]
+                              .filter(Boolean)
+                              .join(', ') || 'Notes only'
+                          ) : (
+                            <span className="subtle">—</span>
+                          )}
+                        </td>
+                        <td>
+                          <DecisionBadge decision={c.decision} />
+                        </td>
+                        <td className="right">
+                          {c.status === 'invited' || c.status === 'in_progress' ? (
+                            <CopyButton text={candidateLink(c.token)} />
+                          ) : (
+                            <Link to={`/app/candidates/${c.id}`} className="btn btn-secondary btn-sm">
+                              Review
+                            </Link>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>

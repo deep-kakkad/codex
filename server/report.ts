@@ -26,6 +26,7 @@ import { audioParts } from './candidateFlow';
 import { aiReviewView } from './ai/queue';
 import { adjustedScores, overridesFor } from './overrides';
 import { familyFor } from './families';
+import { benchmarkFor, isStarred, notesFor, siblingsFor, starredIds } from './reviewExtras';
 import { type AssessmentRow, type CandidateRow, type DB, all, one, type ResponseRow, type VerificationRow } from './db';
 import { notFound } from './http';
 
@@ -105,8 +106,9 @@ function answerChars(response: ResponseRow) {
   return (response.text?.length ?? 0) + (response.reflection?.length ?? 0);
 }
 
-export async function candidateList(db: DB, assessment: AssessmentRow): Promise<CandidateListItem[]> {
+export async function candidateList(db: DB, assessment: AssessmentRow, viewerId: string): Promise<CandidateListItem[]> {
   const family = await familyFor(db, assessment);
+  const starred = await starredIds(db, viewerId, assessment.id);
   const kindOf = new Map(family.stages.map((s) => [s.id, s.kind]));
   const candidates = await all<CandidateRow>(
     db,
@@ -142,12 +144,13 @@ export async function candidateList(db: DB, assessment: AssessmentRow): Promise<
         ).length,
         verification: verification ? { identity: verification.identity, consistency: verification.consistency } : null,
         decision: candidate.decision as Decision | null,
+        starred: starred.has(candidate.id),
       };
     }),
   );
 }
 
-export async function candidateReport(db: DB, candidate: CandidateRow): Promise<CandidateReport> {
+export async function candidateReport(db: DB, candidate: CandidateRow, viewerId: string): Promise<CandidateReport> {
   const assessment = (await one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id))!;
   const family = await familyFor(db, assessment);
   const variant = JSON.parse(candidate.variant_json);
@@ -179,6 +182,7 @@ export async function candidateReport(db: DB, candidate: CandidateRow): Promise<
       shown,
       reviewerGuide: stage.reviewerGuide(ctx),
       rubric: stage.rubric,
+      dependsOn: stage.dependsOn ?? null,
       response: response
         ? {
             revealedAt: response.revealed_at,
@@ -279,5 +283,9 @@ export async function candidateReport(db: DB, candidate: CandidateRow): Promise<
       ),
       record,
     },
+    starred: await isStarred(db, viewerId, candidate.id),
+    notes: await notesFor(db, candidate.id, viewerId),
+    benchmark: await benchmarkFor(db, family, assessment.id, candidate.id),
+    siblings: await siblingsFor(db, assessment.id, candidate.id),
   };
 }

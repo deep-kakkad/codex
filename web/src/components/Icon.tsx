@@ -46,18 +46,44 @@ const PATHS = {
     </>
   ),
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
+  next: <path d="M9 18l6-6-6-6" />,
+  star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
+  play: <path d="M7 4.5v15l12-7.5z" />,
+  pause: <path d="M8 4.5v15M16 4.5v15" />,
+  note: (
+    <>
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+    </>
+  ),
+  keyboard: (
+    <>
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />
+    </>
+  ),
 } as const;
 
 export type IconName = keyof typeof PATHS;
 
-export function Icon({ name, size = 16, className = '' }: { name: IconName; size?: number; className?: string }) {
+export function Icon({
+  name,
+  size = 16,
+  className = '',
+  filled = false,
+}: {
+  name: IconName;
+  size?: number;
+  className?: string;
+  /** Solid shapes (a set star, the play button). */
+  filled?: boolean;
+}) {
   return (
     <svg
       className={`icon ${className}`}
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? 'currentColor' : 'none'}
       stroke="currentColor"
       strokeWidth="1.8"
       strokeLinecap="round"

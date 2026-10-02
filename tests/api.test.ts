@@ -28,7 +28,8 @@ async function testDb(): Promise<DB> {
   }
   await sharedPg.query(
     `TRUNCATE orgs, users, sessions, candidate_accounts, candidate_sessions, assessments, candidates,
-       responses, audio_parts, ai_reviews, transcripts, verifications, custom_families CASCADE`,
+       responses, audio_parts, ai_reviews, transcripts, verifications, custom_families, candidate_stars,
+       review_notes CASCADE`,
   );
   return sharedPg;
 }
@@ -1175,5 +1176,107 @@ describe('AI-generated scenarios', () => {
       .post('/api/generations')
       .send({ roleTitle: 'Field Sales', description: describeRole, currency: 'EUR' })
       .expect(400);
+  });
+});
+
+describe('review page collaboration', () => {
+  /** Two finished, AI-reviewed candidates on one assessment, scored differently. */
+  async function reviewedPair() {
+    const ctx = await setup();
+    await as(ctx.candidate.token)
+      .post(`${c(ctx.candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true });
+    await completeAll(ctx.candidate.token);
+    await reviews.idle();
+    ai.score = 2;
+    const { body: invited } = await ctx.manager
+      .post(`/api/assessments/${ctx.assessmentId}/candidates`)
+      .send({ name: 'Vikram Shah', email: 'vikram@example.com' })
+      .expect(201);
+    const second = invited.candidate as { id: string; token: string };
+    await candidateAccount(second.token, 'vikram@example.com', 'Vikram Shah');
+    await as(second.token)
+      .post(`${c(second.token)}/start`)
+      .send({ idName: 'Vikram Shah', consent: true });
+    await completeAll(second.token);
+    await reviews.idle();
+    return { ...ctx, second };
+  }
+
+  async function teammate(manager: ReturnType<typeof request.agent>) {
+    await manager
+      .post('/api/team')
+      .send({ name: 'Lee', email: 'lee@acme.test', password: 'teammate-pass' })
+      .expect(201);
+    const agent = request.agent(app);
+    await agent.post('/api/auth/login').send({ email: 'lee@acme.test', password: 'teammate-pass' }).expect(200);
+    return agent;
+  }
+
+  it('ranks a candidate against the pool and links to the neighbouring candidates', async () => {
+    const { manager, candidate, second } = await reviewedPair();
+    const first = (await manager.get(`/api/candidates/${candidate.id}`).expect(200)).body;
+    expect(first.benchmark).toMatchObject({ rank: 1, of: 2 });
+    expect(first.benchmark.overallAverage).toBeCloseTo(2.5, 5);
+    expect(first.benchmark.byStage['first-read']).toBeCloseTo(2.5, 5);
+    const other = (await manager.get(`/api/candidates/${second.id}`).expect(200)).body;
+    expect(other.benchmark).toMatchObject({ rank: 2, of: 2 });
+
+    // Newest first, as on the assessment page.
+    expect(other.siblings).toMatchObject({ index: 1, total: 2, prev: null, next: { id: candidate.id } });
+    expect(first.siblings).toMatchObject({ index: 2, total: 2, prev: { id: second.id }, next: null });
+    // The decision question's follow-up says which question it depends on.
+    const branch = first.stages.find((s: { kind: string }) => s.kind === 'branch');
+    expect(branch.dependsOn).toBe('budget-cut');
+  });
+
+  it('keeps a personal watch list', async () => {
+    const { manager, candidate, assessmentId } = await reviewedPair();
+    await manager.put(`/api/candidates/${candidate.id}/star`).send({ starred: true }).expect(200);
+    expect((await manager.get(`/api/candidates/${candidate.id}`)).body.starred).toBe(true);
+    const list = (await manager.get(`/api/assessments/${assessmentId}`)).body.candidates;
+    expect(list.filter((x: { starred: boolean }) => x.starred).map((x: { id: string }) => x.id)).toEqual([
+      candidate.id,
+    ]);
+
+    // Stars are per person.
+    const lee = await teammate(manager);
+    expect((await lee.get(`/api/candidates/${candidate.id}`)).body.starred).toBe(false);
+
+    await manager.put(`/api/candidates/${candidate.id}/star`).send({ starred: false }).expect(200);
+    expect((await manager.get(`/api/candidates/${candidate.id}`)).body.starred).toBe(false);
+    await manager.put(`/api/candidates/${candidate.id}/star`).send({ starred: 'yes' }).expect(400);
+  });
+
+  it('shares teammates’ notes, each removable only by its author', async () => {
+    const { manager, candidate } = await reviewedPair();
+    const lee = await teammate(manager);
+    const posted = (
+      await lee
+        .post(`/api/candidates/${candidate.id}/notes`)
+        .send({ body: 'Strong on the numbers; ask about Q4 on the call.', lean: 'advance' })
+        .expect(201)
+    ).body;
+    expect(posted.notes).toEqual([expect.objectContaining({ userName: 'Lee', lean: 'advance', mine: true })]);
+    const seen = (await manager.get(`/api/candidates/${candidate.id}`)).body.notes;
+    expect(seen).toEqual([expect.objectContaining({ userName: 'Lee', mine: false })]);
+
+    await manager.delete(`/api/candidates/${candidate.id}/notes/${seen[0].id}`).expect(404);
+    await lee.post(`/api/candidates/${candidate.id}/notes`).send({ body: 'x', lean: 'maybe' }).expect(400);
+    await lee.post(`/api/candidates/${candidate.id}/notes`).send({ body: '' }).expect(400);
+    const after = (await lee.delete(`/api/candidates/${candidate.id}/notes/${seen[0].id}`).expect(200)).body;
+    expect(after.notes).toEqual([]);
+
+    // Another organisation can't add notes.
+    const other = await signup('Other', 'sam@other.test');
+    await other.post(`/api/candidates/${candidate.id}/notes`).send({ body: 'hi' }).expect(404);
+  });
+
+  it('clears a decision back to reviewed', async () => {
+    const { manager, candidate } = await reviewedPair();
+    await manager.put(`/api/candidates/${candidate.id}/decision`).send({ decision: 'advance' }).expect(200);
+    const cleared = (await manager.put(`/api/candidates/${candidate.id}/decision`).send({ decision: null }).expect(200))
+      .body;
+    expect(cleared.candidate).toMatchObject({ decision: null, status: 'reviewed' });
   });
 });

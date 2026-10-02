@@ -17,6 +17,7 @@ import { RolePreview } from './pages/RolePreview';
 import { TakeAssessment } from './pages/TakeAssessment';
 import { Team } from './pages/Team';
 import '@fontsource-variable/inter';
+import '@fontsource-variable/newsreader/opsz.css';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(

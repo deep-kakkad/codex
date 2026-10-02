@@ -213,7 +213,7 @@ export function managerRoutes(deps: AppDeps) {
     res.json({
       assessment: await assessmentSummary(db, assessment),
       family: familySummary(await familyFor(db, assessment)),
-      candidates: await candidateList(db, assessment),
+      candidates: await candidateList(db, assessment, user.id),
     });
   });
 
@@ -249,7 +249,7 @@ export function managerRoutes(deps: AppDeps) {
       multiplier,
       now(),
     );
-    const created = (await candidateList(db, assessment)).find((c) => c.id === id);
+    const created = (await candidateList(db, assessment, user.id)).find((c) => c.id === id);
     res.status(201).json({ candidate: created });
   });
 
@@ -257,7 +257,7 @@ export function managerRoutes(deps: AppDeps) {
 
   router.get('/candidates/:id', async (req, res) => {
     const user = currentUser(res);
-    res.json(await candidateReport(db, await loadCandidate(db, user, req.params.id)));
+    res.json(await candidateReport(db, await loadCandidate(db, user, req.params.id), user.id));
   });
 
   router.get('/candidates/:id/audio/:stageId', async (req, res) => {
@@ -315,7 +315,7 @@ export function managerRoutes(deps: AppDeps) {
       note,
       now(),
     );
-    res.json(await candidateReport(db, candidate));
+    res.json(await candidateReport(db, candidate, user.id));
   });
 
   router.delete('/candidates/:id/overrides/:stageId/:criterionId', async (req, res) => {
@@ -328,7 +328,7 @@ export function managerRoutes(deps: AppDeps) {
       req.params.stageId,
       req.params.criterionId,
     );
-    res.json(await candidateReport(db, candidate));
+    res.json(await candidateReport(db, candidate, user.id));
   });
 
   // Re-runs a failed (or any) AI review, e.g. after fixing the API key.
@@ -337,7 +337,7 @@ export function managerRoutes(deps: AppDeps) {
     const candidate = await loadCandidate(db, user, req.params.id);
     if (!REVIEWABLE.includes(candidate.status)) throw conflict('The candidate has not finished yet');
     await deps.reviews.retry(candidate.id);
-    res.status(202).json(await candidateReport(db, await loadCandidate(db, user, candidate.id)));
+    res.status(202).json(await candidateReport(db, await loadCandidate(db, user, candidate.id), user.id));
   });
 
   router.put('/candidates/:id/verification', async (req, res) => {
@@ -370,7 +370,7 @@ export function managerRoutes(deps: AppDeps) {
       notes,
       now(),
     );
-    res.json(await candidateReport(db, await loadCandidate(db, user, candidate.id)));
+    res.json(await candidateReport(db, await loadCandidate(db, user, candidate.id), user.id));
   });
 
   router.put('/candidates/:id/decision', async (req, res) => {
@@ -378,22 +378,75 @@ export function managerRoutes(deps: AppDeps) {
     const candidate = await loadCandidate(db, user, req.params.id);
     if (!REVIEWABLE.includes(candidate.status)) throw conflict('The candidate has not finished yet');
     if (req.body.decision == null) {
-      const hasReview = await one<{ id: string }>(
+      // Back to where it was before the decision: reviewed if the AI review finished.
+      const review = await one<{ status: string }>(
         db,
-        'SELECT id FROM reviews WHERE candidate_id = ? AND submitted_at IS NOT NULL LIMIT 1',
+        'SELECT status FROM ai_reviews WHERE candidate_id = ?',
         candidate.id,
       );
       await run(
         db,
         'UPDATE candidates SET decision = NULL, status = ? WHERE id = ?',
-        hasReview ? 'reviewed' : 'submitted',
+        review?.status === 'done' ? 'reviewed' : 'submitted',
         candidate.id,
       );
     } else {
       const decision = oneOf(req.body.decision, 'Decision', ['advance', 'hold', 'reject'] as const);
       await run(db, "UPDATE candidates SET decision = ?, status = 'decided' WHERE id = ?", decision, candidate.id);
     }
-    res.json(await candidateReport(db, await loadCandidate(db, user, candidate.id)));
+    res.json(await candidateReport(db, await loadCandidate(db, user, candidate.id), user.id));
+  });
+
+  // A recruiter's personal watch list.
+  router.put('/candidates/:id/star', async (req, res) => {
+    const user = currentUser(res);
+    const candidate = await loadCandidate(db, user, req.params.id);
+    if (typeof req.body.starred !== 'boolean') throw badRequest('starred must be true or false');
+    if (req.body.starred) {
+      await run(
+        db,
+        'INSERT INTO candidate_stars (user_id, candidate_id, created_at) VALUES (?, ?, ?) ON CONFLICT DO NOTHING',
+        user.id,
+        candidate.id,
+        now(),
+      );
+    } else {
+      await run(db, 'DELETE FROM candidate_stars WHERE user_id = ? AND candidate_id = ?', user.id, candidate.id);
+    }
+    res.json({ starred: req.body.starred });
+  });
+
+  // Teammates' takes on a candidate. Anyone on the team can add one; only its author can remove it.
+  router.post('/candidates/:id/notes', async (req, res) => {
+    const user = currentUser(res);
+    const candidate = await loadCandidate(db, user, req.params.id);
+    const body = str(req.body.body, 'Note', { max: 2000 });
+    const lean = req.body.lean == null ? null : oneOf(req.body.lean, 'Lean', ['advance', 'hold', 'reject'] as const);
+    await run(
+      db,
+      'INSERT INTO review_notes (id, candidate_id, user_id, body, lean, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      randomUUID(),
+      candidate.id,
+      user.id,
+      body,
+      lean,
+      now(),
+    );
+    res.status(201).json(await candidateReport(db, candidate, user.id));
+  });
+
+  router.delete('/candidates/:id/notes/:noteId', async (req, res) => {
+    const user = currentUser(res);
+    const candidate = await loadCandidate(db, user, req.params.id);
+    const removed = await run(
+      db,
+      'DELETE FROM review_notes WHERE id = ? AND candidate_id = ? AND user_id = ?',
+      req.params.noteId,
+      candidate.id,
+      user.id,
+    );
+    if (!removed.changes) throw notFound('Note not found');
+    res.json(await candidateReport(db, candidate, user.id));
   });
 
   // Team -------------------------------------------------------------------
