@@ -54,6 +54,18 @@ const PATHS = {
     </>
   ),
   chevron: <path d="M6 9l6 6 6-6" />,
+  collapse: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16M15.5 10l-2 2 2 2" />
+    </>
+  ),
+  expand: (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16M13.5 10l2 2-2 2" />
+    </>
+  ),
   home: <path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1z" />,
   bars: <path d="M6 20V13M12 20V5M18 20v-9" />,
   quote: (

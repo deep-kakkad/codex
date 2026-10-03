@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link, NavLink, Outlet, useMatch, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Icon } from './Icon';
@@ -5,38 +6,73 @@ import { Logo } from './Logo';
 import { Avatar } from './ReviewBits';
 import { setUi, useUi } from '../ui';
 
+const SIDEBAR_KEY = 'proofwork-sidebar';
+
+function storedCollapsed() {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === 'collapsed';
+  } catch {
+    return false;
+  }
+}
+
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   // The candidate review is a working canvas: it uses the full width of the screen.
   const wide = useMatch('/app/candidates/:id') !== null;
   const ui = useUi();
+  // A slim icon rail gives the page the width back; the choice is remembered.
+  const [collapsed, setCollapsed] = useState(storedCollapsed);
+  function toggleSidebar() {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem(SIDEBAR_KEY, next ? 'collapsed' : 'expanded');
+    } catch {
+      // Storage can be refused in private windows; the choice still holds for this visit.
+    }
+  }
+
   return (
-    <div className="shell">
+    <div className={`shell ${collapsed ? 'is-collapsed' : ''}`}>
       <aside className="sidebar">
-        <NavLink to="/app" className="brand" end>
-          <Logo />
-          Proofwork
-        </NavLink>
+        <div className="sidebar-top">
+          <NavLink to="/app" className="brand" end aria-label="Proofwork">
+            <Logo />
+            <span className="side-label">Proofwork</span>
+          </NavLink>
+          <button
+            type="button"
+            className="sidebar-toggle"
+            onClick={toggleSidebar}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            data-tip={collapsed ? 'Expand sidebar' : undefined}
+            title={collapsed ? undefined : 'Collapse sidebar'}
+          >
+            <Icon name={collapsed ? 'expand' : 'collapse'} />
+          </button>
+        </div>
         {user && <div className="org-name">{user.orgName}</div>}
         {user?.role === 'manager' && (
-          <Link to="/app/new" className="btn btn-primary btn-sm side-cta">
+          <Link to="/app/new" className="btn btn-primary btn-sm side-cta" data-tip="New assessment">
             <Icon name="plus" size={14} />
-            New assessment
+            <span className="side-label">New assessment</span>
           </Link>
         )}
         <nav className="side-nav" aria-label="Main">
-          <NavLink to="/app" end>
+          <NavLink to="/app" end data-tip="Assessments">
             <Icon name="assessments" />
-            Assessments
+            <span className="side-label">Assessments</span>
           </NavLink>
-          <NavLink to="/app/library">
+          <NavLink to="/app/library" data-tip="Role library">
             <Icon name="library" />
-            Role library
+            <span className="side-label">Role library</span>
           </NavLink>
-          <NavLink to="/app/team">
+          <NavLink to="/app/team" data-tip="Team">
             <Icon name="team" />
-            Team
+            <span className="side-label">Team</span>
           </NavLink>
         </nav>
         <div className="ui-switch" role="group" aria-label="Interface">
@@ -64,7 +100,9 @@ export function AppLayout() {
         <div className="sidebar-foot">
           {user && (
             <>
-              <Avatar name={user.name} size="md" />
+              <span className="sidebar-avatar" title={collapsed ? `${user.name} · ${user.email}` : undefined}>
+                <Avatar name={user.name} size="md" />
+              </span>
               <div className="sidebar-user">
                 <strong>{user.name}</strong>
                 <span>{user.email}</span>

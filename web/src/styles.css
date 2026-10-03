@@ -671,7 +671,7 @@ input[type='checkbox'] {
   display: grid;
   grid-template-columns: 232px minmax(0, 1fr);
   min-height: 100vh;
-  background: linear-gradient(to right, var(--surface) 232px, var(--bg) 232px);
+  background: var(--bg);
 }
 .sidebar {
   position: sticky;
@@ -698,12 +698,43 @@ input[type='checkbox'] {
   color: var(--text);
 }
 .sidebar .brand {
+  min-width: 0;
   padding: 0.25rem 0.5rem;
   font-family: var(--serif);
   font-optical-sizing: auto;
   font-size: 1.35rem;
   font-weight: 550;
   letter-spacing: -0.01em;
+}
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.sidebar-toggle {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: none;
+  color: var(--subtle);
+  cursor: pointer;
+  transition:
+    background 0.12s,
+    color 0.12s;
+}
+.sidebar-toggle:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.sidebar-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ring);
 }
 .org-name {
   margin: 0 0.5rem;
@@ -770,6 +801,10 @@ input[type='checkbox'] {
   font-weight: 650;
   font-size: 0.8rem;
 }
+.sidebar-avatar {
+  flex: none;
+  display: flex;
+}
 .sidebar-user {
   min-width: 0;
   flex: 1;
@@ -799,9 +834,117 @@ input[type='checkbox'] {
   background-attachment: fixed;
 }
 .container {
-  max-width: 1180px;
+  /* Grows by the width a collapsed sidebar gives back. */
+  max-width: calc(1180px + var(--rail-gain, 0px));
   margin: 0 auto;
   padding: 1.75rem 2rem 4rem;
+}
+
+/* Collapsed sidebar: a slim icon rail, labels as tooltips. Wide screens only;
+ * on phones the sidebar is already a top bar. */
+@media (min-width: 901px) {
+  .shell {
+    transition: grid-template-columns 0.2s ease;
+  }
+  .shell.is-collapsed {
+    --rail-gain: 164px;
+    grid-template-columns: 68px minmax(0, 1fr);
+  }
+  .is-collapsed .sidebar {
+    z-index: 40;
+    align-items: center;
+    padding: 1rem 0.5rem;
+  }
+  .is-collapsed .sidebar-top {
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+  .is-collapsed .sidebar .brand {
+    padding: 0.25rem;
+  }
+  .is-collapsed .side-label,
+  .is-collapsed .ui-switch-label,
+  .is-collapsed .sidebar-user {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+  .is-collapsed .org-name {
+    display: none;
+  }
+  .is-collapsed .side-cta {
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    padding: 0;
+  }
+  .is-collapsed .side-nav {
+    align-self: stretch;
+    align-items: center;
+    gap: 4px;
+  }
+  .is-collapsed .side-nav a {
+    justify-content: center;
+    width: 44px;
+    height: 40px;
+    padding: 0;
+  }
+  .is-collapsed .side-nav a.active {
+    box-shadow: none;
+  }
+  .is-collapsed .ui-switch {
+    align-self: stretch;
+    margin: auto 0 0;
+    padding: 3px;
+  }
+  .is-collapsed .ui-switch-buttons {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .is-collapsed .ui-switch-buttons button {
+    min-height: 28px;
+    padding: 0;
+    font-size: 0.72rem;
+  }
+  .is-collapsed .sidebar-foot {
+    align-self: stretch;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem 0 0;
+  }
+  .is-collapsed .sidebar [data-tip] {
+    position: relative;
+  }
+  .is-collapsed .sidebar [data-tip]:hover::after,
+  .is-collapsed .sidebar [data-tip]:focus-visible::after {
+    content: attr(data-tip);
+    position: absolute;
+    top: 50%;
+    left: calc(100% + 12px);
+    z-index: 1;
+    transform: translateY(-50%);
+    padding: 0.3rem 0.55rem;
+    border-radius: var(--radius-xs);
+    background: var(--text);
+    color: var(--surface);
+    font-family: var(--font);
+    font-size: 0.78rem;
+    font-weight: 560;
+    letter-spacing: 0;
+    white-space: nowrap;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+  }
+}
+@media (min-width: 901px) and (prefers-reduced-motion: reduce) {
+  .shell {
+    transition: none;
+  }
 }
 @media (max-width: 900px) {
   .shell {
@@ -823,6 +966,9 @@ input[type='checkbox'] {
   }
   .sidebar .brand {
     padding: 0;
+  }
+  .sidebar-toggle {
+    display: none;
   }
   .org-name,
   .side-cta,
@@ -3072,7 +3218,7 @@ blockquote cite {
  * interface; candidates' own words in serif too. Cards: soft depth, 14px corners. */
 
 :where(:root:not([data-ui='v1'])) .container-wide {
-  max-width: 1480px;
+  max-width: calc(1480px + var(--rail-gain, 0px));
 }
 
 :where(:root:not([data-ui='v1'])) .rv {
@@ -5273,7 +5419,7 @@ blockquote cite {
  * Rhythm: 32 between blocks, 24 inside a block, 8 to 12 between related lines. */
 
 :where(:root[data-ui='v1']) .container-wide {
-  max-width: 1664px;
+  max-width: calc(1664px + var(--rail-gain, 0px));
 }
 
 :where(:root[data-ui='v1']) .rv {
