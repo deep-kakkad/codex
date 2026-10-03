@@ -29,7 +29,7 @@ async function testDb(): Promise<DB> {
   await sharedPg.query(
     `TRUNCATE orgs, users, sessions, candidate_accounts, candidate_sessions, assessments, candidates,
        responses, audio_parts, ai_reviews, transcripts, verifications, custom_families, candidate_stars,
-       review_notes CASCADE`,
+       review_notes, score_overrides, ai_usage, upgrade_requests, candidate_extras CASCADE`,
   );
   return sharedPg;
 }
@@ -40,6 +40,7 @@ let app: ReturnType<typeof createApp>['app'];
 let reviews: ReviewQueue;
 let generations: GenerationQueue;
 let ai: FakeAi;
+let db: DB;
 
 /** Stands in for OpenRouter: deterministic replies, and a record of every call. */
 interface FakeAi extends AiConfig {
@@ -72,6 +73,7 @@ function createFakeAi(): FakeAi {
     client: {
       async chat(req) {
         fake.calls.push(req);
+        req.onUsage?.({ model: req.model, promptTokens: 1000, completionTokens: 200, costUsd: 0.002 });
         if (fake.brokenJsonOnce) {
           fake.brokenJsonOnce = false;
           return 'Sure! Here is my assessment, not JSON.';
@@ -95,6 +97,36 @@ function createFakeAi(): FakeAi {
         }
         if (system.startsWith('You check assessment scenarios')) {
           return JSON.stringify({ issues: fake.specIssues });
+        }
+        if (system.startsWith('You check a job candidate')) {
+          return JSON.stringify({
+            findings: [
+              {
+                stageId: 'first-read',
+                kind: 'ai_like',
+                strength: 'strong',
+                quote: 'In conclusion',
+                why: 'Reads like a chatbot summary.',
+                ask: 'Walk me through it.',
+              },
+              { stageId: 'not-a-stage', kind: 'ai_like', strength: 'strong', quote: 'x', why: 'Ignored.' },
+            ],
+          });
+        }
+        if (system.startsWith('You prepare a hiring manager')) {
+          return JSON.stringify({
+            questions: Array.from({ length: 5 }, (_, i) => ({
+              stageId: i === 0 ? 'first-read' : null,
+              question: `Question ${i + 1}?`,
+              why: 'Tests ownership.',
+              listenFor: 'Specific numbers.',
+              redFlags: 'Generic answers.',
+            })),
+          });
+        }
+        if (system.startsWith('You draft a short email')) {
+          const decision = String(user).match(/Decision: (\w+)/)?.[1];
+          return JSON.stringify({ subject: `About your application (${decision})`, body: 'Hi Asha, thank you.' });
         }
         if (system.startsWith('You write the overall')) {
           return (
@@ -127,8 +159,9 @@ beforeEach(async () => {
   clock = 1_750_000_000_000;
   uploadDir = mkdtempSync(path.join(tmpdir(), 'proofwork-test-'));
   ai = createFakeAi();
+  db = await testDb();
   ({ app, reviews, generations } = createApp({
-    db: await testDb(),
+    db,
     files: localFileStore(uploadDir),
     now: () => clock,
     ai,
@@ -1147,9 +1180,19 @@ describe('AI-generated scenarios', () => {
     expect(String(writerCalls[1].messages.at(-1)!.content)).toMatch(/stages must be a list/);
   });
 
-  it('records a failure clearly, can be retried, and can be deleted', async () => {
+  it('starts a fresh draft when a draft and its repair both fail', async () => {
     const manager = await signup();
     ai.invalidSpecs = 2;
+    const id = await generate(manager);
+    expect((await manager.get(`/api/generations/${id}`).expect(200)).body.status).toBe('done');
+    const writerCalls = ai.calls.filter((call) => String(call.messages[0].content).startsWith('You write assessment'));
+    // Draft, failed repair, fresh draft.
+    expect(writerCalls).toHaveLength(3);
+  });
+
+  it('records a failure clearly, can be retried, and can be deleted', async () => {
+    const manager = await signup();
+    ai.invalidSpecs = 4;
     const id = await generate(manager);
     const { body: failed } = await manager.get(`/api/generations/${id}`).expect(200);
     expect(failed.status).toBe('failed');
@@ -1279,5 +1322,197 @@ describe('review page collaboration', () => {
     const cleared = (await manager.put(`/api/candidates/${candidate.id}/decision`).send({ decision: null }).expect(200))
       .body;
     expect(cleared.candidate).toMatchObject({ decision: null, status: 'reviewed' });
+  });
+});
+
+describe('plans, costs and AI extras', () => {
+  const begin = (token: string) =>
+    as(token)
+      .post(`${c(token)}/start`)
+      .send({ idName: 'Test Person', consent: true })
+      .expect(200);
+  /** An assessment with `count` candidates who all finished. */
+  async function finishedPool(count: number) {
+    const manager = await signup();
+    const { body: created } = await manager
+      .post('/api/assessments')
+      .send({ title: 'Growth Marketer', roleFamilyId: 'performance-marketing', currency: 'INR' })
+      .expect(201);
+    const people = Array.from({ length: count }, (_, i) => ({ name: `Person ${i}`, email: `p${i}@example.com` }));
+    const { body: bulk } = await manager
+      .post(`/api/assessments/${created.id}/candidates/bulk`)
+      .send({ people })
+      .expect(201);
+    for (const [i, cand] of (bulk.created as { token: string }[]).entries()) {
+      await candidateAccount(cand.token, `p${i}@example.com`, `Person ${i}`);
+      await begin(cand.token);
+      await completeAll(cand.token);
+    }
+    await reviews.idle();
+    return { manager, assessmentId: created.id as string, candidates: bulk.created as { id: string }[] };
+  }
+
+  it('reviews five candidates free, then holds reviews until the plan changes', async () => {
+    const { manager, assessmentId, candidates } = await finishedPool(6);
+    const { body: detail } = await manager.get(`/api/assessments/${assessmentId}`).expect(200);
+    const statuses = (detail.candidates as { aiStatus: string }[]).map((x) => x.aiStatus).sort();
+    expect(statuses).toEqual(['done', 'done', 'done', 'done', 'done', 'locked']);
+    const { body: plan } = await manager.get('/api/plan').expect(200);
+    expect(plan).toMatchObject({ plan: 'trial', included: 5, used: 5, locked: 1 });
+
+    // Re-running a held review doesn't get around the trial.
+    const held = candidates.find((x) =>
+      detail.candidates.find((d: { id: string; aiStatus: string }) => d.id === x.id && d.aiStatus === 'locked'),
+    )!;
+    await manager.post(`/api/candidates/${held.id}/ai-review`).expect(202);
+    await reviews.idle();
+    expect((await manager.get(`/api/candidates/${held.id}`)).body.aiReview.status).toBe('locked');
+
+    const { body: asked } = await manager.post('/api/plan/upgrade-request').send({ plan: 'starter' }).expect(201);
+    expect(asked.upgradeRequest).toMatchObject({ plan: 'starter' });
+    await manager.post('/api/plan/upgrade-request').send({ plan: 'enterprise' }).expect(400);
+
+    const { setPlan } = await import('../server/plans');
+    const org = (await db.query<{ id: string }>("SELECT id FROM orgs WHERE name = 'Acme'")).rows[0];
+    expect(await setPlan(db, org.id, 'starter')).toBe(1);
+    await reviews.resume();
+    await reviews.idle();
+    expect((await manager.get(`/api/candidates/${held.id}`)).body.aiReview.status).toBe('done');
+    expect((await manager.get('/api/plan')).body).toMatchObject({ plan: 'starter', included: 40, used: 6, locked: 0 });
+  });
+
+  it('spends a pay-as-you-go credit per review and holds the rest', async () => {
+    const manager = await signup();
+    const { setPlan } = await import('../server/plans');
+    const org = (await db.query<{ id: string }>("SELECT id FROM orgs WHERE name = 'Acme'")).rows[0];
+    await setPlan(db, org.id, 'payg', 1);
+    const { body: created } = await manager
+      .post('/api/assessments')
+      .send({ title: 'Growth Marketer', roleFamilyId: 'performance-marketing', currency: 'INR' })
+      .expect(201);
+    const { body: bulk } = await manager
+      .post(`/api/assessments/${created.id}/candidates/bulk`)
+      .send({
+        people: [
+          { name: 'A', email: 'a@example.com' },
+          { name: 'B', email: 'b@example.com' },
+        ],
+      })
+      .expect(201);
+    for (const [i, cand] of (bulk.created as { token: string }[]).entries()) {
+      await candidateAccount(cand.token, `${'ab'[i]}@example.com`);
+      await begin(cand.token);
+      await completeAll(cand.token);
+    }
+    await reviews.idle();
+    expect((await manager.get('/api/plan')).body).toMatchObject({ plan: 'payg', credits: 0, locked: 1 });
+  });
+
+  it('records what each review cost', async () => {
+    const { candidates } = await finishedPool(1);
+    const usage = (
+      await db.query<{ kind: string; calls: number; cost_usd: number; ok: number }>('SELECT * FROM ai_usage')
+    ).rows;
+    expect(usage).toHaveLength(1);
+    expect(usage[0]).toMatchObject({ kind: 'review', ok: 1 });
+    expect(usage[0].calls).toBeGreaterThan(1);
+    expect(usage[0].cost_usd).toBeCloseTo(usage[0].calls * 0.002);
+    const review = (
+      await db.query<{ cost_usd: number }>('SELECT cost_usd FROM ai_reviews WHERE candidate_id = $1', [
+        candidates[0].id,
+      ])
+    ).rows[0];
+    expect(review.cost_usd).toBeCloseTo(usage[0].cost_usd);
+  });
+
+  it('invites many people at once and reports the rows it skipped', async () => {
+    const { manager, assessmentId } = await setup();
+    const { body } = await manager
+      .post(`/api/assessments/${assessmentId}/candidates/bulk`)
+      .send({
+        timeMultiplier: 1.5,
+        people: [
+          { name: 'Ravi', email: 'ravi@example.com' },
+          { name: 'Ravi again', email: 'RAVI@example.com' },
+          { name: 'Asha', email: 'asha@example.com' },
+          { name: 'No email', email: 'not-an-email' },
+          { name: '', email: 'blank@example.com' },
+        ],
+      })
+      .expect(201);
+    expect(body.created).toHaveLength(1);
+    expect(body.created[0]).toMatchObject({ name: 'Ravi', timeMultiplier: 1.5, status: 'invited' });
+    expect(body.skipped.map((x: { reason: string }) => x.reason)).toEqual([
+      'Already invited to this assessment',
+      'Already invited to this assessment',
+      expect.stringContaining('mail'),
+      expect.stringContaining('Name'),
+    ]);
+    await manager.post(`/api/assessments/${assessmentId}/candidates/bulk`).send({ people: [] }).expect(400);
+  });
+
+  it('checks the writing, builds an interview kit and drafts the decision email', async () => {
+    const { manager, candidates } = await finishedPool(1);
+    const id = candidates[0].id;
+    const before = (await manager.get(`/api/candidates/${id}`)).body;
+    expect(before.integrity).toMatchObject({ verdict: 'clean', aiChecked: false });
+    expect(before.interviewKit).toBeNull();
+
+    const { body: checked } = await manager.post(`/api/candidates/${id}/integrity-check`).expect(200);
+    expect(checked.integrity.aiChecked).toBe(true);
+    expect(checked.integrity.items).toEqual([
+      expect.objectContaining({ stageId: 'first-read', level: 'strong', source: 'writing', quote: 'In conclusion' }),
+    ]);
+    expect(checked.integrity.verdict).toBe('question');
+
+    const { body: kit } = await manager.post(`/api/candidates/${id}/interview-kit`).expect(200);
+    expect(kit.interviewKit.questions).toHaveLength(5);
+    expect(kit.interviewKit.questions[0]).toMatchObject({ stageId: 'first-read', listenFor: 'Specific numbers.' });
+
+    await manager.post(`/api/candidates/${id}/decision-email`).expect(409);
+    await manager.put(`/api/candidates/${id}/decision`).send({ decision: 'reject' }).expect(200);
+    const { body: drafted } = await manager.post(`/api/candidates/${id}/decision-email`).expect(200);
+    expect(drafted.decisionEmail).toMatchObject({
+      decision: 'reject',
+      ai: true,
+      subject: 'About your application (reject)',
+    });
+    // A different decision makes the old draft stale.
+    const { body: changed } = await manager
+      .put(`/api/candidates/${id}/decision`)
+      .send({ decision: 'advance' })
+      .expect(200);
+    expect(changed.decisionEmail).toBeNull();
+
+    const kinds = (await db.query<{ kind: string }>('SELECT kind FROM ai_usage ORDER BY created_at')).rows.map(
+      (r) => r.kind,
+    );
+    expect(kinds).toEqual(expect.arrayContaining(['review', 'integrity', 'interview_kit', 'decision_email']));
+  });
+
+  it('needs the finished review before AI extras', async () => {
+    const { manager, candidate } = await setup();
+    await manager.post(`/api/candidates/${candidate.id}/interview-kit`).expect(409);
+    await manager.post(`/api/candidates/${candidate.id}/integrity-check`).expect(409);
+  });
+
+  it('writes a scenario from a pasted job description', async () => {
+    const manager = await signup();
+    const jd = `About us: we are a fast-growing payments company. ${'Responsibilities: visit merchants, read the weekly territory report, decide where to spend time. '.repeat(4)}Benefits: health cover.`;
+    await manager
+      .post('/api/generations')
+      .send({ roleTitle: 'Field Sales Executive', description: 'too short', currency: 'INR', source: 'jd' })
+      .expect(400);
+    const { body } = await manager
+      .post('/api/generations')
+      .send({ roleTitle: 'Field Sales Executive', description: jd, currency: 'INR', source: 'jd' })
+      .expect(201);
+    await generations.idle();
+    const { body: status } = await manager.get(`/api/generations/${body.id}`).expect(200);
+    expect(status).toMatchObject({ status: 'done', source: 'jd' });
+    const writer = ai.calls.find((call) => String(call.messages[0].content).startsWith('You write assessment'))!;
+    expect(String(writer.messages[1].content)).toContain('<job_description>');
+    const usage = (await db.query<{ kind: string }>('SELECT kind FROM ai_usage')).rows;
+    expect(usage.map((u) => u.kind)).toContain('generation');
   });
 });

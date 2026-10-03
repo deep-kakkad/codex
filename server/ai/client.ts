@@ -18,6 +18,16 @@ export interface ChatRequest {
    * think by default can otherwise spend the whole budget before answering.
    */
   reasoningTokens?: number;
+  /** Called once per successful reply with what it cost, as OpenRouter reports it. */
+  onUsage?: (usage: AiUsage) => void;
+}
+
+export interface AiUsage {
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  /** US dollars; 0 when the provider did not report a cost. */
+  costUsd: number;
 }
 
 export interface AiClient {
@@ -44,7 +54,7 @@ export class AiError extends Error {}
 /** OpenRouter's OpenAI-compatible chat API, with a timeout and retries on transient failures. */
 export function openRouterClient(apiKey: string, appUrl = 'https://proofwork.local'): AiClient {
   return {
-    async chat({ model, messages, maxTokens, temperature = 0.2, timeoutMs = TIMEOUT_MS, reasoningTokens }) {
+    async chat({ model, messages, maxTokens, temperature = 0.2, timeoutMs = TIMEOUT_MS, reasoningTokens, onUsage }) {
       let lastError: unknown;
       for (let attempt = 0; attempt < RETRIES; attempt++) {
         if (attempt > 0) await new Promise((r) => setTimeout(r, 2000 * 2 ** (attempt - 1)));
@@ -63,12 +73,14 @@ export function openRouterClient(apiKey: string, appUrl = 'https://proofwork.loc
               max_tokens: maxTokens,
               temperature,
               ...(reasoningTokens ? { reasoning: { max_tokens: reasoningTokens } } : {}),
+              usage: { include: true },
             }),
             signal: AbortSignal.timeout(timeoutMs),
           });
           const body = (await res.json().catch(() => ({}))) as {
             choices?: { message?: { content?: string }; finish_reason?: string }[];
             error?: { message?: string };
+            usage?: { prompt_tokens?: number; completion_tokens?: number; cost?: number };
           };
           if (!res.ok) {
             const message = `${model}: ${res.status} ${body.error?.message ?? res.statusText}`;
@@ -78,6 +90,15 @@ export function openRouterClient(apiKey: string, appUrl = 'https://proofwork.loc
               continue;
             }
             throw new AiError(message);
+          }
+          // A reply is paid for even when it turns out unusable.
+          if (body.usage) {
+            onUsage?.({
+              model,
+              promptTokens: body.usage.prompt_tokens ?? 0,
+              completionTokens: body.usage.completion_tokens ?? 0,
+              costUsd: body.usage.cost ?? 0,
+            });
           }
           const content = body.choices?.[0]?.message?.content;
           // A reply cut off at the token limit would be cut off again; say so instead of retrying.

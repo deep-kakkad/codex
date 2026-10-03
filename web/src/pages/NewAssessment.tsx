@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { RoleFamilySummary, StageOutline } from '../../../shared/api';
 import type { Currency } from '../../../shared/types';
 import { api, errorMessage } from '../api';
+import { Icon } from '../components/Icon';
 import { ErrorNote, KindBadge } from '../components/ui';
 import { formatMinutes, useApi } from '../hooks';
 import { GeneratedBadge } from './RoleLibrary';
@@ -43,8 +44,9 @@ export function NewAssessment() {
     if (f.fixedCurrency) setCurrency(f.fixedCurrency);
   }
 
-  // Arriving from "Use it" on a generated scenario.
+  // Arriving from "Use it" on a generated scenario, or from a job description.
   const preselect = params.get('family');
+  const fromJd = params.get('from') === 'jd' && familyId === preselect;
   useEffect(() => {
     const f = data?.families.find((x) => x.id === preselect);
     if (f && !familyId) pickRole(f);
@@ -80,7 +82,20 @@ export function NewAssessment() {
       </div>
       <ErrorNote error={loadError} />
 
-      <h2 className="section-title">1. What role are you hiring for?</h2>
+      {!fromJd && <FromJdCard />}
+      {fromJd && family && (
+        <div className="callout callout-info jd-ready">
+          <Icon name="sparkle" size={16} filled />
+          <span>
+            <strong>Your assessment is ready: {family.name}.</strong> Check the activities and{' '}
+            <Link to={`/app/library/${family.id}`}>read the scenario and answer key</Link>, then create it.
+          </span>
+        </div>
+      )}
+
+      <h2 className="section-title">
+        {fromJd ? '1. Built from your job description' : '1. Or pick a ready-made role'}
+      </h2>
       <div className="grid-cards">
         {data?.families.map((f) => (
           <div
@@ -173,5 +188,91 @@ export function NewAssessment() {
         </>
       )}
     </>
+  );
+}
+
+/** The fastest start: paste a job description and AI builds the whole assessment. */
+function FromJdCard() {
+  const navigate = useNavigate();
+  const [roleTitle, setRoleTitle] = useState('');
+  const [jd, setJd] = useState('');
+  const [currency, setCurrency] = useState<Currency>('INR');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const ready = roleTitle.trim().length > 0 && jd.trim().length >= 200;
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const { id } = await api.post<{ id: string }>('/api/generations', {
+        roleTitle,
+        description: jd,
+        currency,
+        source: 'jd',
+      });
+      navigate(`/app/new/from-jd/${id}`);
+    } catch (e) {
+      setError(errorMessage(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="card jd-form" onSubmit={submit}>
+      <div className="jd-form-head">
+        <span className="jd-badge">
+          <Icon name="sparkle" size={13} filled /> Fastest
+        </span>
+        <h2>Paste your job description</h2>
+        <p className="muted">
+          AI turns it into a full assessment for this exact role: a realistic scenario with numbers, think-aloud
+          questions, a decision, a critique with planted mistakes, an AI-allowed task, and the answer key. You check it
+          before anyone sees it.
+        </p>
+      </div>
+      <div className="jd-form-row">
+        <label className="field">
+          <span>Job title</span>
+          <input
+            value={roleTitle}
+            onChange={(e) => setRoleTitle(e.target.value)}
+            maxLength={120}
+            placeholder="e.g. Performance Marketing Manager"
+            required
+          />
+        </label>
+        <label className="field">
+          <span>Currency for amounts</span>
+          <select value={currency} onChange={(e) => setCurrency(e.target.value as Currency)}>
+            <option value="INR">Indian rupee (₹)</option>
+            <option value="USD">US dollar ($)</option>
+          </select>
+        </label>
+      </div>
+      <label className="field">
+        <span>Job description</span>
+        <textarea
+          value={jd}
+          onChange={(e) => setJd(e.target.value)}
+          rows={8}
+          maxLength={15000}
+          placeholder="Paste the whole job post: responsibilities, requirements, seniority. Benefits and boilerplate are fine; they're ignored."
+          required
+        />
+      </label>
+      <div className="jd-form-foot">
+        <span className="small muted">
+          {jd.trim().length < 200
+            ? `${Math.max(0, 200 - jd.trim().length)} more characters needed`
+            : 'Takes 3 to 6 minutes'}
+        </span>
+        <ErrorNote error={error} />
+        <button className="btn btn-primary" disabled={busy || !ready}>
+          {busy ? 'Starting…' : 'Build my assessment'}
+        </button>
+      </div>
+    </form>
   );
 }

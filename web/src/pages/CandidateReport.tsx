@@ -16,6 +16,7 @@ import { AudioPlayer, SpeedPicker } from '../components/AudioPlayer';
 import { Blocks } from '../components/Blocks';
 import { Icon, type IconName } from '../components/Icon';
 import { Avatar, type Evidence, Highlighted, ScoreRing, findEvidence } from '../components/ReviewBits';
+import { DecisionEmail, IntegrityPanel, InterviewKitPanel, LockedReview } from '../components/ReviewExtras';
 import { ThinkAloudReview } from '../components/ThinkAloudReview';
 import {
   Collapsible,
@@ -91,6 +92,7 @@ export function CandidateReportPage() {
       </div>
 
       <SummaryHeader report={report} finished={finished} tab={tab} onTab={setTab} onReport={setReport} />
+      <DecisionEmail key={`mail-${candidate.id}`} report={report} onReport={setReport} />
 
       {tab === 'review' && <ReviewTab key={candidate.id} report={report} finished={finished} onReport={setReport} />}
       {tab === 'verification' && <VerificationTab report={report} finished={finished} onReport={setReport} />}
@@ -569,6 +571,7 @@ function ReviewTab({
           <ScoreBreakdown report={report} current={current} onSelect={show} />
           {r && <WithAndWithoutAi report={report} text={r.withAndWithoutAi} />}
           {r && <EvidenceCheck report={report} />}
+          {r && <IntegrityPanel report={report} onReport={onReport} />}
           <TeamNotes report={report} onReport={onReport} />
         </aside>
       </div>
@@ -680,6 +683,13 @@ function ExecutiveSummary({
     }
   }
 
+  if (finished && review?.status === 'locked') {
+    return (
+      <section className="rv-card rv-exec">
+        <LockedReview report={report} />
+      </section>
+    );
+  }
   if (!finished || !review || review.status === 'pending' || review.status === 'running' || !r) {
     const failed = finished && review?.status === 'failed';
     return (
@@ -1818,140 +1828,151 @@ function VerificationTab({
   }
 
   return (
-    <div className="verification">
-      <div className="card script">
-        <div className="row-between">
-          <h2>Call script for {report.candidate.name}</h2>
-          <button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}>
-            Print
-          </button>
-        </div>
-        <p className="muted">
-          Real-time prompters and stand-in candidates struggle with quick follow-ups on their own specifics. This call,
-          not detection software, is your security layer.
-        </p>
-        <ul>
-          {script.opening.map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-        </ul>
-
-        <h3>1. Identity (2 minutes)</h3>
-        <ul className="check-list">
-          {script.identity.map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-        </ul>
-
-        <h3>2. Follow-ups on their answers (10 minutes)</h3>
-        {script.probes.map((probe) => (
-          <div key={probe.stageId} className={`probe ${probe.priority ? 'probe-priority' : ''}`}>
-            <div className="row-between">
-              <strong>{probe.stageTitle}</strong>
-              {probe.priority && <span className="badge badge-warn">Probe first</span>}
-            </div>
-            {probe.reasons.map((reason, i) => (
-              <p key={i} className="small probe-reason">
-                {reason}
-              </p>
-            ))}
-            <div className="probe-answer small">
-              {probe.answer.choiceLabel && (
-                <div>
-                  Chose: <strong>{probe.answer.choiceLabel}</strong>
-                </div>
-              )}
-              {probe.answer.hasText && <div>They wrote: “{probe.answer.excerpt}”</div>}
-              {probe.answer.hasVoice && (
-                <div>
-                  Voice note{probe.answer.voiceSec ? ` (${formatDuration(probe.answer.voiceSec)})` : ''}: listen before
-                  the call.
-                </div>
-              )}
-              {!probe.answer.hasText && !probe.answer.hasVoice && <div className="muted">No answer given.</div>}
-            </div>
-            <ol className="probe-questions">
-              {probe.questions.map((q, i) => (
-                <li key={i}>{q}</li>
-              ))}
-            </ol>
-          </div>
-        ))}
-
-        {report.aiReview?.result?.probes.length ? (
-          <>
-            <h4>Suggested by the AI review</h4>
-            <ol className="probe-questions">
-              {report.aiReview.result.probes.map((q, i) => (
-                <li key={i}>{q}</li>
-              ))}
-            </ol>
-          </>
-        ) : null}
-
-        <h3>3. Close (2 minutes)</h3>
-        <ul>
-          {script.closing.map((line, i) => (
-            <li key={i}>{line}</li>
-          ))}
-        </ul>
+    <>
+      <div className="px-stack">
+        <InterviewKitPanel report={report} onReport={onReport} />
+        <IntegrityPanel report={report} onReport={onReport} />
       </div>
-
-      <div className="card outcome no-print">
-        <h2>Call outcome</h2>
-        <fieldset>
-          <legend className="small">Identity</legend>
-          <div className="row-gap">
-            {(
-              [
-                ['verified', 'ID matches'],
-                ['not_verified', "ID doesn't match"],
-                ['not_checked', 'Not checked'],
-              ] as const
-            ).map(([value, label]) => (
-              <label key={value} className={`choice compact ${identity === value ? 'selected' : ''}`}>
-                <input type="radio" name="identity" checked={identity === value} onChange={() => setIdentity(value)} />
-                {label}
-              </label>
-            ))}
+      <div className="verification">
+        <div className="card script">
+          <div className="row-between">
+            <h2>Call script for {report.candidate.name}</h2>
+            <button className="btn btn-secondary btn-sm no-print" onClick={() => window.print()}>
+              Print
+            </button>
           </div>
-        </fieldset>
-        <fieldset>
-          <legend className="small">Were their live answers consistent with the written ones?</legend>
-          <div className="row-gap">
-            {(
-              [
-                ['consistent', 'Consistent'],
-                ['partly', 'Partly'],
-                ['inconsistent', 'Inconsistent'],
-              ] as const
-            ).map(([value, label]) => (
-              <label key={value} className={`choice compact ${consistency === value ? 'selected' : ''}`}>
-                <input
-                  type="radio"
-                  name="consistency"
-                  checked={consistency === value}
-                  onChange={() => setConsistency(value)}
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-        <label className="field">
-          <span className="small">Notes</span>
-          <textarea rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} />
-        </label>
-        <ErrorNote error={error} />
-        <button className="btn btn-primary" onClick={save} disabled={busy}>
-          {busy ? 'Saving…' : 'Save outcome'}
-        </button>
-        {record && (
-          <p className="small muted">
-            Last saved by {record.interviewerName}, {formatDate(record.updatedAt)}
+          <p className="muted">
+            Real-time prompters and stand-in candidates struggle with quick follow-ups on their own specifics. This
+            call, not detection software, is your security layer.
           </p>
-        )}
+          <ul>
+            {script.opening.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+
+          <h3>1. Identity (2 minutes)</h3>
+          <ul className="check-list">
+            {script.identity.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+
+          <h3>2. Follow-ups on their answers (10 minutes)</h3>
+          {script.probes.map((probe) => (
+            <div key={probe.stageId} className={`probe ${probe.priority ? 'probe-priority' : ''}`}>
+              <div className="row-between">
+                <strong>{probe.stageTitle}</strong>
+                {probe.priority && <span className="badge badge-warn">Probe first</span>}
+              </div>
+              {probe.reasons.map((reason, i) => (
+                <p key={i} className="small probe-reason">
+                  {reason}
+                </p>
+              ))}
+              <div className="probe-answer small">
+                {probe.answer.choiceLabel && (
+                  <div>
+                    Chose: <strong>{probe.answer.choiceLabel}</strong>
+                  </div>
+                )}
+                {probe.answer.hasText && <div>They wrote: “{probe.answer.excerpt}”</div>}
+                {probe.answer.hasVoice && (
+                  <div>
+                    Voice note{probe.answer.voiceSec ? ` (${formatDuration(probe.answer.voiceSec)})` : ''}: listen
+                    before the call.
+                  </div>
+                )}
+                {!probe.answer.hasText && !probe.answer.hasVoice && <div className="muted">No answer given.</div>}
+              </div>
+              <ol className="probe-questions">
+                {probe.questions.map((q, i) => (
+                  <li key={i}>{q}</li>
+                ))}
+              </ol>
+            </div>
+          ))}
+
+          {report.aiReview?.result?.probes.length ? (
+            <>
+              <h4>Suggested by the AI review</h4>
+              <ol className="probe-questions">
+                {report.aiReview.result.probes.map((q, i) => (
+                  <li key={i}>{q}</li>
+                ))}
+              </ol>
+            </>
+          ) : null}
+
+          <h3>3. Close (2 minutes)</h3>
+          <ul>
+            {script.closing.map((line, i) => (
+              <li key={i}>{line}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="card outcome no-print">
+          <h2>Call outcome</h2>
+          <fieldset>
+            <legend className="small">Identity</legend>
+            <div className="row-gap">
+              {(
+                [
+                  ['verified', 'ID matches'],
+                  ['not_verified', "ID doesn't match"],
+                  ['not_checked', 'Not checked'],
+                ] as const
+              ).map(([value, label]) => (
+                <label key={value} className={`choice compact ${identity === value ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="identity"
+                    checked={identity === value}
+                    onChange={() => setIdentity(value)}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend className="small">Were their live answers consistent with the written ones?</legend>
+            <div className="row-gap">
+              {(
+                [
+                  ['consistent', 'Consistent'],
+                  ['partly', 'Partly'],
+                  ['inconsistent', 'Inconsistent'],
+                ] as const
+              ).map(([value, label]) => (
+                <label key={value} className={`choice compact ${consistency === value ? 'selected' : ''}`}>
+                  <input
+                    type="radio"
+                    name="consistency"
+                    checked={consistency === value}
+                    onChange={() => setConsistency(value)}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <label className="field">
+            <span className="small">Notes</span>
+            <textarea rows={5} value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </label>
+          <ErrorNote error={error} />
+          <button className="btn btn-primary" onClick={save} disabled={busy}>
+            {busy ? 'Saving…' : 'Save outcome'}
+          </button>
+          {record && (
+            <p className="small muted">
+              Last saved by {record.interviewerName}, {formatDate(record.updatedAt)}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }

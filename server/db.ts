@@ -161,7 +161,7 @@ export interface CandidateAccountRow {
 
 export interface AiReviewRow {
   candidate_id: string;
-  status: 'pending' | 'running' | 'done' | 'failed';
+  status: 'pending' | 'running' | 'done' | 'failed' | 'locked';
   attempts: number;
   models: string | null;
   result_json: string | null;
@@ -192,6 +192,8 @@ export interface CustomFamilyRow {
   spec_json: string | null;
   error: string | null;
   model: string | null;
+  /** 'jd' when built from a pasted job description. */
+  source: 'description' | 'jd';
   created_at: number;
   updated_at: number;
 }

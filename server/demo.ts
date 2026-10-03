@@ -24,7 +24,8 @@ export async function seedDemo(db: DB, files: FileStore): Promise<boolean> {
   const orgId = DEMO_ORG_ID;
   const claimed = await run(
     db,
-    'INSERT INTO orgs (id, name, created_at) VALUES (?, ?, ?) ON CONFLICT (id) DO NOTHING',
+    // The public demo is never limited by the free trial.
+    "INSERT INTO orgs (id, name, created_at, plan) VALUES (?, ?, ?, 'pilot') ON CONFLICT (id) DO NOTHING",
     orgId,
     'Demo Co',
     clock,

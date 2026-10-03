@@ -5,6 +5,7 @@ import type { Currency, RoleFamily } from '../../shared/types';
 import { buildContext, generateVariant } from '../../shared/variants';
 import { type CustomFamilyRow, type DB, all, one, run } from '../db';
 import { type AiConfig, AiError, type ChatMessage, extractJson } from './client';
+import { UsageMeter, meteredAi, saveUsage } from './usage';
 
 export interface GenerationDeps {
   db: DB;
@@ -14,8 +15,10 @@ export interface GenerationDeps {
 
 export interface GenerationRequest {
   roleTitle: string;
+  /** The recruiter's description of the role, or a pasted job description. */
   description: string;
   currency: Currency;
+  source?: 'description' | 'jd';
 }
 
 const STALE_RUNNING_MS = 20 * 60 * 1000;
@@ -134,8 +137,14 @@ function writerRequest(request: GenerationRequest): ChatMessage[] {
         '',
         `## The role to write for`,
         `Title: ${request.roleTitle}`,
-        `What the recruiter says about it:`,
-        request.description,
+        ...(request.source === 'jd'
+          ? [
+              `The job description as posted. Build the scenario around the day-to-day responsibilities and the skills that separate a strong hire, at the seniority it describes. Ignore benefits, company boilerplate and legal text.`,
+              '<job_description>',
+              request.description,
+              '</job_description>',
+            ]
+          : [`What the recruiter says about it:`, request.description]),
         '',
         'Write a new scenario for this role in the same JSON format. Make it as specific to this role as the example is to content marketing.',
       ].join('\n'),
@@ -183,7 +192,15 @@ export async function generateFamilySpec(
     }
   };
 
-  let spec = await draftToSpec(messages, await write(messages));
+  let spec: FamilySpec;
+  try {
+    spec = await draftToSpec(messages, await write(messages));
+  } catch (error) {
+    // Now and then a draft and its repair both go wrong (a repair can even run
+    // past the token limit); a fresh draft usually comes out fine.
+    console.error('Scenario draft failed; writing a fresh one:', (error as Error).message);
+    spec = await draftToSpec(messages, await write(messages));
+  }
   // A revision takes about as long as the draft; only check if there is time to act on it.
   const draftMs = deps.now() - started;
   if (draftMs * 2.2 > TIME_BUDGET_MS) return { spec, model };
@@ -237,14 +254,15 @@ export async function createGeneration(
   await run(
     db,
     `INSERT INTO custom_families
-       (id, org_id, created_by, role_title, description, currency, status, attempts, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?)`,
+       (id, org_id, created_by, role_title, description, currency, source, status, attempts, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?, ?)`,
     id,
     orgId,
     userId,
     request.roleTitle,
     request.description,
     request.currency,
+    request.source ?? 'description',
     now,
     now,
   );
@@ -263,12 +281,19 @@ export async function processGeneration(deps: GenerationDeps, id: string): Promi
   );
   if (!claimed.changes) return false;
   const row = (await one<CustomFamilyRow>(db, 'SELECT * FROM custom_families WHERE id = ?', id))!;
+  const meter = new UsageMeter();
+  let ok = false;
   try {
-    const { spec, model } = await generateFamilySpec(deps, {
-      roleTitle: row.role_title,
-      description: row.description,
-      currency: row.currency,
-    });
+    const { spec, model } = await generateFamilySpec(
+      { ...deps, ai: meteredAi(deps.ai, meter) },
+      {
+        roleTitle: row.role_title,
+        description: row.description,
+        currency: row.currency,
+        source: row.source,
+      },
+    );
+    ok = true;
     await run(
       db,
       "UPDATE custom_families SET status = 'done', spec_json = ?, model = ?, error = NULL, updated_at = ? WHERE id = ?",
@@ -288,6 +313,7 @@ export async function processGeneration(deps: GenerationDeps, id: string): Promi
       id,
     );
   }
+  await saveUsage(db, { orgId: row.org_id, kind: 'generation', refId: id, meter, ok, now: now() });
   return true;
 }
 

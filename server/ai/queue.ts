@@ -1,6 +1,8 @@
 import type { AiReviewResult, AiReviewView } from '../../shared/api';
 import { type AiReviewRow, type DB, all, one, run } from '../db';
+import { mayStartReview } from '../plans';
 import { type ReviewDeps, reviewCandidate } from './review';
+import { UsageMeter, meteredAi, saveUsage } from './usage';
 
 /** A review stuck in "running" this long is assumed dead (crash, timeout) and retried. */
 export const STALE_RUNNING_MS = 20 * 60 * 1000;
@@ -29,6 +31,25 @@ async function markPending(db: DB, candidateId: string, now: number) {
   );
 }
 
+/**
+ * First queueing of a finished candidate's review: pending if the plan covers
+ * it, otherwise locked until the plan changes. Returns whether it may run.
+ */
+async function startOrLock(db: DB, candidateId: string, now: number): Promise<boolean> {
+  const candidate = await one<{ org_id: string }>(db, 'SELECT org_id FROM candidates WHERE id = ?', candidateId);
+  const allowed = candidate ? await mayStartReview(db, candidate.org_id) : false;
+  await run(
+    db,
+    `INSERT INTO ai_reviews (candidate_id, status, attempts, created_at, updated_at) VALUES (?, ?, 0, ?, ?)
+     ON CONFLICT (candidate_id) DO NOTHING`,
+    candidateId,
+    allowed ? 'pending' : 'locked',
+    now,
+    now,
+  );
+  return allowed;
+}
+
 /** Pending reviews to (re)start: queued, stuck, or failed with attempts left; plus old submissions. */
 async function reviewsToResume(deps: ReviewDeps): Promise<string[]> {
   const now = deps.now();
@@ -48,7 +69,7 @@ async function reviewsToResume(deps: ReviewDeps): Promise<string[]> {
     deps.db,
     `SELECT id FROM candidates WHERE status = 'submitted' AND id NOT IN (SELECT candidate_id FROM ai_reviews)`,
   )) {
-    await markPending(deps.db, c.id, now);
+    await startOrLock(deps.db, c.id, now);
   }
   return (
     await all<{ candidate_id: string }>(deps.db, "SELECT candidate_id FROM ai_reviews WHERE status = 'pending'")
@@ -69,15 +90,21 @@ export async function processReview(deps: ReviewDeps, candidateId: string): Prom
     candidateId,
   );
   if (!claimed.changes) return false;
+  const meter = new UsageMeter();
+  const org = await one<{ org_id: string }>(db, 'SELECT org_id FROM candidates WHERE id = ?', candidateId);
+  let ok = false;
   try {
-    const result: AiReviewResult = await reviewCandidate(deps, candidateId);
+    const result: AiReviewResult = await reviewCandidate({ ...deps, ai: meteredAi(deps.ai, meter) }, candidateId);
+    ok = true;
     await run(
       db,
-      `UPDATE ai_reviews SET status = 'done', result_json = ?, models = ?, error = NULL, updated_at = ?
+      `UPDATE ai_reviews SET status = 'done', result_json = ?, models = ?, error = NULL, updated_at = ?,
+              cost_usd = COALESCE(cost_usd, 0) + ?
         WHERE candidate_id = ?`,
       JSON.stringify(result),
       `${result.models.review}, ${result.models.audio}`,
       now(),
+      meter.costUsd,
       candidateId,
     );
     await run(db, "UPDATE candidates SET status = 'reviewed' WHERE id = ? AND status = 'submitted'", candidateId);
@@ -86,13 +113,23 @@ export async function processReview(deps: ReviewDeps, candidateId: string): Prom
     console.error(`AI review failed for ${candidateId}: ${message}`);
     await run(
       db,
-      "UPDATE ai_reviews SET status = 'failed', error = ?, updated_at = ? WHERE candidate_id = ?",
+      `UPDATE ai_reviews SET status = 'failed', error = ?, updated_at = ?, cost_usd = COALESCE(cost_usd, 0) + ?
+        WHERE candidate_id = ?`,
       message.slice(0, 1000),
       now(),
+      meter.costUsd,
       candidateId,
     );
   }
+  if (org) await saveUsage(db, { orgId: org.org_id, kind: 'review', refId: candidateId, meter, ok, now: now() });
   return true;
+}
+
+/** A re-run never unlocks a review the plan doesn't cover; one never queued is queued under the plan. */
+async function reviewMayRetry(db: DB, candidateId: string, now: number): Promise<boolean> {
+  const existing = await one<AiReviewRow>(db, 'SELECT status FROM ai_reviews WHERE candidate_id = ?', candidateId);
+  if (!existing) return startOrLock(db, candidateId, now);
+  return existing.status !== 'locked';
 }
 
 /** Local development and tests: reviews run one at a time in this process. */
@@ -104,11 +141,12 @@ export function inProcessQueue(deps: ReviewDeps): ReviewQueue {
   return {
     async enqueue(candidateId) {
       const existing = await one<AiReviewRow>(deps.db, 'SELECT * FROM ai_reviews WHERE candidate_id = ?', candidateId);
-      if (existing?.status === 'done') return;
-      if (!existing) await markPending(deps.db, candidateId, deps.now());
+      if (existing?.status === 'done' || existing?.status === 'locked') return;
+      if (!existing && !(await startOrLock(deps.db, candidateId, deps.now()))) return;
       schedule(candidateId);
     },
     async retry(candidateId) {
+      if (!(await reviewMayRetry(deps.db, candidateId, deps.now()))) return;
       await markPending(deps.db, candidateId, deps.now());
       schedule(candidateId);
     },
@@ -151,11 +189,12 @@ export function backgroundFunctionQueue(deps: ReviewDeps, triggerUrl: string): R
   return {
     async enqueue(candidateId) {
       const existing = await one<AiReviewRow>(deps.db, 'SELECT * FROM ai_reviews WHERE candidate_id = ?', candidateId);
-      if (existing?.status === 'done') return;
-      if (!existing) await markPending(deps.db, candidateId, deps.now());
+      if (existing?.status === 'done' || existing?.status === 'locked') return;
+      if (!existing && !(await startOrLock(deps.db, candidateId, deps.now()))) return;
       await trigger(candidateId);
     },
     async retry(candidateId) {
+      if (!(await reviewMayRetry(deps.db, candidateId, deps.now()))) return;
       await markPending(deps.db, candidateId, deps.now());
       await trigger(candidateId);
     },
@@ -174,6 +213,7 @@ export async function aiReviewView(db: DB, candidateId: string): Promise<AiRevie
     attempts: row.attempts,
     error: row.error,
     updatedAt: row.updated_at,
-    result: row.result_json ? JSON.parse(row.result_json) : null,
+    // A held review shows nothing until the plan covers it.
+    result: row.result_json && row.status !== 'locked' ? JSON.parse(row.result_json) : null,
   };
 }

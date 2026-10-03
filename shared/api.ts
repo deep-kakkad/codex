@@ -1,5 +1,6 @@
 // Shapes of the JSON the API returns. Shared so the client stays in sync.
 import type { CandidatePhaseView } from './candidateApi';
+import type { PlanId } from './plans';
 import type { SignalNote } from './signals';
 import type {
   Block,
@@ -61,6 +62,8 @@ export interface GenerationView {
   error: string | null;
   /** The family name once it is written. */
   name: string | null;
+  /** 'jd' when it was built from a pasted job description. */
+  source: 'description' | 'jd';
   createdAt: number;
   updatedAt: number;
   /** Assessments using it; a generation in use can't be deleted. */
@@ -189,7 +192,8 @@ export interface ReportStage {
   response: StageResponseView | null;
 }
 
-export type AiReviewStatus = 'pending' | 'running' | 'done' | 'failed';
+/** "locked": finished, but beyond what the workspace's plan covers; it runs once the plan changes. */
+export type AiReviewStatus = 'pending' | 'running' | 'done' | 'failed' | 'locked';
 
 export interface AiCriterionScore {
   score: number;
@@ -286,6 +290,78 @@ export interface CandidateReport {
   notes: ReviewNote[];
   benchmark: Benchmark | null;
   siblings: CandidateSiblings;
+  integrity: IntegrityReport;
+  /** Made on request: follow-up interview questions built on this candidate's answers. */
+  interviewKit: InterviewKit | null;
+  /** The last drafted email about the decision, if one was drafted. */
+  decisionEmail: DecisionEmailDraft | null;
+}
+
+export type IntegrityVerdict = 'clean' | 'question' | 'likely';
+
+export interface IntegrityItem {
+  stageId: string | null;
+  stageTitle: string | null;
+  /** "strong" only from the AI writing check, backed by a quote. */
+  level: 'info' | 'notable' | 'strong';
+  source: 'signals' | 'timing' | 'delivery' | 'writing' | 'consistency';
+  text: string;
+  quote?: string;
+  /** A question for the live call. */
+  ask?: string;
+}
+
+/** Everything that suggests someone or something else did the thinking, as hints, never proof. */
+export interface IntegrityReport {
+  verdict: IntegrityVerdict;
+  headline: string;
+  items: IntegrityItem[];
+  /** Whether the AI writing check has run; it adds what the browser can't see. */
+  aiChecked: boolean;
+  checkedAt: number | null;
+}
+
+export interface InterviewKitQuestion {
+  stageId: string | null;
+  question: string;
+  /** What it tests, and why for this candidate. */
+  why: string;
+  listenFor: string;
+  redFlags: string;
+}
+
+export interface InterviewKit {
+  questions: InterviewKitQuestion[];
+  createdAt: number;
+}
+
+export interface DecisionEmailDraft {
+  decision: Decision;
+  subject: string;
+  body: string;
+  /** False when AI was unavailable and a template was used. */
+  ai: boolean;
+  createdAt: number;
+}
+
+export interface PlanView {
+  plan: PlanId;
+  name: string;
+  /** Reviews the trial or monthly plan includes; null when unlimited or prepaid. */
+  included: number | null;
+  /** Reviews used in the trial, or this calendar month. */
+  used: number;
+  period: 'trial' | 'month';
+  /** Prepaid reviews left, on pay as you go. */
+  credits: number | null;
+  /** Finished candidates whose review waits for an upgrade. */
+  locked: number;
+  upgradeRequest: { plan: string; createdAt: number } | null;
+}
+
+export interface BulkInviteResult {
+  created: CandidateListItem[];
+  skipped: { name: string; email: string; reason: string }[];
 }
 
 /** A teammate's short take on a candidate, with an optional lean. */

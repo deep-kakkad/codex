@@ -1,9 +1,11 @@
-import { useState } from 'react';
-import { Link, NavLink, Outlet, useMatch, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom';
+import type { PlanView } from '../../../shared/api';
 import { useAuth } from '../auth';
 import { Icon } from './Icon';
 import { Logo } from './Logo';
 import { Avatar } from './ReviewBits';
+import { useApi } from '../hooks';
 import { setUi, useUi } from '../ui';
 
 const SIDEBAR_KEY = 'proofwork-sidebar';
@@ -22,6 +24,12 @@ export function AppLayout() {
   // The candidate review is a working canvas: it uses the full width of the screen.
   const wide = useMatch('/app/candidates/:id') !== null;
   const ui = useUi();
+  const { pathname } = useLocation();
+  const { data: plan, reload: reloadPlan } = useApi<PlanView>('/api/plan');
+  // Usage changes as candidates finish; check again on each page.
+  useEffect(() => {
+    void reloadPlan();
+  }, [pathname, reloadPlan]);
   // A slim icon rail gives the page the width back; the choice is remembered.
   const [collapsed, setCollapsed] = useState(storedCollapsed);
   function toggleSidebar() {
@@ -74,7 +82,12 @@ export function AppLayout() {
             <Icon name="team" />
             <span className="side-label">Team</span>
           </NavLink>
+          <NavLink to="/app/plan" data-tip="Plan">
+            <Icon name="card" />
+            <span className="side-label">Plan</span>
+          </NavLink>
         </nav>
+        {plan && <TrialMeter plan={plan} />}
         <div className="ui-switch" role="group" aria-label="Interface">
           <span className="ui-switch-label">Interface</span>
           <div className="ui-switch-buttons">
@@ -129,4 +142,40 @@ export function AppLayout() {
       </main>
     </div>
   );
+}
+
+/** How much of the free trial (or prepaid credit) is left; hidden on unlimited and monthly plans. */
+function TrialMeter({ plan }: { plan: PlanView }) {
+  if (plan.plan === 'trial' && plan.included !== null) {
+    const left = Math.max(0, plan.included - plan.used);
+    return (
+      <Link to="/app/plan" className={`trial-meter ${left === 0 ? 'is-out' : ''}`}>
+        <span className="trial-meter-label">Free trial</span>
+        <span className="trial-meter-count">
+          {left === 0 ? 'No free reviews left' : `${left} of ${plan.included} free reviews left`}
+        </span>
+        <span className="trial-meter-bar" aria-hidden="true">
+          <span style={{ width: `${(left / plan.included) * 100}%` }} />
+        </span>
+        {plan.locked > 0 && (
+          <span className="trial-meter-locked">
+            {plan.locked} review{plan.locked === 1 ? '' : 's'} waiting
+          </span>
+        )}
+        <span className="trial-meter-cta">See plans</span>
+      </Link>
+    );
+  }
+  if (plan.plan === 'payg' && plan.credits !== null) {
+    return (
+      <Link to="/app/plan" className={`trial-meter ${plan.credits === 0 ? 'is-out' : ''}`}>
+        <span className="trial-meter-label">Pay as you go</span>
+        <span className="trial-meter-count">
+          {plan.credits} review credit{plan.credits === 1 ? '' : 's'} left
+        </span>
+        {plan.locked > 0 && <span className="trial-meter-locked">{plan.locked} waiting</span>}
+      </Link>
+    );
+  }
+  return null;
 }

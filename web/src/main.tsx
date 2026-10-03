@@ -13,6 +13,8 @@ import { Dashboard } from './pages/Dashboard';
 import { Landing } from './pages/Landing';
 import { NewAssessment } from './pages/NewAssessment';
 import { NotFound } from './pages/NotFound';
+import { PlanPage } from './pages/PlanPage';
+import { FromJobDescription } from './pages/FromJobDescription';
 import { RoleLibrary } from './pages/RoleLibrary';
 import { RolePreview } from './pages/RolePreview';
 import { TakeAssessment } from './pages/TakeAssessment';
@@ -62,6 +64,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="library" element={<RoleLibrary />} />
             <Route path="library/:id" element={<RolePreview />} />
             <Route path="team" element={<Team />} />
+            <Route path="plan" element={<PlanPage />} />
+            <Route path="new/from-jd/:id" element={<FromJobDescription />} />
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>

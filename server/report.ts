@@ -1,3 +1,4 @@
+import { type ReportCore, withExtras } from './extras';
 import type {
   AssessmentSummary,
   CandidateListItem,
@@ -151,6 +152,10 @@ export async function candidateList(db: DB, assessment: AssessmentRow, viewerId:
 }
 
 export async function candidateReport(db: DB, candidate: CandidateRow, viewerId: string): Promise<CandidateReport> {
+  return withExtras(db, await reportCore(db, candidate, viewerId));
+}
+
+export async function reportCore(db: DB, candidate: CandidateRow, viewerId: string): Promise<ReportCore> {
   const assessment = (await one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id))!;
   const family = await familyFor(db, assessment);
   const variant = JSON.parse(candidate.variant_json);
