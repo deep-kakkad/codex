@@ -7,6 +7,7 @@ import type { CandidateSession } from '../shared/candidateApi';
 import type { AiConfig, ChatRequest } from '../server/ai/client';
 import type { ReviewQueue } from '../server/ai/queue';
 import { type GenerationQueue, exampleSpec } from '../server/ai/generateFamily';
+import { ROLE_FAMILIES } from '../shared/roleFamilies';
 import { contentBrand } from '../shared/roleFamilies/contentBrand';
 import { createApp } from '../server/app';
 import { SUBMIT_GRACE_MS } from '../server/candidateFlow';
@@ -1081,13 +1082,9 @@ describe('role library', () => {
   it('previews every branch of a role family with a chosen seed', async () => {
     const manager = await signup();
     const { body } = await manager.get('/api/role-families').expect(200);
-    expect(body.families.map((f: { id: string }) => f.id)).toEqual([
-      'performance-marketing',
-      'content-brand',
-      'seo',
-      'social-media',
-      'customer-support-lead',
-    ]);
+    expect(body.families.map((f: { id: string }) => f.id)).toEqual(ROLE_FAMILIES.map((f) => f.id));
+    // Every ready-made role carries its catalogue filters.
+    expect(body.families.every((f: { catalog?: { function: string } }) => f.catalog?.function)).toBe(true);
 
     const preview = (
       await manager.get('/api/role-families/customer-support-lead/preview?seed=5&currency=USD').expect(200)
