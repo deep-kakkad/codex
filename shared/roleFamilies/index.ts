@@ -4,10 +4,13 @@ import { businessAnalyst } from './businessAnalyst';
 import { contentBrand } from './contentBrand';
 import { customerSupport } from './customerSupport';
 import { dataAnalyst } from './dataAnalyst';
+import { foundersOffice } from './foundersOffice';
 import { itSupport } from './itSupport';
+import { operationsManager } from './operationsManager';
 import { performanceMarketing } from './performanceMarketing';
 import { productAnalyst } from './productAnalyst';
 import { productManager } from './productManager';
+import { projectManager } from './projectManager';
 import { sdr } from './sdr';
 import { seo } from './seo';
 import { socialMedia } from './socialMedia';
@@ -29,6 +32,9 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   dataAnalyst,
   businessAnalyst,
   itSupport,
+  operationsManager,
+  projectManager,
+  foundersOffice,
 ];
 
 export function getRoleFamily(id: string): RoleFamily | undefined {

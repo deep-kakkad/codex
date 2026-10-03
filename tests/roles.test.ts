@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { getRoleFamily } from '../shared/roleFamilies';
 import { baCapacity } from '../shared/roleFamilies/businessAnalyst';
 import { regionMath } from '../shared/roleFamilies/dataAnalyst';
+import { siteMath } from '../shared/roleFamilies/operationsManager';
 import { experimentMath } from '../shared/roleFamilies/productAnalyst';
+import { projectGoLive } from '../shared/roleFamilies/projectManager';
 import { sdrPlayMath } from '../shared/roleFamilies/sdr';
 import type { Currency } from '../shared/types';
 import { generateVariant, n, s } from '../shared/variants';
@@ -115,6 +117,34 @@ describe('hand-built roles keep their planted facts', () => {
       );
       expect(new Set(ids).size).toBe(8);
       expect(n(v, 'outageMins')).toBeLessThan(60);
+    });
+  });
+
+  it('Ops: only the late-truck site is short of capacity today; the spike overloads all', () => {
+    eachVariant('operations-manager', (v) => {
+      const [a, b, late] = siteMath(v);
+      expect(late.capacity).toBeLessThan(late.orders);
+      expect(a.capacity).toBeGreaterThan(a.orders);
+      expect(b.capacity).toBeGreaterThan(b.orders);
+      // The late site has as many pickers as the smallest other site, give or take.
+      expect(late.pickers).toBeGreaterThanOrEqual(36);
+      for (const site of [a, b]) expect(site.orders * (1 + n(v, 'spikePct') / 100)).toBeGreaterThan(site.capacity);
+    });
+  });
+
+  it('Project manager: the plan can never make the promised date', () => {
+    eachVariant('project-manager', (v) => {
+      expect(projectGoLive(v)).toBeGreaterThan(n(v, 'weeksToLaunch'));
+      expect(n(v, 'buildDoneWeek')).toBeGreaterThan(0);
+    });
+  });
+
+  it("Founder's office: each order loses money and the runway shrinks", () => {
+    eachVariant('founders-office', (v) => {
+      expect(n(v, 'cmAfter')).toBeLessThan(0);
+      expect(n(v, 'cmBefore')).toBeGreaterThan(0);
+      expect(n(v, 'burnAfter')).toBeGreaterThan(n(v, 'burnBefore'));
+      expect(n(v, 'discountAfter')).toBeGreaterThan(n(v, 'discountBefore') * 1.5);
     });
   });
 });
