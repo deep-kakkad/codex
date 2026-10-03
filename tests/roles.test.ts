@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { getRoleFamily } from '../shared/roleFamilies';
+import { reconMath } from '../shared/roleFamilies/accountant';
 import { baCapacity } from '../shared/roleFamilies/businessAnalyst';
 import { regionMath } from '../shared/roleFamilies/dataAnalyst';
+import { equityMath } from '../shared/roleFamilies/equityResearch';
+import { fpaMath } from '../shared/roleFamilies/fpaAnalyst';
 import { siteMath } from '../shared/roleFamilies/operationsManager';
 import { experimentMath } from '../shared/roleFamilies/productAnalyst';
 import { projectGoLive } from '../shared/roleFamilies/projectManager';
@@ -145,6 +148,41 @@ describe('hand-built roles keep their planted facts', () => {
       expect(n(v, 'cmBefore')).toBeGreaterThan(0);
       expect(n(v, 'burnAfter')).toBeGreaterThan(n(v, 'burnBefore'));
       expect(n(v, 'discountAfter')).toBeGreaterThan(n(v, 'discountBefore') * 1.5);
+    });
+  });
+
+  it('FP&A: revenue misses on price, profit beats on delayed costs', () => {
+    eachVariant('fpa-analyst', (v) => {
+      const m = fpaMath(v);
+      expect(m.revVar).toBeLessThan(0);
+      expect(m.priceEffect).toBeLessThan(0);
+      expect(Math.abs(m.volumeEffect)).toBeLessThan(Math.abs(m.priceEffect));
+      expect(m.ebitdaA).toBeGreaterThan(m.ebitdaB);
+    });
+  });
+
+  it('Accountant: the reconciling items explain the whole difference', () => {
+    eachVariant('accountant', (v) => {
+      const r = reconMath(v);
+      const items = n(v, 'unclearedCheque') - n(v, 'bankCharges') - n(v, 'dupReceipt') + n(v, 'unrecordedReceipt');
+      expect(r.difference).toBe(items);
+      expect(r.difference).not.toBe(0);
+      expect(new Set([s(v, 'vendorQ'), s(v, 'vendorP'), s(v, 'vendorS')]).size).toBe(3);
+      expect(n(v, 'newInvoice')).toBeGreaterThan(n(v, 'dupPayment'));
+      expect(n(v, 'overdueAmount')).toBeGreaterThan(n(v, 'paidLastWeek'));
+    });
+  });
+
+  it('Equity research: growth up, cash and collections getting worse every year', () => {
+    eachVariant('equity-research', (v) => {
+      const rows = equityMath(v);
+      for (let i = 1; i < rows.length; i++) {
+        expect(rows[i].revenue).toBeGreaterThan(rows[i - 1].revenue);
+        expect(rows[i].receivableDays).toBeGreaterThan(rows[i - 1].receivableDays);
+        expect(rows[i].ocf / rows[i].ebitda).toBeLessThan(rows[i - 1].ocf / rows[i - 1].ebitda);
+        expect(rows[i].pledgePct).toBeGreaterThan(rows[i - 1].pledgePct);
+      }
+      expect(n(v, 'pe')).toBeLessThan(n(v, 'peerPe'));
     });
   });
 });

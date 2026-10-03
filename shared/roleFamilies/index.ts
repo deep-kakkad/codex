@@ -1,10 +1,13 @@
 import type { RoleFamily } from '../types';
 import { accountExecutive } from './accountExecutive';
+import { accountant } from './accountant';
 import { businessAnalyst } from './businessAnalyst';
 import { contentBrand } from './contentBrand';
 import { customerSupport } from './customerSupport';
 import { dataAnalyst } from './dataAnalyst';
+import { equityResearch } from './equityResearch';
 import { foundersOffice } from './foundersOffice';
+import { fpaAnalyst } from './fpaAnalyst';
 import { itSupport } from './itSupport';
 import { operationsManager } from './operationsManager';
 import { performanceMarketing } from './performanceMarketing';
@@ -35,6 +38,9 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   operationsManager,
   projectManager,
   foundersOffice,
+  fpaAnalyst,
+  accountant,
+  equityResearch,
 ];
 
 export function getRoleFamily(id: string): RoleFamily | undefined {
