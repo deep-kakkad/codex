@@ -1,7 +1,7 @@
-import { Fragment, type ReactNode } from 'react';
+import { Fragment, type ReactNode, useEffect, useRef, useState } from 'react';
 
 /** Initials on a soft colour picked from the name, so people are easy to tell apart. */
-export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg' }) {
+export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' | 'lg' | 'xl' }) {
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -20,9 +20,34 @@ export function Avatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md'
 const ADVANCE_AT = 3;
 const HOLD_AT = 2.3;
 
-/** Overall score as a dial out of 4, with the hold and advance lines marked. */
+const reducedMotion = () =>
+  typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
+/** Counts up from zero the first time a value appears, then follows it without animating. */
+export function useCountUp(target: number | null, ms = 800) {
+  const played = useRef(false);
+  const [shown, setShown] = useState<number | null>(() => (target === null || reducedMotion() ? target : 0));
+  useEffect(() => {
+    if (target === null || played.current || reducedMotion()) {
+      setShown(target);
+      return;
+    }
+    const start = performance.now();
+    let frame = requestAnimationFrame(function step(now) {
+      const t = Math.min(1, (now - start) / ms);
+      setShown(target * (1 - (1 - t) ** 3));
+      if (t < 1) frame = requestAnimationFrame(step);
+      else played.current = true;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [target, ms]);
+  return shown;
+}
+
+/** Overall score as a dial out of 4, with the hold and advance lines marked. Draws itself in on first show. */
 export function ScoreRing({ value, size = 104 }: { value: number | null; size?: number }) {
-  const stroke = 9;
+  const counted = useCountUp(value);
+  const stroke = Math.max(6, Math.round(size / 11));
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const tone = value === null ? 'none' : value >= ADVANCE_AT ? 'good' : value >= HOLD_AT ? 'mid' : 'low';
@@ -59,8 +84,8 @@ export function ScoreRing({ value, size = 104 }: { value: number | null; size?: 
         <line className="ring-tick ring-tick-advance" {...tick(ADVANCE_AT)} />
       </svg>
       <div className="ring-label">
-        <span className="ring-value">{value?.toFixed(1) ?? '—'}</span>
-        <span className="ring-max">out of 4</span>
+        <span className="ring-value">{counted?.toFixed(1) ?? '—'}</span>
+        <span className="ring-max">of 4</span>
       </div>
     </div>
   );
@@ -103,8 +128,16 @@ export function findEvidence(text: string, evidence: Evidence[]) {
   return kept;
 }
 
-/** Candidate text with the AI's evidence highlighted in place. */
-export function Highlighted({ text, evidence }: { text: string; evidence: Evidence[] }): ReactNode {
+/** Candidate text with the AI's evidence highlighted in place; `hot` is the criterion being pointed at. */
+export function Highlighted({
+  text,
+  evidence,
+  hot = null,
+}: {
+  text: string;
+  evidence: Evidence[];
+  hot?: string | null;
+}): ReactNode {
   const spans = findEvidence(text, evidence);
   if (!spans.length) return text;
   const out: ReactNode[] = [];
@@ -112,7 +145,12 @@ export function Highlighted({ text, evidence }: { text: string; evidence: Eviden
   spans.forEach((s, i) => {
     if (s.start > at) out.push(<Fragment key={`t${i}`}>{text.slice(at, s.start)}</Fragment>);
     out.push(
-      <mark key={`m${i}`} className="evidence-mark" data-crit={s.id} title={`Evidence for "${s.label}"`}>
+      <mark
+        key={`m${i}`}
+        className={`evidence-mark ${s.id === hot ? 'is-hot' : ''}`}
+        data-crit={s.id}
+        title={`Evidence for "${s.label}"`}
+      >
         {text.slice(s.start, s.end)}
       </mark>,
     );

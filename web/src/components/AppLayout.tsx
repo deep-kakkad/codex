@@ -1,4 +1,4 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useMatch, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Icon } from './Icon';
 import { Logo } from './Logo';
@@ -7,6 +7,8 @@ import { Avatar } from './ReviewBits';
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  // The candidate review is a working canvas: it uses the full width of the screen.
+  const wide = useMatch('/app/candidates/:id') !== null;
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -59,7 +61,7 @@ export function AppLayout() {
         </div>
       </aside>
       <main className="shell-main">
-        <div className="container">
+        <div className={`container ${wide ? 'container-wide' : ''}`}>
           <Outlet />
         </div>
       </main>

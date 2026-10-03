@@ -1,4 +1,14 @@
-import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  type FormEvent,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type {
   AiStageReview,
@@ -9,36 +19,46 @@ import type {
   VerificationRecord,
 } from '../../../shared/api';
 import { formatDuration } from '../../../shared/signals';
-import type { Decision, Delivery } from '../../../shared/types';
+import { type Decision, type Delivery, type Recommendation, STAGE_KIND_LABEL } from '../../../shared/types';
 import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { AudioPlayer, SpeedPicker } from '../components/AudioPlayer';
 import { Blocks } from '../components/Blocks';
-import { Icon } from '../components/Icon';
+import { Icon, type IconName } from '../components/Icon';
 import { Avatar, type Evidence, Highlighted, ScoreRing, findEvidence } from '../components/ReviewBits';
 import { ThinkAloudReview } from '../components/ThinkAloudReview';
-import {
-  Collapsible,
-  CopyButton,
-  DecisionBadge,
-  ErrorNote,
-  KindBadge,
-  RecommendationBadge,
-  Score,
-  StatusBadge,
-  candidateLink,
-} from '../components/ui';
+import { Collapsible, CopyButton, DecisionBadge, ErrorNote, StatusBadge, candidateLink } from '../components/ui';
 import { formatDate, useApi } from '../hooks';
 
 type Tab = 'review' | 'verification' | 'scenario';
 const POLL_MS = 4000;
 const FLASH_MS = 1400;
+/** The entrance plays while the page carries `rv-intro`; this is how long it keeps it. */
+const INTRO_MS = 1100;
+/** The question crossing this line (a share of the window's height) is the one being read. */
+const READING_LINE = 0.3;
+/** Space between margin notes; matches `.crit-note + .crit-note`. */
+const NOTE_GAP = 24;
+
+const REC_LABEL: Record<Recommendation, string> = { advance: 'Advance', hold: 'Hold', reject: 'Do not advance' };
+const DECISIONS: { value: Decision; label: string; icon: IconName }[] = [
+  { value: 'advance', label: 'Advance', icon: 'check' },
+  { value: 'hold', label: 'Hold', icon: 'pause' },
+  { value: 'reject', label: 'Reject', icon: 'x' },
+];
+
+const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
 export function CandidateReportPage() {
   const { id } = useParams();
   const { data: report, setData: setReport, error, reload } = useApi<CandidateReport>(`/api/candidates/${id}`);
   const [tab, setTab] = useState<Tab>('review');
-  const reviewing = report?.aiReview?.status === 'pending' || report?.aiReview?.status === 'running';
+  const [settled, setSettled] = useState<string | null>(null);
+  const status = report?.aiReview?.status;
+  const reviewing = status === 'pending' || status === 'running';
+  const ready = report?.candidate.id === id;
+  // The entrance plays for each candidate, and again when their AI review arrives.
+  const introKey = ready ? `${id}:${status ?? 'none'}` : null;
 
   // Keep checking while the AI review runs in the background.
   useEffect(() => {
@@ -47,46 +67,223 @@ export function CandidateReportPage() {
     return () => window.clearInterval(timer);
   }, [reviewing, reload]);
 
+  useEffect(() => {
+    if (!introKey) return;
+    const timer = window.setTimeout(() => setSettled(introKey), INTRO_MS);
+    return () => window.clearTimeout(timer);
+  }, [introKey]);
+
   if (error) return <ErrorNote error={error} />;
-  if (!report || report.candidate.id !== id) return <p className="muted">Loading…</p>;
+  if (!report || !ready) return <p className="muted">Loading…</p>;
 
   const { candidate } = report;
   const finished = ['submitted', 'reviewed', 'decided'].includes(candidate.status);
 
   return (
-    <>
-      <div className="page-head">
-        <div className="person-head">
-          <Link to={`/app/assessments/${report.assessment.id}`} className="back-link">
-            <Icon name="back" size={14} />
-            {report.assessment.title}
-          </Link>
-          <div className="person-title">
-            <Avatar name={candidate.name} size="lg" />
-            <div>
-              <h1>
-                {candidate.name} <StatusBadge status={candidate.status} />
-              </h1>
-              <div className="meta-dots">
-                <span>{candidate.email}</span>
-                {candidate.submittedAt ? (
-                  <span
-                    title={`Invited ${formatDate(candidate.createdAt)} · started ${formatDate(candidate.startedAt)}`}
-                  >
-                    Submitted {formatDate(candidate.submittedAt)}
-                  </span>
-                ) : (
-                  <span>Invited {formatDate(candidate.createdAt)}</span>
-                )}
-                {candidate.timeMultiplier > 1 && <span>{candidate.timeMultiplier}× time</span>}
-              </div>
-            </div>
-          </div>
-        </div>
-        {!finished && <CopyButton text={candidateLink(candidate.token)} label="Copy candidate link" />}
+    <div className={`rv ${settled !== introKey ? 'rv-intro' : ''}`}>
+      <div className="rv-topline">
+        <Link to={`/app/assessments/${report.assessment.id}`} className="back-link">
+          <Icon name="back" size={14} />
+          {report.assessment.title}
+        </Link>
+        <Pager report={report} />
       </div>
 
-      <div className="tabs" role="tablist">
+      <SummaryHeader report={report} finished={finished} tab={tab} onTab={setTab} onReport={setReport} />
+
+      {tab === 'review' && <ReviewTab key={candidate.id} report={report} finished={finished} onReport={setReport} />}
+      {tab === 'verification' && (
+        <div className="rv-pane">
+          <VerificationTab report={report} finished={finished} onReport={setReport} />
+        </div>
+      )}
+      {tab === 'scenario' && (
+        <div className="rv-pane rv-scenario">
+          <p className="callout callout-info">
+            {report.family.generated
+              ? 'Every candidate on this assessment saw this same scenario.'
+              : 'Numbers and names are generated for this candidate. Other candidates saw a different version.'}
+          </p>
+          <Blocks blocks={report.brief} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Previous and next candidate on this assessment. Once decided, "Next" becomes the obvious step. */
+function Pager({ report, compact = false }: { report: CandidateReport; compact?: boolean }) {
+  const { prev, next, index, total } = report.siblings;
+  if (total < 2 || index === null) return null;
+  const decided = Boolean(report.candidate.decision);
+  return (
+    <div className="pager" aria-label="Other candidates">
+      {prev ? (
+        <Link
+          to={`/app/candidates/${prev.id}`}
+          className="btn btn-ghost btn-sm"
+          title={`Previous: ${prev.name}`}
+          aria-label={`Previous candidate: ${prev.name}`}
+        >
+          <Icon name="back" size={14} />
+        </Link>
+      ) : (
+        <span className="btn btn-ghost btn-sm is-disabled" aria-hidden="true">
+          <Icon name="back" size={14} />
+        </span>
+      )}
+      <span className="pager-pos num">
+        {index} of {total}
+      </span>
+      {next ? (
+        <Link
+          to={`/app/candidates/${next.id}`}
+          className={`btn btn-sm ${decided ? 'btn-primary' : 'btn-ghost'}`}
+          title={`Next: ${next.name}`}
+          aria-label={`Next candidate: ${next.name}`}
+        >
+          {decided && <span>{compact ? 'Next' : 'Next candidate'}</span>}
+          <Icon name="next" size={14} />
+        </Link>
+      ) : (
+        <span className="btn btn-ghost btn-sm is-disabled" aria-hidden="true">
+          <Icon name="next" size={14} />
+        </span>
+      )}
+    </div>
+  );
+}
+
+// Summary header ----------------------------------------------------------------
+
+function firstSentence(text: string) {
+  const sentence = text.trim().split(/(?<=[.!?])\s/)[0] ?? '';
+  return sentence.length > 160 ? `${sentence.slice(0, 157)}…` : sentence;
+}
+
+function ordinal(n: number) {
+  const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
+  return `${n}${suffix}`;
+}
+
+/** The team's leans from their notes, e.g. "2 advance · 1 hold". */
+function teamLean(report: CandidateReport) {
+  const counts: Partial<Record<Decision, number>> = {};
+  for (const note of report.notes) if (note.lean) counts[note.lean] = (counts[note.lean] ?? 0) + 1;
+  return DECISIONS.filter((d) => counts[d.value])
+    .map((d) => `${counts[d.value]} ${d.value}`)
+    .join(' · ');
+}
+
+/** Who they are, the verdict, and the decision, composed as one block. */
+function SummaryHeader({
+  report,
+  finished,
+  tab,
+  onTab,
+  onReport,
+}: {
+  report: CandidateReport;
+  finished: boolean;
+  tab: Tab;
+  onTab: (tab: Tab) => void;
+  onReport: (r: CandidateReport) => void;
+}) {
+  const { candidate } = report;
+  const review = report.aiReview;
+  const r = review?.result ?? null;
+  const overall = report.adjusted?.overall ?? r?.overall ?? null;
+  const recommendation = report.adjusted?.recommendation ?? r?.recommendation ?? null;
+  const headline = r ? r.headline?.trim() || firstSentence(r.summary) : null;
+  const bench = report.benchmark;
+  const scoring = !review || review.status === 'pending' || review.status === 'running';
+  const reached = report.stages.filter((s) => s.response).length;
+
+  return (
+    <header className="rv-head">
+      <div className="rv-head-who">
+        <Avatar name={candidate.name} size="xl" />
+        <div className="rv-head-text">
+          <div className="rv-name-row">
+            <h1 className="rv-name">{candidate.name}</h1>
+            <StarToggle report={report} onReport={onReport} />
+          </div>
+          <div className="rv-meta">
+            <StatusBadge status={candidate.status} />
+            <span>{candidate.email}</span>
+            {candidate.submittedAt ? (
+              <span title={`Invited ${formatDate(candidate.createdAt)} · started ${formatDate(candidate.startedAt)}`}>
+                Submitted {formatDate(candidate.submittedAt)}
+              </span>
+            ) : (
+              <span>Invited {formatDate(candidate.createdAt)}</span>
+            )}
+            {candidate.timeMultiplier > 1 && <span>{candidate.timeMultiplier}× time</span>}
+          </div>
+          {headline && <p className="rv-headline">{headline}</p>}
+        </div>
+      </div>
+
+      <div className="rv-unit">
+        {!finished ? (
+          <div className="rv-unit-wait">
+            <span className="rv-label">{candidate.status === 'invited' ? "Hasn't started yet" : 'Still working'}</span>
+            <p>
+              {candidate.status === 'invited'
+                ? 'Send them their link. The AI review starts as soon as they submit.'
+                : `On question ${reached} of ${report.stages.length}. The AI review starts as soon as they submit.`}
+            </p>
+            <CopyButton text={candidateLink(candidate.token)} label="Copy candidate link" />
+          </div>
+        ) : (
+          <>
+            <div className="rv-unit-verdict">
+              {r ? (
+                <ScoreRing value={overall} size={88} />
+              ) : (
+                <div className="rv-ring-empty" aria-hidden="true">
+                  {scoring ? <span className="spinner" /> : '—'}
+                </div>
+              )}
+              <div className="rv-rec">
+                <span className="rv-label">AI recommends</span>
+                {r ? (
+                  <strong className={`rv-rec-value rec-${recommendation ?? 'none'}`}>
+                    {recommendation ? REC_LABEL[recommendation] : '—'}
+                  </strong>
+                ) : (
+                  <strong className="rv-rec-value rec-none">{scoring ? 'Scoring…' : 'No AI score'}</strong>
+                )}
+                <span className="rv-rank">
+                  {!r ? (
+                    scoring ? (
+                      'Usually takes a minute or two.'
+                    ) : (
+                      'You can still review the answers and decide.'
+                    )
+                  ) : bench ? (
+                    <>
+                      Ranked <strong>{ordinal(bench.rank)}</strong> of {bench.of}
+                      {bench.overallAverage !== null && <> · pool average {bench.overallAverage.toFixed(1)}</>}
+                    </>
+                  ) : (
+                    'The first reviewed candidate here'
+                  )}
+                </span>
+                {r && report.adjusted && (
+                  <span className="rv-rank">
+                    AI scored {r.overall?.toFixed(1)}; {report.overrides.length} score
+                    {report.overrides.length === 1 ? '' : 's'} changed by your team
+                  </span>
+                )}
+              </div>
+            </div>
+            <DecisionControl report={report} onReport={onReport} />
+          </>
+        )}
+      </div>
+
+      <div className="rv-tabs" role="tablist">
         {(
           [
             ['review', 'Review'],
@@ -99,26 +296,95 @@ export function CandidateReportPage() {
             role="tab"
             aria-selected={tab === key}
             className={tab === key ? 'active' : ''}
-            onClick={() => setTab(key)}
+            onClick={() => onTab(key)}
           >
             {label}
           </button>
         ))}
       </div>
+    </header>
+  );
+}
 
-      {tab === 'review' && <ReviewTab key={candidate.id} report={report} finished={finished} onReport={setReport} />}
-      {tab === 'verification' && <VerificationTab report={report} finished={finished} onReport={setReport} />}
-      {tab === 'scenario' && (
-        <div className="card">
-          <p className="callout callout-info">
-            {report.family.generated
-              ? 'Every candidate on this assessment saw this same scenario.'
-              : 'Numbers and names are generated for this candidate. Other candidates saw a different version.'}
-          </p>
-          <Blocks blocks={report.brief} />
+/** Adds or removes the candidate from the viewer's watch list. */
+function StarToggle({ report, onReport }: { report: CandidateReport; onReport: (r: CandidateReport) => void }) {
+  const [busy, setBusy] = useState(false);
+  const starred = report.starred;
+  async function toggleStar() {
+    setBusy(true);
+    try {
+      await api.put(`/api/candidates/${report.candidate.id}/star`, { starred: !starred });
+      onReport({ ...report, starred: !starred });
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      className={`star-toggle ${starred ? 'is-on' : ''}`}
+      onClick={toggleStar}
+      disabled={busy}
+      aria-pressed={starred}
+      title={starred ? 'Remove from your watch list' : 'Add to your watch list'}
+    >
+      <Icon name="star" size={18} filled={starred} />
+    </button>
+  );
+}
+
+/** Advance, hold or reject: the page's main task. Large in the header, compact in the sticky bar. */
+function DecisionControl({
+  report,
+  onReport,
+  size = 'lg',
+}: {
+  report: CandidateReport;
+  onReport: (r: CandidateReport) => void;
+  size?: 'lg' | 'sm';
+}) {
+  const { user } = useAuth();
+  const [error, setError] = useState<string | null>(null);
+  if (user?.role !== 'manager') return null;
+  const finished = ['submitted', 'reviewed', 'decided'].includes(report.candidate.status);
+  if (!finished) return null;
+  const chosen = report.candidate.decision;
+  const lean = teamLean(report);
+
+  async function decide(decision: Decision | null) {
+    try {
+      onReport(await api.put<CandidateReport>(`/api/candidates/${report.candidate.id}/decision`, { decision }));
+      setError(null);
+    } catch (e) {
+      setError(errorMessage(e));
+    }
+  }
+
+  return (
+    <div className={`rv-decide rv-decide-${size}`}>
+      {size === 'lg' && (
+        <div className="rv-decide-head">
+          <span className="rv-label">Your decision</span>
+          {lean && <span className="rv-lean">Team notes: {lean}</span>}
         </div>
       )}
-    </>
+      <div className="rv-decide-buttons" role="group" aria-label="Your decision">
+        {DECISIONS.map((d) => (
+          <button
+            key={d.value}
+            type="button"
+            className={`rv-decide-btn is-${d.value} ${chosen === d.value ? 'is-chosen' : ''}`}
+            aria-pressed={chosen === d.value}
+            title={chosen === d.value ? 'Chosen. Click again to clear.' : undefined}
+            onClick={() => decide(chosen === d.value ? null : d.value)}
+          >
+            <Icon name={d.icon} size={size === 'lg' ? 16 : 14} />
+            <span>{d.label}</span>
+          </button>
+        ))}
+      </div>
+      <ErrorNote error={error} />
+    </div>
   );
 }
 
@@ -145,6 +411,11 @@ function scoreTone(value: number | null) {
   return value >= 3 ? 'good' : value >= 2.3 ? 'mid' : 'low';
 }
 
+function worthALook(report: CandidateReport, stage: ReportStage) {
+  const { flags, delivery } = stageFacts(report, stage);
+  return flags.some((f) => f.tone === 'warn') || delivery === 'read';
+}
+
 const DELIVERY_TEXT: Record<Delivery, string> = {
   natural: 'Recording sounds like live reasoning',
   unsure: 'Recording: delivery unclear',
@@ -159,14 +430,24 @@ function DeliveryIcon({ delivery }: { delivery: Delivery | null }) {
       title={DELIVERY_TEXT[delivery]}
       aria-label={DELIVERY_TEXT[delivery]}
     >
-      <Icon name="mic" size={13} />
+      <Icon name="mic" size={12} />
     </span>
   );
 }
 
-function ordinal(n: number) {
-  const suffix = n % 100 >= 11 && n % 100 <= 13 ? 'th' : (['th', 'st', 'nd', 'rd'][n % 10] ?? 'th');
-  return `${n}${suffix}`;
+/** True while the element matching `selector` is on screen (below the top `inset` pixels). */
+function useInView(selector: string, inset = 72) {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const el = document.querySelector(selector);
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), {
+      rootMargin: `-${inset}px 0px 0px 0px`,
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [selector, inset]);
+  return visible;
 }
 
 function ReviewTab({
@@ -180,27 +461,58 @@ function ReviewTab({
 }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const [focus, setFocus] = useState<string | null>(null);
+  const [current, setCurrent] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  // While a jump scrolls the page, the reading line would point at questions passing by.
+  const holdCurrentUntil = useRef(0);
+  const headerVisible = useInView('.rv-head');
   const stages = report.stages;
   const { prev, next } = report.siblings;
 
   const show = useCallback((stageId: string) => {
-    setOpen((current) => new Set(current).add(stageId));
-    setFocus(stageId);
+    setOpen((now) => new Set(now).add(stageId));
+    setCurrent(stageId);
+    holdCurrentUntil.current = Date.now() + 1000;
     setFlash(stageId);
-    window.setTimeout(() => setFlash((current) => (current === stageId ? null : current)), FLASH_MS);
+    window.setTimeout(() => setFlash((now) => (now === stageId ? null : now)), FLASH_MS);
     requestAnimationFrame(() =>
-      document.getElementById(`stage-${stageId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+      document
+        .getElementById(`stage-${stageId}`)
+        ?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }),
     );
   }, []);
   const toggle = (stageId: string) =>
-    setOpen((current) => {
-      const nextOpen = new Set(current);
+    setOpen((now) => {
+      const nextOpen = new Set(now);
       if (nextOpen.has(stageId)) nextOpen.delete(stageId);
       else nextOpen.add(stageId);
       return nextOpen;
     });
+
+  // The current question is the last one whose top has crossed the reading line.
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      if (Date.now() < holdCurrentUntil.current) return;
+      const line = window.innerHeight * READING_LINE;
+      let found: string | null = null;
+      for (const stage of stages) {
+        const el = document.getElementById(`stage-${stage.id}`);
+        if (el && el.getBoundingClientRect().top <= line) found = stage.id;
+      }
+      setCurrent(found);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    update();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, [stages]);
 
   // J / K move between questions; [ and ] move between candidates.
   useEffect(() => {
@@ -210,189 +522,192 @@ function ReviewTab({
       if (event.key === '[' && prev) navigate(`/app/candidates/${prev.id}`);
       if (event.key === ']' && next) navigate(`/app/candidates/${next.id}`);
       if (event.key !== 'j' && event.key !== 'k') return;
-      const index = focus ? stages.findIndex((s) => s.id === focus) : -1;
-      const target2 = stages[Math.min(stages.length - 1, Math.max(0, index + (event.key === 'j' ? 1 : -1)))];
-      if (target2) show(target2.id);
+      const index = current ? stages.findIndex((s) => s.id === current) : -1;
+      const step = stages[Math.min(stages.length - 1, Math.max(0, index + (event.key === 'j' ? 1 : -1)))];
+      if (step) show(step.id);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [focus, stages, show, prev, next, navigate]);
+  }, [current, stages, show, prev, next, navigate]);
 
   const allOpen = open.size === stages.length;
   return (
     <>
-      <DecisionBar report={report} onReport={onReport} />
-      <div className="review-grid">
-        <nav className="q-nav" aria-label="Questions">
-          <div className="q-nav-title">Questions</div>
-          {stages.map((stage) => {
-            const { score, flags, response, delivery } = stageFacts(report, stage);
-            return (
-              <button
-                key={stage.id}
-                className={`q-nav-item ${focus === stage.id ? 'is-active' : ''} ${response ? '' : 'is-empty'}`}
-                onClick={() => show(stage.id)}
-              >
-                <span className="q-nav-num">{stage.index + 1}</span>
-                <span className="q-nav-label">{stage.title}</span>
-                {stage.scored ? (
-                  <span className={`q-nav-score tone-${scoreTone(score)}`}>{score?.toFixed(1) ?? '—'}</span>
-                ) : (
-                  <span className="q-nav-score tone-none">–</span>
-                )}
-                {flags.some((f) => f.tone === 'warn') || delivery === 'read' ? (
-                  <span className="q-nav-flag" title="Worth a closer look" />
-                ) : (
-                  <span />
-                )}
-              </button>
-            );
-          })}
-          <p className="q-nav-hint tiny subtle">
-            <kbd>J</kbd> <kbd>K</kbd> questions · <kbd>[</kbd> <kbd>]</kbd> candidates
-          </p>
-        </nav>
+      <StickyBar report={report} current={current} shown={!headerVisible} onJump={show} onReport={onReport} />
+      <QuestionNav report={report} current={current} onJump={show} />
 
-        <div className="review-main">
-          <Verdict report={report} finished={finished} onReport={onReport} onJump={show} />
-          <TeamNotes report={report} onReport={onReport} />
-          <div className="row-between answers-head">
-            <h2 className="section-title">Answers</h2>
+      <div className="rv-sheet">
+        <Overview report={report} finished={finished} onJump={show} onReport={onReport} />
+        <TeamNotes report={report} onReport={onReport} />
+
+        <div className="rv-row rv-answers-head">
+          <div className="rv-c">
+            <h2 className="rv-section">Answers</h2>
+            <span className="rv-legend">
+              <i className="marker-swatch" aria-hidden="true" /> Highlighted: what the AI quoted as evidence
+            </span>
+          </div>
+          <div className="rv-r">
+            <h2 className="rv-label">AI evaluation</h2>
             <button
-              className="btn btn-ghost btn-sm"
+              type="button"
+              className="rv-text-btn"
               onClick={() => setOpen(allOpen ? new Set() : new Set(stages.map((s) => s.id)))}
             >
               {allOpen ? 'Collapse all' : 'Expand all'}
             </button>
           </div>
-          <div className="q-list">
-            {stages.map((stage) => (
-              <StageReview
-                key={stage.id}
-                report={report}
-                stage={stage}
-                open={open.has(stage.id)}
-                focused={focus === stage.id}
-                flashing={flash === stage.id}
-                onToggle={() => {
-                  toggle(stage.id);
-                  setFocus(stage.id);
-                }}
-                onReport={onReport}
-              />
-            ))}
-          </div>
         </div>
+
+        {stages.map((stage) => (
+          <StageReview
+            key={stage.id}
+            report={report}
+            stage={stage}
+            open={open.has(stage.id)}
+            current={current === stage.id}
+            flashing={flash === stage.id}
+            onToggle={() => toggle(stage.id)}
+            onReport={onReport}
+          />
+        ))}
       </div>
     </>
   );
 }
 
-/** True while the page header (with the candidate's name) is on screen. */
-function useHeaderVisible() {
-  const [visible, setVisible] = useState(true);
-  useEffect(() => {
-    const header = document.querySelector('.person-head');
-    if (!header || typeof IntersectionObserver === 'undefined') return;
-    const observer = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting));
-    observer.observe(header);
-    return () => observer.disconnect();
-  }, []);
-  return visible;
-}
-
-/** Stays at the top while scrolling: who, how they did, the team's lean, and the decision. */
-function DecisionBar({ report, onReport }: { report: CandidateReport; onReport: (r: CandidateReport) => void }) {
+/** Appears once the header scrolls away: who, the score, where you are, and the decision. */
+function StickyBar({
+  report,
+  current,
+  shown,
+  onJump,
+  onReport,
+}: {
+  report: CandidateReport;
+  current: string | null;
+  shown: boolean;
+  onJump: (stageId: string) => void;
+  onReport: (r: CandidateReport) => void;
+}) {
   const r = report.aiReview?.result ?? null;
   const overall = report.adjusted?.overall ?? r?.overall ?? null;
   const recommendation = report.adjusted?.recommendation ?? r?.recommendation ?? null;
-  const { prev, next, index, total } = report.siblings;
-  const leans = report.notes.reduce<Record<string, number>>((acc, n) => {
-    if (n.lean) acc[n.lean] = (acc[n.lean] ?? 0) + 1;
-    return acc;
-  }, {});
-  const headerVisible = useHeaderVisible();
-  const leanText = (['advance', 'hold', 'reject'] as Decision[])
-    .filter((d) => leans[d])
-    .map((d) => `${leans[d]} ${d}`)
-    .join(' · ');
+  const stages = report.stages;
+  const index = current ? stages.findIndex((s) => s.id === current) : -1;
+  const stage = index >= 0 ? stages[index] : null;
   return (
-    <div className={`decision-bar ${headerVisible ? 'header-visible' : ''}`}>
-      <div className="decision-bar-who">
-        <span className="decision-bar-name">
-          <Avatar name={report.candidate.name} size="sm" />
-          <strong>{report.candidate.name}</strong>
-        </span>
-        <StarToggle report={report} onReport={onReport} />
-        {r && (
-          <span className="decision-bar-score">
-            <Score value={overall} />
-            <RecommendationBadge value={recommendation} />
+    <div className={`rv-bar ${shown ? 'is-shown' : ''}`} inert={!shown}>
+      <div className="rv-bar-who">
+        <Avatar name={report.candidate.name} size="sm" />
+        <strong>{report.candidate.name}</strong>
+        {r && overall !== null && (
+          <span className={`rv-bar-score tone-${scoreTone(overall)}`}>
+            {overall.toFixed(1)}
+            {recommendation && <span className="rv-bar-rec">{REC_LABEL[recommendation]}</span>}
           </span>
         )}
-        {leanText && <span className="tiny muted">Team: {leanText}</span>}
       </div>
-      <div className="decision-bar-actions">
-        <DecisionControl report={report} onReport={onReport} compact />
-        {total > 1 && index !== null && (
-          <div className="pager" aria-label="Other candidates">
-            {prev ? (
-              <Link to={`/app/candidates/${prev.id}`} className="btn btn-ghost btn-sm" title={`Previous: ${prev.name}`}>
-                <Icon name="back" size={14} />
-              </Link>
-            ) : (
-              <span className="btn btn-ghost btn-sm is-disabled" aria-hidden="true">
-                <Icon name="back" size={14} />
-              </span>
-            )}
-            <span className="tiny muted num">
-              {index} of {total}
-            </span>
-            {next ? (
-              <Link
-                to={`/app/candidates/${next.id}`}
-                className={`btn btn-sm ${report.candidate.decision ? 'btn-primary' : 'btn-ghost'}`}
-                title={`Next: ${next.name}`}
-              >
-                {report.candidate.decision && <span>Next</span>}
-                <Icon name="next" size={14} />
-              </Link>
-            ) : (
-              <span className="btn btn-ghost btn-sm is-disabled" aria-hidden="true">
-                <Icon name="next" size={14} />
-              </span>
-            )}
-          </div>
-        )}
+      <div className="rv-bar-q" aria-live="polite">
+        <span className="rv-bar-pos num">
+          {stage ? (
+            <>
+              Q{index + 1} <span className="rv-bar-of">of {stages.length}</span>
+            </>
+          ) : (
+            'Overview'
+          )}
+        </span>
+        <span className="rv-bar-title">{stage ? stage.title : `${stages.length} questions`}</span>
+        <span className="rv-steps" aria-label="Jump to a question">
+          {stages.map((s, i) => {
+            const { score } = stageFacts(report, s);
+            return (
+              <button
+                key={s.id}
+                type="button"
+                className={`rv-step tone-${s.scored ? scoreTone(score) : 'none'} ${s.id === current ? 'is-current' : ''}`}
+                title={`Q${i + 1} ${s.title}${s.scored && score !== null ? ` · ${score.toFixed(1)}` : ''}`}
+                aria-label={`Question ${i + 1}: ${s.title}`}
+                onClick={() => onJump(s.id)}
+              />
+            );
+          })}
+        </span>
+      </div>
+      <div className="rv-bar-act">
+        <DecisionControl report={report} onReport={onReport} size="sm" />
+        <Pager report={report} compact />
       </div>
     </div>
   );
 }
 
-/** Adds or removes the candidate from the viewer's watch list. */
-function StarToggle({ report, onReport }: { report: CandidateReport; onReport: (r: CandidateReport) => void }) {
-  const [busy, setBusy] = useState(false);
-  const starred = report.starred;
-  async function toggleStar() {
-    setBusy(true);
-    try {
-      await api.put(`/api/candidates/${report.candidate.id}/star`, { starred: !starred });
-      onReport({ ...report, starred: !starred });
-    } finally {
-      setBusy(false);
-    }
-  }
+/** The questions down the left, with a marker that follows the one you're reading. */
+function QuestionNav({
+  report,
+  current,
+  onJump,
+}: {
+  report: CandidateReport;
+  current: string | null;
+  onJump: (stageId: string) => void;
+}) {
+  const list = useRef<HTMLOListElement | null>(null);
+  const marker = useRef<HTMLSpanElement | null>(null);
+  const stages = report.stages;
+  const index = current ? stages.findIndex((s) => s.id === current) : -1;
+
+  useLayoutEffect(() => {
+    const item = current ? list.current?.querySelector<HTMLElement>(`[data-nav="${current}"]`) : null;
+    const el = marker.current;
+    if (!el) return;
+    el.classList.toggle('is-on', Boolean(item));
+    if (!item) return;
+    el.style.transform = `translateY(${item.offsetTop}px)`;
+    el.style.height = `${item.offsetHeight}px`;
+  }, [current]);
+
   return (
-    <button
-      type="button"
-      className={`star-toggle ${starred ? 'is-on' : ''}`}
-      onClick={toggleStar}
-      disabled={busy}
-      aria-pressed={starred}
-      title={starred ? 'Remove from your watch list' : 'Add to your watch list'}
-    >
-      <Icon name="star" size={16} filled={starred} />
-    </button>
+    <nav className="rv-nav" aria-label="Questions">
+      <div className="rv-nav-head">
+        <span className="rv-label">Questions</span>
+        <span className="rv-nav-pos num">{index >= 0 ? `${index + 1} of ${stages.length}` : stages.length}</span>
+      </div>
+      <div className="rv-nav-track">
+        <span ref={marker} className="rv-nav-marker" aria-hidden="true" />
+        <ol ref={list}>
+          {stages.map((stage) => {
+            const { score, response } = stageFacts(report, stage);
+            return (
+              <li key={stage.id} data-nav={stage.id}>
+                <button
+                  type="button"
+                  className={`rv-nav-item ${current === stage.id ? 'is-current' : ''} ${response ? '' : 'is-empty'}`}
+                  aria-current={current === stage.id ? 'step' : undefined}
+                  onClick={() => onJump(stage.id)}
+                >
+                  <span className="rv-nav-num">Q{stage.index + 1}</span>
+                  <span className="rv-nav-title">{stage.title}</span>
+                  {worthALook(report, stage) ? <span className="rv-flag-dot" title="Worth a closer look" /> : <span />}
+                  <span className={`rv-nav-score num tone-${stage.scored ? scoreTone(score) : 'none'}`}>
+                    {stage.scored ? (score?.toFixed(1) ?? '—') : '–'}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      <p className="rv-nav-keys">
+        <span>
+          <kbd>J</kbd> <kbd>K</kbd> questions
+        </span>
+        <span>
+          <kbd>[</kbd> <kbd>]</kbd> candidates
+        </span>
+      </p>
+    </nav>
   );
 }
 
@@ -406,17 +721,27 @@ function friendlyReviewError(error: string | null): string {
   return 'Something went wrong while the AI was reviewing.';
 }
 
-/** The answer to "should we move forward?", then the evidence at a glance. */
-function Verdict({
+/** A row of the sheet: the centre column and the evaluation rail beside it. */
+function Row({ className = '', centre, rail }: { className?: string; centre: ReactNode; rail?: ReactNode }) {
+  return (
+    <section className={`rv-row ${className}`}>
+      <div className="rv-c">{centre}</div>
+      <div className="rv-r">{rail}</div>
+    </section>
+  );
+}
+
+/** The evidence at a glance, then the reasoning: strengths and concerns beside the scores. */
+function Overview({
   report,
   finished,
-  onReport,
   onJump,
+  onReport,
 }: {
   report: CandidateReport;
   finished: boolean;
-  onReport: (r: CandidateReport) => void;
   onJump: (stageId: string) => void;
+  onReport: (r: CandidateReport) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -436,174 +761,244 @@ function Verdict({
   }
 
   if (!finished) {
-    const reached = report.stages.filter((s) => s.response).length;
     return (
-      <section className="card verdict-state">
-        <h2>{report.candidate.status === 'invited' ? "Hasn't started yet" : 'Still working'}</h2>
-        <p className="muted">
-          {report.candidate.status === 'invited'
-            ? 'Send them their link. The AI review starts as soon as they submit.'
-            : `On question ${reached} of ${report.stages.length}. The AI review starts as soon as they submit.`}
-        </p>
-      </section>
+      <Row
+        className="rv-state"
+        centre={
+          <>
+            <h2 className="rv-section">No answers to review yet</h2>
+            <p className="muted">Answers appear below as they come in. The AI review starts once they submit.</p>
+          </>
+        }
+      />
     );
   }
   if (!review || review.status === 'pending' || review.status === 'running') {
     return (
-      <section className="card verdict-state">
-        <h2 className="reviewing">
-          <span className="spinner" aria-hidden="true" />
-          {review?.status === 'running' ? 'Transcribing audio and scoring answers…' : 'AI review queued…'}
-        </h2>
-        <p className="muted">This usually takes a minute or two. The page updates by itself.</p>
-      </section>
+      <Row
+        className="rv-state"
+        centre={
+          <>
+            <h2 className="rv-section reviewing">
+              <span className="spinner" aria-hidden="true" />
+              {review?.status === 'running' ? 'Transcribing audio and scoring answers…' : 'AI review queued…'}
+            </h2>
+            <p className="muted">This usually takes a minute or two. The page updates by itself.</p>
+          </>
+        }
+      />
     );
   }
   if (review.status === 'failed' || !r) {
     return (
-      <section className="card verdict-state">
-        <h2>No AI review yet</h2>
-        <p>
-          {friendlyReviewError(review.error)} Every answer and recording is below, and you can still make a decision.
-        </p>
-        <div className="row-gap">
-          <button className="btn btn-secondary btn-sm" onClick={rerun} disabled={busy}>
-            {busy ? 'Starting…' : 'Try the AI review again'}
-          </button>
-          {review.error && (
-            <details className="tiny muted error-details">
-              <summary>Technical details</summary>
-              {review.error}
-            </details>
-          )}
-        </div>
-        <ErrorNote error={error} />
-      </section>
+      <Row
+        className="rv-state"
+        centre={
+          <>
+            <h2 className="rv-section">No AI review yet</h2>
+            <p>
+              {friendlyReviewError(review.error)} Every answer and recording is below, and you can still make a
+              decision.
+            </p>
+            <div className="row-gap">
+              <button className="btn btn-secondary btn-sm" onClick={rerun} disabled={busy}>
+                {busy ? 'Starting…' : 'Try the AI review again'}
+              </button>
+              {review.error && (
+                <details className="tiny muted error-details">
+                  <summary>Technical details</summary>
+                  {review.error}
+                </details>
+              )}
+            </div>
+            <ErrorNote error={error} />
+          </>
+        }
+      />
     );
   }
 
-  const overall = report.adjusted?.overall ?? r.overall;
-  const recommendation = report.adjusted?.recommendation ?? r.recommendation;
-  const headline = r.headline?.trim();
+  return (
+    <>
+      <Row
+        className="rv-ov"
+        centre={
+          <div className="rv-points-pair">
+            <PointList kind="good" icon="check" title="Strengths" items={r.strengths} />
+            <PointList kind="warn" icon="alert" title="Concerns" items={r.concerns} />
+          </div>
+        }
+        rail={<ByQuestion report={report} onJump={onJump} />}
+      />
+      <Row
+        className="rv-ov"
+        centre={
+          <div className="rv-why rv-fade">
+            <h2 className="rv-label">
+              <Icon name="sparkle" size={14} /> Why this score
+            </h2>
+            <p className="rv-summary">{r.summary}</p>
+          </div>
+        }
+        rail={
+          <>
+            <WithAndWithoutAi report={report} text={r.withAndWithoutAi} />
+            <div className="rv-ai-foot">
+              <span>
+                Reviewed {formatDate(review.updatedAt)} by {r.models.review}
+              </span>
+              <button className="rv-text-btn" onClick={rerun} disabled={busy}>
+                {busy ? 'Starting…' : 'Re-run AI review'}
+              </button>
+              <ErrorNote error={error} />
+            </div>
+          </>
+        }
+      />
+    </>
+  );
+}
+
+/** Strengths or concerns: the first three, the rest on request. */
+function PointList({ kind, icon, title, items }: { kind: string; icon: IconName; title: string; items: string[] }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? items : items.slice(0, 3);
+  const hidden = items.length - 3;
+  return (
+    <div className={`rv-points rv-points-${kind} rv-fade`}>
+      <h3 className="rv-points-head">
+        <span className="rv-points-icon">
+          <Icon name={icon} size={14} />
+        </span>
+        {title}
+        <span className="rv-points-count num">{items.length}</span>
+      </h3>
+      {items.length ? (
+        <ul>
+          {shown.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted">None noted.</p>
+      )}
+      {hidden > 0 && (
+        <button type="button" className="rv-text-btn" onClick={() => setAll(!all)}>
+          {all ? 'Show fewer' : `Show ${hidden} more`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** One bar per scored question, with the pool average marked. Each bar opens its question. */
+function ByQuestion({ report, onJump }: { report: CandidateReport; onJump: (stageId: string) => void }) {
   const bench = report.benchmark;
   return (
-    <section className="card verdict2">
-      <div className="verdict2-head">
-        <div className="verdict2-ring">
-          <ScoreRing value={overall} />
-          <RecommendationBadge value={recommendation} />
-        </div>
-        <div className="verdict2-title">
-          <div className="verdict2-kicker tiny muted">
-            {bench ? (
-              <span className="bench">
-                Ranked <strong>{ordinal(bench.rank)}</strong> of {bench.of} reviewed on this assessment
-                {bench.overallAverage !== null && <> · pool average {bench.overallAverage.toFixed(1)}</>}
-              </span>
-            ) : (
-              <span>The first reviewed candidate on this assessment</span>
-            )}
-            {report.adjusted && (
-              <span>
-                · AI scored {r.overall?.toFixed(1)}; {report.overrides.length} score
-                {report.overrides.length === 1 ? '' : 's'} changed by your team
-              </span>
-            )}
-          </div>
-          <h2 className="verdict2-headline">{headline || r.summary}</h2>
-          {headline && <p className="verdict2-summary">{r.summary}</p>}
-        </div>
-      </div>
-
-      <div className="verdict2-cols">
-        <div className="vcol vcol-good">
-          <h3>
-            <Icon name="check" size={14} /> Strengths <span className="vcount">{r.strengths.length}</span>
-          </h3>
-          <ul>
-            {r.strengths.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="vcol vcol-warn">
-          <h3>
-            <Icon name="x" size={14} /> Concerns <span className="vcount">{r.concerns.length}</span>
-          </h3>
-          <ul>
-            {r.concerns.map((s, i) => (
-              <li key={i}>{s}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="vcol vcol-info">
-          <h3>
-            <Icon name="sparkle" size={14} /> With and without AI
-          </h3>
-          <p>{r.withAndWithoutAi || 'No AI-allowed question in this assessment.'}</p>
-        </div>
-      </div>
-
-      <div className="score-bars" aria-label="Scores by question">
-        {report.stages
-          .filter((s) => s.scored)
-          .map((stage, i) => {
-            const { score, flags, delivery } = stageFacts(report, stage);
-            const avg = bench?.byStage[stage.id] ?? null;
-            return (
-              <button
-                key={stage.id}
-                className="score-bar-row"
-                onClick={() => onJump(stage.id)}
-                style={{ ['--i' as string]: i }}
-              >
-                <span className="score-bar-label">
-                  <span className="subtle">Q{stage.index + 1}</span> {stage.title}
-                </span>
-                <span className="score-bar-track">
-                  <span
-                    className={`score-bar-fill tone-${scoreTone(score)}`}
-                    style={{ width: `${((score ?? 0) / 4) * 100}%` }}
-                  />
-                  {avg !== null && (
-                    <span
-                      className="score-bar-avg"
-                      style={{ left: `${(avg / 4) * 100}%` }}
-                      title={`Pool average ${avg.toFixed(1)}`}
-                    />
-                  )}
-                </span>
-                <span className={`score-bar-value tone-${scoreTone(score)}`}>{score?.toFixed(1) ?? '—'}</span>
-                <span className="score-bar-flags">
-                  <DeliveryIcon delivery={delivery} />
-                  {flags
-                    .filter((f) => f.tone === 'warn' && f.text !== 'Sounds read')
-                    .map((f) => (
-                      <span key={f.text} className="badge badge-warn">
-                        {f.text}
-                      </span>
-                    ))}
-                </span>
-              </button>
-            );
-          })}
+    <div className="rv-byq">
+      <div className="rv-r-head">
+        <h2 className="rv-label">By question</h2>
         {bench && (
-          <div className="score-bars-legend tiny subtle">
-            <span className="legend-avg" /> Pool average of {bench.of} reviewed candidates
-          </div>
+          <span className="rv-legend">
+            <i className="legend-avg" aria-hidden="true" /> Pool average
+          </span>
         )}
       </div>
+      {report.stages
+        .filter((s) => s.scored)
+        .map((stage, i) => {
+          const { score } = stageFacts(report, stage);
+          const avg = bench?.byStage[stage.id] ?? null;
+          return (
+            <button
+              key={stage.id}
+              type="button"
+              className="rv-byq-row"
+              onClick={() => onJump(stage.id)}
+              style={{ ['--i' as string]: i }}
+              title={avg !== null ? `Pool average ${avg.toFixed(1)}` : undefined}
+            >
+              <span className="rv-byq-label">
+                <span className="rv-byq-num">Q{stage.index + 1}</span>
+                {stage.title}
+                {worthALook(report, stage) && <span className="rv-flag-dot" title="Worth a closer look" />}
+              </span>
+              <span className={`rv-byq-value num tone-${scoreTone(score)}`}>{score?.toFixed(1) ?? '—'}</span>
+              <span className="rv-byq-track">
+                <span
+                  className={`rv-byq-fill tone-${scoreTone(score)}`}
+                  style={{ width: `${((score ?? 0) / 4) * 100}%` }}
+                />
+                {avg !== null && <span className="rv-byq-avg" style={{ left: `${(avg / 4) * 100}%` }} />}
+              </span>
+            </button>
+          );
+        })}
+    </div>
+  );
+}
 
-      <div className="verdict2-foot tiny subtle">
-        <span>
-          Reviewed {formatDate(review.updatedAt)} by {r.models.review}
-        </span>
-        <button className="link-button" onClick={rerun} disabled={busy}>
-          {busy ? 'Starting…' : 'Re-run AI review'}
-        </button>
-        <ErrorNote error={error} />
-      </div>
-    </section>
+function mean(values: number[]) {
+  return values.length ? values.reduce((sum, v) => sum + v, 0) / values.length : null;
+}
+
+/** Their average on their own against their score on the AI-allowed task, on one 0–4 line. */
+function WithAndWithoutAi({ report, text }: { report: CandidateReport; text: string }) {
+  const scored = report.stages
+    .filter((s) => s.scored)
+    .map((stage) => ({ stage, score: stageFacts(report, stage).score }))
+    .filter((x): x is { stage: ReportStage; score: number } => x.score !== null);
+  const ownRaw = mean(scored.filter((x) => x.stage.kind !== 'ai_allowed').map((x) => x.score));
+  const withAiRaw = mean(scored.filter((x) => x.stage.kind === 'ai_allowed').map((x) => x.score));
+  const own = ownRaw === null ? null : Math.round(ownRaw * 10) / 10;
+  const withAi = withAiRaw === null ? null : Math.round(withAiRaw * 10) / 10;
+  const delta = own !== null && withAi !== null ? Math.round((withAi - own) * 10) / 10 : null;
+  const ownCount = scored.filter((x) => x.stage.kind !== 'ai_allowed').length;
+
+  return (
+    <div className="rv-wai rv-fade">
+      <h2 className="rv-label">With and without AI</h2>
+      {own !== null && withAi !== null && delta !== null ? (
+        <>
+          <div className="rv-wai-nums">
+            <div className="rv-wai-num" title={`Average of the ${ownCount} scored questions done without AI`}>
+              <span className="rv-wai-key">
+                <i className="rv-dot is-own" aria-hidden="true" /> On their own
+              </span>
+              <span className="rv-wai-value num">{own.toFixed(1)}</span>
+            </div>
+            <Icon name="arrow" size={18} className="rv-wai-arrow" />
+            <div className="rv-wai-num">
+              <span className="rv-wai-key">
+                <i className="rv-dot is-ai" aria-hidden="true" /> With AI
+              </span>
+              <span className="rv-wai-value num">{withAi.toFixed(1)}</span>
+            </div>
+            <span className="rv-wai-delta num">
+              {delta === 0 ? 'No change' : `${delta > 0 ? '+' : '−'}${Math.abs(delta).toFixed(1)}`}
+            </span>
+          </div>
+          <div className="rv-wai-scale" aria-hidden="true">
+            <span className="rv-wai-line" />
+            <span
+              className="rv-wai-span"
+              style={{ left: `${(Math.min(own, withAi) / 4) * 100}%`, width: `${(Math.abs(withAi - own) / 4) * 100}%` }}
+            />
+            <i className="rv-dot is-own" style={{ left: `${(own / 4) * 100}%` }} />
+            <i
+              className="rv-dot is-ai"
+              style={{ left: `${(withAi / 4) * 100}%`, ['--from' as string]: `${(own / 4) * 100}%` }}
+            />
+            {[0, 1, 2, 3, 4].map((n) => (
+              <span key={n} className="rv-wai-tick num" style={{ left: `${(n / 4) * 100}%` }}>
+                {n}
+              </span>
+            ))}
+          </div>
+        </>
+      ) : null}
+      <p className="rv-wai-text">{text || 'No AI-allowed question in this assessment.'}</p>
+    </div>
   );
 }
 
@@ -625,16 +1020,20 @@ function TeamNotes({ report, onReport }: { report: CandidateReport; onReport: (r
 
   if (!report.notes.length && !composing) {
     return (
-      <section className="team-notes is-empty">
-        <span className="row-gap">
-          <Icon name="note" size={15} />
-          <strong>Team notes</strong>
-          <span className="small muted">None yet</span>
-        </span>
-        <button className="btn btn-secondary btn-sm" onClick={() => setComposing(true)}>
-          Add a note
-        </button>
-      </section>
+      <Row
+        className="rv-notes is-empty"
+        centre={
+          <div className="rv-notes-empty">
+            <span className="rv-label">
+              <Icon name="note" size={14} /> Team notes
+            </span>
+            <span className="muted">None yet</span>
+            <button className="rv-text-btn" onClick={() => setComposing(true)}>
+              Add a note
+            </button>
+          </div>
+        }
+      />
     );
   }
 
@@ -663,73 +1062,78 @@ function TeamNotes({ report, onReport }: { report: CandidateReport; onReport: (r
   }
 
   return (
-    <section className="card team-notes">
-      <div className="row-between">
-        <h2 className="section-title">
-          <Icon name="note" size={15} /> Team notes{' '}
-          {report.notes.length > 0 && <span className="muted num">{report.notes.length}</span>}
-        </h2>
-        <span className="tiny subtle">Visible to everyone on your team</span>
-      </div>
-      {report.notes.length > 0 && (
-        <ul className="note-list">
-          {report.notes.map((note) => (
-            <li key={note.id} className="note">
-              <Avatar name={note.userName} size="sm" />
-              <div className="note-body">
-                <div className="note-meta">
-                  <strong>{note.userName}</strong>
-                  {note.lean && <DecisionBadge decision={note.lean} />}
-                  <span className="tiny subtle">{formatDate(note.createdAt)}</span>
-                  {note.mine && (
-                    <button className="link-button tiny" onClick={() => remove(note)}>
-                      Delete
-                    </button>
-                  )}
-                </div>
-                <p>{note.body}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form className="note-form" onSubmit={post}>
-        <textarea
-          rows={2}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          maxLength={2000}
-          placeholder="Your take, e.g. “Strong on the numbers; ask about Q4 on the call.”"
-          aria-label="Your note"
-        />
-        <div className="row-between note-actions">
-          <div className="lean-picker" role="group" aria-label="Your lean (optional)">
-            {LEANS.map((l) => (
-              <button
-                key={l.value}
-                type="button"
-                className={`lean lean-${l.value} ${lean === l.value ? 'is-on' : ''}`}
-                aria-pressed={lean === l.value}
-                onClick={() => setLean(lean === l.value ? null : l.value)}
-              >
-                {l.label}
-              </button>
-            ))}
+    <Row
+      className="rv-notes"
+      centre={
+        <>
+          <div className="rv-notes-head">
+            <h2 className="rv-label">
+              <Icon name="note" size={14} /> Team notes
+              {report.notes.length > 0 && <span className="num">{report.notes.length}</span>}
+            </h2>
+            <span className="rv-hint">Visible to everyone on your team</span>
           </div>
-          <span className="row-gap">
-            {!report.notes.length && (
-              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setComposing(false)}>
-                Cancel
-              </button>
-            )}
-            <button className="btn btn-primary btn-sm" disabled={busy || !body.trim()}>
-              {busy ? 'Posting…' : 'Post note'}
-            </button>
-          </span>
-        </div>
-        <ErrorNote error={error} />
-      </form>
-    </section>
+          {report.notes.length > 0 && (
+            <ul className="note-list">
+              {report.notes.map((note) => (
+                <li key={note.id} className="note">
+                  <Avatar name={note.userName} size="sm" />
+                  <div className="note-body">
+                    <div className="note-meta">
+                      <strong>{note.userName}</strong>
+                      {note.lean && <DecisionBadge decision={note.lean} />}
+                      <span>{formatDate(note.createdAt)}</span>
+                      {note.mine && (
+                        <button className="rv-text-btn" onClick={() => remove(note)}>
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                    <p>{note.body}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form className="note-form" onSubmit={post}>
+            <textarea
+              rows={2}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              maxLength={2000}
+              placeholder="Your take, e.g. “Strong on the numbers; ask about Q4 on the call.”"
+              aria-label="Your note"
+            />
+            <div className="row-between note-actions">
+              <div className="lean-picker" role="group" aria-label="Your lean (optional)">
+                {LEANS.map((l) => (
+                  <button
+                    key={l.value}
+                    type="button"
+                    className={`lean lean-${l.value} ${lean === l.value ? 'is-on' : ''}`}
+                    aria-pressed={lean === l.value}
+                    onClick={() => setLean(lean === l.value ? null : l.value)}
+                  >
+                    {l.label}
+                  </button>
+                ))}
+              </div>
+              <span className="row-gap">
+                {!report.notes.length && (
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setComposing(false)}>
+                    Cancel
+                  </button>
+                )}
+                <button className="btn btn-primary btn-sm" disabled={busy || !body.trim()}>
+                  {busy ? 'Posting…' : 'Post note'}
+                </button>
+              </span>
+            </div>
+            <ErrorNote error={error} />
+          </form>
+        </>
+      }
+    />
   );
 }
 
@@ -748,7 +1152,7 @@ function ChoicePath({ report, stage }: { report: CandidateReport; stage: ReportS
   return (
     <div className="choice-path" aria-label="Their decision and what followed">
       <div className="choice-options">
-        <div className="tiny subtle">Q{decision.index + 1} options</div>
+        <div className="answer-label">Q{decision.index + 1} options</div>
         {decision.shown.choices.map((c) => (
           <div key={c.id} className={`choice-node ${c.id === chosen ? 'is-chosen' : ''}`}>
             {c.id === chosen && <Icon name="check" size={13} />}
@@ -761,8 +1165,8 @@ function ChoicePath({ report, stage }: { report: CandidateReport; stage: ReportS
           <div className="choice-arrow" aria-hidden="true">
             <Icon name="arrow" size={16} />
           </div>
-          <div className={`choice-node choice-outcome ${branch.response ? '' : 'is-empty'}`}>
-            <div className="tiny subtle">
+          <div className={`choice-outcome ${branch.response ? '' : 'is-empty'}`}>
+            <div className="answer-label">
               Led to Q{branch.index + 1} · {branch.title}
             </div>
             {branch.response ? branchLead : 'Not reached'}
@@ -773,16 +1177,16 @@ function ChoicePath({ report, stage }: { report: CandidateReport; stage: ReportS
   );
 }
 
-function TimeBar({ used, limit, timedOut }: { used: number | null; limit: number; timedOut: boolean }) {
+function TimeUsed({ used, limit, timedOut }: { used: number | null; limit: number; timedOut: boolean }) {
   if (used === null) return null;
   const ratio = Math.min(1, used / Math.max(1, limit));
   return (
-    <span className="time-bar" title={`Used ${formatDuration(used)} of ${formatDuration(limit)}`}>
-      <span className="time-bar-track">
-        <span className={`time-bar-fill ${timedOut ? 'is-out' : ''}`} style={{ width: `${ratio * 100}%` }} />
+    <span className="time-used" title={`Used ${formatDuration(used)} of ${formatDuration(limit)}`}>
+      <span className="time-used-track" aria-hidden="true">
+        <span className={`time-used-fill ${timedOut ? 'is-out' : ''}`} style={{ width: `${ratio * 100}%` }} />
       </span>
-      <span className="tiny subtle num">
-        {formatDuration(used)} / {formatDuration(limit)}
+      <span className="num">
+        {formatDuration(used)} of {formatDuration(limit)}
       </span>
     </span>
   );
@@ -801,13 +1205,74 @@ function AnswerPart({ label, aside, children }: { label: string; aside?: string 
   );
 }
 
+/** Mounts content on first open, then lets CSS animate it open and closed. */
+function useDisclosure(open: boolean) {
+  const [mounted, setMounted] = useState(open);
+  const [expanded, setExpanded] = useState(open);
+  useEffect(() => {
+    if (!open) {
+      setExpanded(false);
+      return;
+    }
+    setMounted(true);
+    // One frame closed first, so the height has something to grow from.
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => setExpanded(true));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
+  return { mounted, expanded };
+}
+
+/**
+ * Beside an open answer, each criterion's note starts level with the passage it quotes, like a
+ * comment in the margin. Notes keep rubric order, so one never moves above the one before it.
+ */
+function useEvidenceAlignment(item: RefObject<HTMLElement | null>, expanded: boolean) {
+  useLayoutEffect(() => {
+    const root = item.current;
+    const list = root?.querySelector<HTMLElement>('.rv-crit-notes');
+    const answer = root?.querySelector<HTMLElement>('.rv-q-main');
+    if (!root || !list || !answer) return;
+    const notes = [...list.querySelectorAll<HTMLElement>(':scope > .crit-note')];
+
+    const place = () => {
+      const sideBySide = list.getBoundingClientRect().left >= answer.getBoundingClientRect().right;
+      if (!expanded || !sideBySide) {
+        for (const note of notes) note.style.marginTop = '';
+        return;
+      }
+      const top = list.getBoundingClientRect().top;
+      let bottom = 0;
+      notes.forEach((note, i) => {
+        const natural = i === 0 ? 0 : bottom + NOTE_GAP;
+        const mark = answer.querySelector<HTMLElement>(`mark[data-crit="${note.dataset.crit}"]`);
+        const visible = mark && mark.getClientRects().length > 0 && !mark.closest('.is-scrollbox');
+        const at = visible ? Math.max(natural, mark.getBoundingClientRect().top - top - 3) : natural;
+        note.style.marginTop = `${at - bottom}px`;
+        bottom = at + note.offsetHeight;
+      });
+    };
+
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(answer);
+    for (const note of notes) observer.observe(note);
+    window.addEventListener('resize', place);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', place);
+    };
+  }, [item, expanded]);
+}
+
 type StagePanel = 'saw' | 'key' | null;
 
 function StageReview({
   report,
   stage,
   open,
-  focused,
+  current,
   flashing,
   onToggle,
   onReport,
@@ -815,7 +1280,7 @@ function StageReview({
   report: CandidateReport;
   stage: ReportStage;
   open: boolean;
-  focused: boolean;
+  current: boolean;
   flashing: boolean;
   onToggle: () => void;
   onReport: (r: CandidateReport) => void;
@@ -823,7 +1288,10 @@ function StageReview({
   const { ai, aiScore, score, overrides, response: r, flags, delivery } = stageFacts(report, stage);
   const [panel, setPanel] = useState<StagePanel>(null);
   const [rate, setRate] = useState(1);
-  const card = useRef<HTMLElement | null>(null);
+  const [hot, setHot] = useState<string | null>(null);
+  const item = useRef<HTMLElement | null>(null);
+  const { mounted, expanded } = useDisclosure(open);
+  useEvidenceAlignment(item, expanded);
 
   // The AI's quotes, highlighted where they appear in the answer.
   const evidence: Evidence[] = useMemo(
@@ -840,65 +1308,60 @@ function StageReview({
   const inTranscript = Boolean(ai?.transcript && findEvidence(ai.transcript, evidence).length);
 
   function showEvidence(criterionId: string) {
-    const mark = card.current?.querySelector<HTMLElement>(`mark[data-crit="${criterionId}"]`);
+    const mark = item.current?.querySelector<HTMLElement>(`mark[data-crit="${criterionId}"]`);
     if (!mark) return;
-    mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    mark.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
     mark.classList.remove('is-flash');
     void mark.offsetWidth;
     mark.classList.add('is-flash');
   }
 
   const choiceKinds = stage.kind === 'decision' || stage.kind === 'branch';
+  const take = !r
+    ? 'Not reached.'
+    : ai?.summary || (stage.scored ? 'No AI review yet.' : 'Not scored. A voice sample.');
   return (
     <section
-      ref={card}
-      className={`q-card ${open ? 'is-open' : ''} ${focused ? 'is-focused' : ''} ${flashing ? 'is-flash' : ''}`}
+      ref={item}
       id={`stage-${stage.id}`}
+      data-stage={stage.id}
+      className={`rv-row rv-q ${expanded ? 'is-expanded' : ''} ${current ? 'is-current' : ''} ${flashing ? 'is-flash' : ''} ${r ? '' : 'is-empty'}`}
+      onMouseOver={(e) => setHot((e.target as HTMLElement).closest('[data-crit]')?.getAttribute('data-crit') ?? null)}
+      onMouseLeave={() => setHot(null)}
     >
-      <button className="q-row" onClick={onToggle} aria-expanded={open}>
-        <span className="q-num">Q{stage.index + 1}</span>
-        <span className="q-main">
-          <span className="q-title">
-            {stage.title}
-            <KindBadge kind={stage.kind} />
-            {stage.thinkAloud && <span className="badge badge-think">Think aloud</span>}
+      <div className="rv-c rv-q-main">
+        <button type="button" className="rv-q-toggle" onClick={onToggle} aria-expanded={open}>
+          <span className="rv-q-meta">
+            <span className="rv-q-num">Q{stage.index + 1}</span>
+            <span>{STAGE_KIND_LABEL[stage.kind]}</span>
+            {stage.thinkAloud && <span>Think aloud</span>}
             <DeliveryIcon delivery={delivery} />
+            <TimeUsed
+              used={r?.timeUsedSec ?? null}
+              limit={stage.timeLimitSec}
+              timedOut={r?.closedReason === 'timeout'}
+            />
           </span>
-          <span className="q-take">
-            {!r ? 'Not reached.' : ai?.summary || (stage.scored ? 'No AI review yet.' : 'Not scored. A voice sample.')}
+          <span className="rv-q-title">
+            {stage.title}
+            <Icon name="chevron" size={16} className="rv-q-chevron" />
           </span>
-          {flags.length > 0 && (
-            <span className="q-flags">
-              {flags.map((f) => (
-                <span key={f.text} className={`badge ${f.tone === 'warn' ? 'badge-warn' : 'badge-muted'}`}>
-                  {f.text}
-                </span>
-              ))}
-            </span>
-          )}
-        </span>
-        <span className="q-side">
-          {stage.scored ? (
-            <span className={`q-score tone-${scoreTone(score)}`}>
-              {score?.toFixed(1) ?? '—'}
-              <span className="score-max">/4</span>
-            </span>
-          ) : (
-            <span className="tiny subtle">Not scored</span>
-          )}
-          <TimeBar used={r?.timeUsedSec ?? null} limit={stage.timeLimitSec} timedOut={r?.closedReason === 'timeout'} />
-        </span>
-        <span className="q-chevron" aria-hidden="true">
-          ›
-        </span>
-      </button>
+          <span className="rv-q-take">{take}</span>
+        </button>
+        {flags.length > 0 && (
+          <div className="rv-q-flags">
+            {flags.map((f) => (
+              <span key={f.text} className={`badge ${f.tone === 'warn' ? 'badge-warn' : 'badge-muted'}`}>
+                {f.text}
+              </span>
+            ))}
+          </div>
+        )}
 
-      {open && (
-        <div className="q-body">
-          {choiceKinds && <ChoicePath report={report} stage={stage} />}
-          <div className="q-panels">
-            <div className="q-answer">
-              <h4 className="q-section-label">Their answer</h4>
+        {mounted && (
+          <div className="rv-q-body" inert={!expanded}>
+            <div className="rv-q-inner">
+              {choiceKinds && <ChoicePath report={report} stage={stage} />}
               {!r ? (
                 <p className="muted">Not reached yet.</p>
               ) : (
@@ -941,7 +1404,7 @@ function StageReview({
                         defaultOpen={stage.thinkAloud || inTranscript}
                       >
                         <div className="answer-text transcript">
-                          <Highlighted text={ai.transcript} evidence={evidence} />
+                          <Highlighted text={ai.transcript} evidence={evidence} hot={hot} />
                         </div>
                       </Collapsible>
                     </AnswerPart>
@@ -951,14 +1414,14 @@ function StageReview({
                     !r.scratch.length && (
                       <AnswerPart label={r.audio.length ? 'Scratchpad' : 'Typed working'}>
                         <div className="answer-text">
-                          <Highlighted text={r.text} evidence={evidence} />
+                          <Highlighted text={r.text} evidence={evidence} hot={hot} />
                         </div>
                       </AnswerPart>
                     )
                   ) : r.text ? (
                     <AnswerPart label="Written answer">
                       <div className="answer-text">
-                        <Highlighted text={r.text} evidence={evidence} />
+                        <Highlighted text={r.text} evidence={evidence} hot={hot} />
                       </div>
                     </AnswerPart>
                   ) : (
@@ -972,18 +1435,18 @@ function StageReview({
                       >
                         {r.aiTranscript ? (
                           <Collapsible title="Show conversation" className="inset">
-                            <div className="answer-text transcript">
-                              <Highlighted text={r.aiTranscript} evidence={evidence} />
+                            <div className="answer-text transcript is-scrollbox">
+                              <Highlighted text={r.aiTranscript} evidence={evidence} hot={hot} />
                             </div>
                           </Collapsible>
                         ) : (
-                          <p className="muted small">They didn't paste a conversation.</p>
+                          <p className="muted">They didn't paste a conversation.</p>
                         )}
                       </AnswerPart>
                       {r.reflection && (
                         <AnswerPart label="What they kept, changed or rejected">
                           <div className="answer-text">
-                            <Highlighted text={r.reflection} evidence={evidence} />
+                            <Highlighted text={r.reflection} evidence={evidence} hot={hot} />
                           </div>
                         </AnswerPart>
                       )}
@@ -1002,81 +1465,140 @@ function StageReview({
                   )}
                 </>
               )}
-            </div>
 
-            <div className="q-scoring">
-              <h4 className="q-section-label">How the AI scored it</h4>
-              {!stage.scored ? (
-                <p className="muted small">Not scored. Use it as a voice sample for the call.</p>
-              ) : !ai ? (
-                <p className="muted small">No AI review yet.</p>
-              ) : (
-                <>
-                  {stage.rubric.map((criterion) => (
-                    <CriterionRow
-                      key={criterion.id}
-                      criterion={criterion}
-                      scored={ai.criteria[criterion.id] ?? null}
-                      override={overrides.find((o) => o.criterionId === criterion.id)}
-                      candidateId={report.candidate.id}
-                      stageId={stage.id}
-                      inAnswer={found.has(criterion.id)}
-                      onShowEvidence={() => showEvidence(criterion.id)}
-                      onReport={onReport}
-                    />
-                  ))}
+              <div className="q-extra">
+                {stage.shown && (
+                  <button
+                    type="button"
+                    className={`q-extra-tab ${panel === 'saw' ? 'is-active' : ''}`}
+                    aria-expanded={panel === 'saw'}
+                    onClick={() => setPanel(panel === 'saw' ? null : 'saw')}
+                  >
+                    What they saw
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className={`q-extra-tab ${panel === 'key' ? 'is-active' : ''}`}
+                  aria-expanded={panel === 'key'}
+                  onClick={() => setPanel(panel === 'key' ? null : 'key')}
+                >
+                  Answer key used by the AI
+                </button>
+              </div>
+              {panel === 'saw' && stage.shown && (
+                <div className="q-extra-panel">
+                  <Blocks blocks={stage.shown.prompt} />
+                  {stage.shown.material.length > 0 && <Blocks blocks={stage.shown.material} />}
+                </div>
+              )}
+              {panel === 'key' && (
+                <div className="q-extra-panel guide-panel">
+                  <Blocks blocks={stage.reviewerGuide} />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="rv-r rv-q-rail" onClick={open ? undefined : onToggle}>
+        <div className="rv-q-score">
+          <span className="rv-label">{stage.scored ? 'AI score' : 'Not scored'}</span>
+          {stage.scored && (
+            <span className={`rv-score num tone-${scoreTone(score)}`}>
+              {score?.toFixed(1) ?? '—'}
+              <small>/4</small>
+            </span>
+          )}
+        </div>
+        {stage.scored && ai ? (
+          <>
+            <div className="rv-scoreboard">
+              {stage.rubric.map((criterion) => {
+                const value =
+                  overrides.find((o) => o.criterionId === criterion.id)?.score ??
+                  ai.criteria[criterion.id]?.score ??
+                  null;
+                return (
+                  <div
+                    key={criterion.id}
+                    className={`crit-score ${hot === criterion.id ? 'is-hot' : ''}`}
+                    data-crit={criterion.id}
+                  >
+                    <span className="crit-label">
+                      {criterion.label}
+                      {criterion.weight > 1 && <span className="crit-weight"> ×{criterion.weight}</span>}
+                    </span>
+                    <Meter value={value} />
+                  </div>
+                );
+              })}
+            </div>
+            {mounted && (
+              <div className="rv-notes-wrap" inert={!expanded}>
+                <div className="rv-notes-inner">
+                  <div className="rv-crit-notes">
+                    {stage.rubric.map((criterion) => (
+                      <CriterionNote
+                        key={criterion.id}
+                        criterion={criterion}
+                        scored={ai.criteria[criterion.id] ?? null}
+                        override={overrides.find((o) => o.criterionId === criterion.id)}
+                        candidateId={report.candidate.id}
+                        stageId={stage.id}
+                        inAnswer={found.has(criterion.id)}
+                        hot={hot === criterion.id}
+                        onShowEvidence={() => showEvidence(criterion.id)}
+                        onReport={onReport}
+                      />
+                    ))}
+                  </div>
                   {overrides.length > 0 && aiScore !== null && (
-                    <p className="tiny muted">
+                    <p className="rv-rail-note">
                       AI scored this question {aiScore.toFixed(1)}; with your team's changes it is{' '}
                       {score?.toFixed(1) ?? '—'}.
                     </p>
                   )}
-                </>
-              )}
-            </div>
-          </div>
-
-          <div className="q-extra">
-            {stage.shown && (
-              <button
-                className={`q-extra-tab ${panel === 'saw' ? 'is-active' : ''}`}
-                onClick={() => setPanel(panel === 'saw' ? null : 'saw')}
-              >
-                What they saw
-              </button>
+                </div>
+              </div>
             )}
-            <button
-              className={`q-extra-tab ${panel === 'key' ? 'is-active' : ''}`}
-              onClick={() => setPanel(panel === 'key' ? null : 'key')}
-            >
-              Answer key used by the AI
-            </button>
-          </div>
-          {panel === 'saw' && stage.shown && (
-            <div className="q-extra-panel">
-              <Blocks blocks={stage.shown.prompt} />
-              {stage.shown.material.length > 0 && <Blocks blocks={stage.shown.material} />}
-            </div>
-          )}
-          {panel === 'key' && (
-            <div className="q-extra-panel guide-panel">
-              <Blocks blocks={stage.reviewerGuide} />
-            </div>
-          )}
-        </div>
-      )}
+          </>
+        ) : (
+          <p className="rv-rail-note">
+            {!stage.scored
+              ? 'A voice sample for the call.'
+              : r
+                ? 'Waiting for the AI review.'
+                : 'Nothing to score yet.'}
+          </p>
+        )}
+      </div>
     </section>
   );
 }
 
-/** One rubric line: a 4-step meter, the quote, the reason. The full anchors only when asked. */
-function CriterionRow({
+/** A four-step meter with the number on the score axis. */
+function Meter({ value }: { value: number | null }) {
+  return (
+    <span className={`meter tone-${scoreTone(value)}`} aria-label={`${value ?? 'No score'} out of 4`}>
+      {[1, 2, 3, 4].map((step) => (
+        <i key={step} className={value !== null && step <= value ? 'on' : ''} />
+      ))}
+      <b className="num">{value ?? '—'}</b>
+    </span>
+  );
+}
+
+/** A criterion's margin note: the quote it rests on, the reason, and the controls. */
+function CriterionNote({
   criterion,
   scored,
   override,
   candidateId,
   stageId,
   inAnswer,
+  hot,
   onShowEvidence,
   onReport,
 }: {
@@ -1086,37 +1608,32 @@ function CriterionRow({
   candidateId: string;
   stageId: string;
   inAnswer: boolean;
+  hot: boolean;
   onShowEvidence: () => void;
   onReport: (r: CandidateReport) => void;
 }) {
   const [showRubric, setShowRubric] = useState(false);
   const value = override?.score ?? scored?.score ?? null;
   return (
-    <div className="crit">
-      <div className="crit-head">
-        <span className="crit-label">
-          {criterion.label}
-          {criterion.weight > 1 && <span className="tiny subtle"> ×{criterion.weight}</span>}
-        </span>
-        <span className={`meter tone-${scoreTone(value)}`} aria-label={`${value ?? 'no'} out of 4`}>
-          {[1, 2, 3, 4].map((step) => (
-            <i key={step} className={value !== null && step <= value ? 'on' : ''} />
-          ))}
-          <b>{value ?? '—'}</b>
-        </span>
+    <div className={`crit-note ${hot ? 'is-hot' : ''}`} data-crit={criterion.id}>
+      <div className="crit-note-head">
+        <span>{criterion.label}</span>
+        <b className={`num tone-${scoreTone(value)}`}>{value ?? '—'}</b>
       </div>
       {scored?.evidence &&
         (inAnswer ? (
-          <button type="button" className="crit-quote is-linked" onClick={onShowEvidence} title="Show in their answer">
+          <button type="button" className="crit-quote is-linked" onClick={onShowEvidence}>
             <q>{scored.evidence}</q>
-            <span className="crit-quote-hint tiny">Show in answer</span>
+            <span className="crit-quote-hint">
+              <Icon name="highlighter" size={13} /> Show in answer
+            </span>
           </button>
         ) : (
           <q className="crit-quote">{scored.evidence}</q>
         ))}
       {scored?.rationale && <p className="crit-why">{scored.rationale}</p>}
       <div className="crit-actions">
-        <button type="button" className="link-button tiny" onClick={() => setShowRubric(!showRubric)}>
+        <button type="button" className="rv-text-btn" onClick={() => setShowRubric(!showRubric)}>
           {showRubric ? 'Hide rubric' : 'See rubric'}
         </button>
         {scored && (
@@ -1185,17 +1702,17 @@ function OverrideControl({
 
   if (!editing) {
     return override ? (
-      <div className="override small">
+      <div className="override">
         <strong>
           {override.userName} changed this from {override.aiScore} to {override.score}:
         </strong>{' '}
         {override.note}{' '}
-        <button type="button" className="link-button" onClick={() => setEditing(true)}>
+        <button type="button" className="rv-text-btn" onClick={() => setEditing(true)}>
           Edit
         </button>{' '}
         <button
           type="button"
-          className="link-button"
+          className="rv-text-btn"
           disabled={busy}
           onClick={() => act(() => api.del(`${base}/${stageId}/${criterionId}`))}
         >
@@ -1204,7 +1721,7 @@ function OverrideControl({
         <ErrorNote error={error} />
       </div>
     ) : (
-      <button type="button" className="link-button small" onClick={() => setEditing(true)}>
+      <button type="button" className="rv-text-btn" onClick={() => setEditing(true)}>
         Disagree with this score?
       </button>
     );
@@ -1212,7 +1729,7 @@ function OverrideControl({
 
   return (
     <div className="override-form">
-      <div className="row-gap small">
+      <div className="row-gap">
         <span>Your score:</span>
         {[1, 2, 3, 4].map((value) => (
           <button
@@ -1227,7 +1744,7 @@ function OverrideControl({
         <span className="muted">AI gave {aiScore}</span>
       </div>
       <label className="field">
-        <span className="small">Why? (helps calibrate the AI)</span>
+        <span>Why? (helps calibrate the AI)</span>
         <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} />
       </label>
       <ErrorNote error={error} />
@@ -1244,54 +1761,6 @@ function OverrideControl({
           Cancel
         </button>
       </div>
-    </div>
-  );
-}
-
-function DecisionControl({
-  report,
-  onReport,
-  compact = false,
-}: {
-  report: CandidateReport;
-  onReport: (r: CandidateReport) => void;
-  compact?: boolean;
-}) {
-  const { user } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-  if (user?.role !== 'manager') return null;
-  const finished = ['submitted', 'reviewed', 'decided'].includes(report.candidate.status);
-  if (!finished) return null;
-
-  async function decide(decision: Decision | null) {
-    try {
-      onReport(await api.put<CandidateReport>(`/api/candidates/${report.candidate.id}/decision`, { decision }));
-      setError(null);
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-  }
-
-  return (
-    <div className={compact ? 'decision decision-compact' : 'decision'}>
-      {!compact && (
-        <h4>
-          Your decision <DecisionBadge decision={report.candidate.decision} />
-        </h4>
-      )}
-      <div className="decision-buttons">
-        {(['advance', 'hold', 'reject'] as Decision[]).map((d) => (
-          <button
-            key={d}
-            className={`btn decision-${d} ${report.candidate.decision === d ? 'is-chosen' : ''}`}
-            aria-pressed={report.candidate.decision === d}
-            onClick={() => decide(report.candidate.decision === d ? null : d)}
-          >
-            {d === 'advance' ? 'Advance' : d === 'hold' ? 'Hold' : 'Reject'}
-          </button>
-        ))}
-      </div>
-      <ErrorNote error={error} />
     </div>
   );
 }

@@ -47,6 +47,19 @@ const PATHS = {
   ),
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
   next: <path d="M9 18l6-6-6-6" />,
+  alert: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v5.2M12 16.3v.2" />
+    </>
+  ),
+  chevron: <path d="M6 9l6 6 6-6" />,
+  highlighter: (
+    <>
+      <path d="M14.5 4.5l5 5-8.5 8.5H6v-5z" />
+      <path d="M4 21h9" />
+    </>
+  ),
   star: <path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" />,
   play: <path d="M7 4.5v15l12-7.5z" />,
   pause: <path d="M8 4.5v15M16 4.5v15" />,
