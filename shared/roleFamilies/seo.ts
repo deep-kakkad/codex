@@ -53,6 +53,13 @@ export const seo: RoleFamily = {
   version: 1,
   name: 'SEO',
   roles: ['SEO Manager', 'SEO Specialist', 'Organic Growth Lead'],
+  catalog: {
+    function: 'Marketing',
+    seniority: ['Mid', 'Senior'],
+    industries: ['D2C & e-commerce', 'SaaS'],
+    skills: ['Analysis', 'Numbers', 'Judgement'],
+    keywords: ['search', 'organic', 'SEO specialist', 'search engine optimisation'],
+  },
   summary:
     'An organic revenue drop after a site migration, with a Google core update as a red herring, a recovery plan, and an agency audit that would make things worse.',
 

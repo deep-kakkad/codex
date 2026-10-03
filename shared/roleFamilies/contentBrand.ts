@@ -57,6 +57,13 @@ export const contentBrand: RoleFamily = {
   version: 1,
   name: 'Content & Brand Marketing',
   roles: ['Content Marketing Manager', 'Brand Manager', 'Content Lead'],
+  catalog: {
+    function: 'Marketing',
+    seniority: ['Mid', 'Senior'],
+    industries: ['SaaS'],
+    skills: ['Writing', 'Analysis', 'Judgement'],
+    keywords: ['content marketing', 'brand', 'content strategy', 'editor'],
+  },
   summary:
     "A B2B SaaS blog whose traffic doubled while trials stayed flat, a quarter's content bet, and a content brief that contradicts the customer research.",
 

@@ -1,4 +1,4 @@
-import type { StageDef } from '../types';
+import type { Block, Criterion, Rng, StageContext, StageDef } from '../types';
 import { s } from '../variants';
 
 /** The unscored 45-second warm-up every role family opens with. */
@@ -92,3 +92,98 @@ export const AI_ALLOWED_STEPS = [
   'Paste your full AI conversation, or write "none".',
   'In 2–3 lines, say what you kept, changed or rejected from the AI and why.',
 ];
+
+/** "Judgment with AI": the same first criterion on every AI-allowed task. */
+const AI_JUDGMENT: Criterion = {
+  id: 'judgment',
+  label: 'Judgment with AI',
+  weight: 2,
+  anchors: [
+    'Pasted output unchanged, errors kept.',
+    'Light edits; did not give the AI the real context.',
+    'Gave the AI the scenario context and fixed its mistakes.',
+    'Used AI deliberately and rejected weak suggestions with reasons.',
+  ],
+};
+
+/**
+ * An AI-allowed task: any tool may be used, and the candidate submits the
+ * result, the conversation and what they changed. `accuracy` scores the
+ * role-specific facts; `usable` whether the result could be used as is.
+ */
+export function aiAllowedStage(options: {
+  id: string;
+  title: string;
+  summary: string;
+  task: (ctx: StageContext) => Block[];
+  guide: (ctx: StageContext) => Block[];
+  accuracy: Criterion;
+  usable: Criterion;
+  followUps?: string[];
+  timeLimitSec?: number;
+}): StageDef {
+  return {
+    id: options.id,
+    kind: 'ai_allowed',
+    title: options.title,
+    summary: options.summary,
+    timeLimitSec: options.timeLimitSec ?? 540,
+    voiceMaxSec: 0,
+    preferVoice: false,
+    scored: true,
+    prompt: (ctx) => [
+      { type: 'p', text: AI_ALLOWED_INTRO },
+      ...options.task(ctx),
+      { type: 'list', ordered: true, items: AI_ALLOWED_STEPS },
+    ],
+    reviewerGuide: options.guide,
+    rubric: [AI_JUDGMENT, options.accuracy, options.usable],
+    followUps: () =>
+      options.followUps ?? [
+        'What did the AI get wrong in its first attempt?',
+        'Which part of your final answer did you write yourself, and why?',
+      ],
+  };
+}
+
+/** The four-step anchor scale used for "concrete next steps" across roles. */
+export const NEXT_STEPS: Criterion = {
+  id: 'action',
+  label: 'Concrete next steps',
+  weight: 1,
+  anchors: [
+    'No action.',
+    'Vague actions.',
+    'Specific actions in a sensible order.',
+    'Specific actions with owners, timing and a success check.',
+  ],
+};
+
+/** Adapting when the situation changes, scored the same way in every role. */
+export const ADAPTS: Criterion = {
+  id: 'adapt',
+  label: 'Adapts to the new situation',
+  weight: 2,
+  anchors: [
+    'Ignores or dismisses the new problem.',
+    'Acknowledges it, with a thin response.',
+    'Addresses the new problem directly and changes course where needed.',
+    'Addresses it, fixes the root cause and prevents a repeat.',
+  ],
+};
+
+/** Shuffles a list with the scenario's random source, so tables differ per candidate. */
+export function shuffled<T>(rng: Rng, items: readonly T[]): T[] {
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rng.next() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+/** Rounds to a "nice" number for a scenario: to the nearest `step`. */
+export const roundTo = (value: number, step: number) => Math.round(value / step) * step;
+
+export const FICTIONAL_CALLOUT =
+  'The company and numbers are fictional, and every candidate gets a slightly different version. A calculator is fine.';

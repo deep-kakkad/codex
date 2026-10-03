@@ -1,4 +1,5 @@
 // Core domain types shared by the server and the web client.
+import type { CatalogInfo } from './catalog';
 
 export type Currency = 'INR' | 'USD';
 
@@ -122,6 +123,8 @@ export interface RoleFamily {
   stages: StageDef[];
   /** Warm-up prompts; one is picked per candidate. */
   warmups?: string[];
+  /** Where it sits in the role library's filters. Generated scenarios have none. */
+  catalog?: CatalogInfo;
   /** Written by AI for one organisation rather than by practitioners. */
   generated?: boolean;
   /** Generated scenarios have their amounts written in one currency. */

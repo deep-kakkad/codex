@@ -32,6 +32,13 @@ export const performanceMarketing: RoleFamily = {
   version: 1,
   name: 'Performance Marketing',
   roles: ['Performance Marketing Manager', 'Growth Marketer', 'Paid Media Lead'],
+  catalog: {
+    function: 'Marketing',
+    seniority: ['Mid', 'Senior'],
+    industries: ['D2C & e-commerce', 'Consumer apps'],
+    skills: ['Numbers', 'Analysis', 'Judgement'],
+    keywords: ['paid media', 'growth marketing', 'performance', 'Meta ads', 'Google ads', 'acquisition'],
+  },
   summary:
     'A D2C brand with a budget cut, over-claiming ad dashboards and an agency plan with flaws that only show up if you do the unit economics.',
 

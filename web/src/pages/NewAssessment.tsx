@@ -4,9 +4,9 @@ import type { RoleFamilySummary, StageOutline } from '../../../shared/api';
 import type { Currency } from '../../../shared/types';
 import { api, errorMessage } from '../api';
 import { Icon } from '../components/Icon';
+import { RoleCatalog } from '../components/RoleCatalog';
 import { ErrorNote, KindBadge } from '../components/ui';
 import { formatMinutes, useApi } from '../hooks';
-import { GeneratedBadge } from './RoleLibrary';
 
 /** Adds an activity's prerequisite; removing a prerequisite removes what needs it. */
 function toggle(stages: StageOutline[], selected: Set<string>, id: string): Set<string> {
@@ -38,6 +38,10 @@ export function NewAssessment() {
   const hasScored = chosen.some((s) => s.scored);
 
   function pickRole(f: RoleFamilySummary) {
+    // Choosing a role moves on to its activities.
+    if (familyId !== f.id) {
+      window.setTimeout(() => document.getElementById('activities')?.scrollIntoView({ behavior: 'smooth' }), 50);
+    }
     setFamilyId(f.id);
     setSelected(new Set(f.stages.map((s) => s.id)));
     setTitle(f.roles[0]);
@@ -96,30 +100,39 @@ export function NewAssessment() {
       <h2 className="section-title">
         {fromJd ? '1. Built from your job description' : '1. Or pick a ready-made role'}
       </h2>
-      <div className="grid-cards">
-        {data?.families.map((f) => (
-          <div
-            key={f.id}
-            className={`card card-select ${familyId === f.id ? 'selected' : ''}`}
-            onClick={() => pickRole(f)}
-          >
-            <label className="radio-title">
-              <input type="radio" name="family" checked={familyId === f.id} onChange={() => pickRole(f)} />
-              <span>{f.name}</span>
-            </label>
-            {f.generated && <GeneratedBadge />}
-            <div className="small">For: {f.roles.join(', ')}</div>
-            <p className="muted">{f.summary}</p>
-          </div>
-        ))}
-      </div>
+      <RoleCatalog
+        families={data?.families ?? []}
+        selectedId={familyId}
+        onSelect={pickRole}
+        action={(f) => (
+          <>
+            <Link to={`/app/library/${f.id}`} className="btn btn-ghost btn-sm">
+              Preview
+            </Link>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => pickRole(f)}>
+              {familyId === f.id ? 'Chosen' : 'Choose'}
+            </button>
+          </>
+        )}
+        empty={
+          <p className="muted">
+            No ready-made role matches.{' '}
+            <a href="#top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              Paste your job description
+            </a>{' '}
+            and AI builds one for this exact role.
+          </p>
+        }
+      />
       <p className="small muted">
         Not listed? <Link to="/app/library#generate">Have AI write a scenario for any role</Link>.
       </p>
 
       {family && (
         <>
-          <h2 className="section-title">2. Choose the activities</h2>
+          <h2 className="section-title" id="activities">
+            2. Choose the activities for {family.name}
+          </h2>
           <p className="muted small">
             All activities share one scenario, so candidates build on what they've already seen. A situation-change
             activity needs the decision it follows.{' '}

@@ -40,6 +40,7 @@ export function familySummary(family: RoleFamily): RoleFamilySummary {
     totalMinutes: Math.round(totalTimeSec(family) / 60),
     stages: stageOutline(family),
     ...(family.generated ? { generated: true } : {}),
+    ...(family.catalog ? { catalog: family.catalog } : {}),
     ...(family.fixedCurrency ? { fixedCurrency: family.fixedCurrency } : {}),
   };
 }

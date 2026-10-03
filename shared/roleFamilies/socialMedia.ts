@@ -54,6 +54,13 @@ export const socialMedia: RoleFamily = {
   version: 1,
   name: 'Social Media',
   roles: ['Social Media Manager', 'Social Media Lead', 'Community Manager'],
+  catalog: {
+    function: 'Marketing',
+    seniority: ['Mid', 'Senior'],
+    industries: ['Consumer apps', 'D2C & e-commerce'],
+    skills: ['Writing', 'Judgement', 'Communication'],
+    keywords: ['social', 'Instagram', 'community', 'content creator'],
+  },
   summary:
     'Engagement that is "up" because of a giveaway whose followers leave, a plan for the next quarter, and a public reply to a viral complaint that would make it worse.',
 

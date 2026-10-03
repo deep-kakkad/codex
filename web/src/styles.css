@@ -8206,3 +8206,206 @@ blockquote cite {
     break-inside: avoid;
   }
 }
+
+/* Role catalogue: search, function tabs, filters and cards */
+.catalog {
+  display: grid;
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+.catalog-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.catalog-search .icon {
+  position: absolute;
+  left: 0.8rem;
+  color: var(--subtle);
+  pointer-events: none;
+}
+.catalog-search input {
+  padding-left: 2.3rem;
+  min-height: 2.75rem;
+  font-size: 0.95rem;
+}
+.catalog-tabs {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+.catalog-tabs button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 560;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.catalog-tabs button .num {
+  color: var(--subtle);
+  font-size: 0.78rem;
+}
+.catalog-tabs button:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.catalog-tabs button.is-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.catalog-tabs button.is-on .num {
+  color: inherit;
+  opacity: 0.8;
+}
+.catalog-tabs button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.catalog-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.catalog-select select {
+  width: auto;
+  min-height: 2.1rem;
+  height: 2.1rem;
+  padding: 0 2rem 0 0.7rem;
+  font-size: 0.84rem;
+  border-radius: 99px;
+}
+.catalog-select.is-set select {
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.catalog-count {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 0.75rem;
+  align-items: center;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+.catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.85rem;
+}
+.catalog-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  transition:
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+.catalog-card.is-selectable {
+  cursor: pointer;
+}
+.catalog-card.is-selectable:hover {
+  border-color: var(--border-strong);
+}
+.catalog-card.selected {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 1px var(--accent),
+    var(--shadow);
+}
+.catalog-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.catalog-fn {
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.catalog-min {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  color: var(--subtle);
+}
+.catalog-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.catalog-summary {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.catalog-roles {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--subtle);
+}
+.catalog-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.15rem;
+}
+.catalog-tag {
+  padding: 1px 8px;
+  border-radius: 99px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 560;
+}
+.catalog-tag.is-level {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.catalog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+.catalog-empty {
+  padding: 1.5rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  text-align: center;
+}
+@media (max-width: 640px) {
+  .catalog-count {
+    margin-left: 0;
+    width: 100%;
+  }
+  .catalog-select {
+    flex: 1 1 140px;
+  }
+  .catalog-select select {
+    width: 100%;
+  }
+}

@@ -1,5 +1,6 @@
 // Shapes of the JSON the API returns. Shared so the client stays in sync.
 import type { CandidatePhaseView } from './candidateApi';
+import type { CatalogInfo } from './catalog';
 import type { PlanId } from './plans';
 import type { SignalNote } from './signals';
 import type {
@@ -48,6 +49,7 @@ export interface RoleFamilySummary {
   stages: StageOutline[];
   /** Written by AI for this organisation. */
   generated?: boolean;
+  catalog?: CatalogInfo;
   /** Generated scenarios are written in one currency. */
   fixedCurrency?: Currency;
 }

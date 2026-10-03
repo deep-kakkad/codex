@@ -3,8 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import type { RoleFamilySummary } from '../../../shared/api';
 import { useAuth } from '../auth';
 import { GenerateScenario } from '../components/GenerateScenario';
-import { ErrorNote, KindBadge } from '../components/ui';
-import { formatMinutes, useApi } from '../hooks';
+import { RoleCatalog } from '../components/RoleCatalog';
+import { ErrorNote } from '../components/ui';
+import { useApi } from '../hooks';
 
 export function GeneratedBadge() {
   return (
@@ -33,30 +34,22 @@ export function RoleLibrary() {
         </div>
       </div>
       <ErrorNote error={error} />
-      <div className="grid-cards">
-        {data?.families.map((f) => (
-          <div key={f.id} className="card">
-            <div className="card-select-head">
-              <h3>
-                {f.name} {f.generated && <GeneratedBadge />}
-              </h3>
-              <span className="small muted">~{f.totalMinutes} min</span>
-            </div>
-            <p className="muted">{f.summary}</p>
-            <div className="small">For: {f.roles.join(', ')}</div>
-            <ol className="mini-outline">
-              {f.stages.map((s) => (
-                <li key={s.id}>
-                  <KindBadge kind={s.kind} /> {s.title} <span className="muted">· {formatMinutes(s.timeLimitSec)}</span>
-                </li>
-              ))}
-            </ol>
+      <RoleCatalog
+        families={data?.families ?? []}
+        action={(f) => (
+          <>
+            {f.generated && <GeneratedBadge />}
             <Link to={`/app/library/${f.id}`} className="btn btn-secondary btn-sm">
               Preview content and answer key
             </Link>
-          </div>
-        ))}
-      </div>
+          </>
+        )}
+        empty={
+          <p className="muted">
+            No ready-made role matches. <a href="#generate">Have AI write one</a> from a description or job post.
+          </p>
+        }
+      />
       <GenerateScenario canCreate={user?.role === 'manager'} onReady={reload} />
     </>
   );

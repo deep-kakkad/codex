@@ -25,6 +25,13 @@ export const customerSupport: RoleFamily = {
   version: 1,
   name: 'Customer Support Leadership',
   roles: ['Customer Support Team Lead', 'Support Operations Manager', 'CX Lead'],
+  catalog: {
+    function: 'Customer support',
+    seniority: ['Manager'],
+    industries: ['Consumer apps', 'Fintech'],
+    skills: ['Prioritisation', 'Leadership', 'Customer empathy'],
+    keywords: ['CX', 'support lead', 'customer service', 'team lead', 'contact centre'],
+  },
   summary:
     'The morning after a payment outage: a backlog capacity alone cannot clear, a tempting shortcut, and a draft reply with a serious security mistake in it.',
 
