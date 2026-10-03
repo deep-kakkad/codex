@@ -97,6 +97,12 @@ const PATHS = {
       <path d="M14 3v5h5M9 13h6M9 17h6" />
     </>
   ),
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="m16 16 4.5 4.5" />
+    </>
+  ),
   card: (
     <>
       <rect x="3" y="5" width="18" height="14" rx="2" />

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getRoleFamily } from '../shared/roleFamilies';
+import { experimentMath } from '../shared/roleFamilies/productAnalyst';
 import { sdrPlayMath } from '../shared/roleFamilies/sdr';
 import type { Currency } from '../shared/types';
 import { generateVariant, n, s } from '../shared/variants';
@@ -51,6 +52,40 @@ describe('hand-built roles keep their planted facts', () => {
       expect(n(v, 'slaHours') - n(v, 'slaWait')).toBeLessThanOrEqual(4);
       expect(n(v, 'itemPrice')).toBeGreaterThan(n(v, 'goodwill'));
       expect(n(v, 'daysSince')).toBeGreaterThan(n(v, 'returnDays'));
+    });
+  });
+
+  it('PM: the drop sits in new Android users', () => {
+    eachVariant('product-manager', (v) => {
+      expect(n(v, 'androidBefore') - n(v, 'androidAfter')).toBeGreaterThanOrEqual(8);
+      expect(n(v, 'iosBefore') - n(v, 'iosAfter')).toBeLessThanOrEqual(1);
+      expect(n(v, 'blendedAfter')).toBeLessThan(n(v, 'blendedBefore'));
+      expect(n(v, 'otpTicketsAfter')).toBeGreaterThan(n(v, 'otpTicketsBefore') * 3);
+      expect(n(v, 'ceoWeeks')).toBeGreaterThan(n(v, 'ceoDeadlineWeeks'));
+      expect(n(v, 'onboardingWeeks')).toBeLessThan(n(v, 'engineerWeeks'));
+    });
+  });
+
+  it('Product analyst: the split is off, conversion is up, revenue per user is down', () => {
+    eachVariant('product-analyst', (v) => {
+      const m = experimentMath(v);
+      expect(m.treatShare).toBeLessThan(48);
+      expect(m.lift).toBeGreaterThan(0);
+      expect(m.tRp100).toBeLessThan(m.cRp100);
+    });
+  });
+
+  it('UX designer: the address step is by far the leakiest', () => {
+    eachVariant('ux-designer', (v) => {
+      const address = n(v, 'atSlot') / n(v, 'atAddress');
+      for (const other of [
+        n(v, 'atAddress') / n(v, 'cart'),
+        n(v, 'atPayment') / n(v, 'atSlot'),
+        n(v, 'done') / n(v, 'atPayment'),
+      ]) {
+        expect(address).toBeLessThan(other - 0.15);
+      }
+      expect(n(v, 'redesignWeeks')).toBeGreaterThan(n(v, 'engineerWeeks'));
     });
   });
 });

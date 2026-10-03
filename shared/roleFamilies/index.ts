@@ -3,10 +3,13 @@ import { accountExecutive } from './accountExecutive';
 import { contentBrand } from './contentBrand';
 import { customerSupport } from './customerSupport';
 import { performanceMarketing } from './performanceMarketing';
+import { productAnalyst } from './productAnalyst';
+import { productManager } from './productManager';
 import { sdr } from './sdr';
 import { seo } from './seo';
 import { socialMedia } from './socialMedia';
 import { supportExecutive } from './supportExecutive';
+import { uxDesigner } from './uxDesigner';
 
 export const ROLE_FAMILIES: RoleFamily[] = [
   performanceMarketing,
@@ -17,6 +20,9 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   sdr,
   accountExecutive,
   supportExecutive,
+  productManager,
+  productAnalyst,
+  uxDesigner,
 ];
 
 export function getRoleFamily(id: string): RoleFamily | undefined {

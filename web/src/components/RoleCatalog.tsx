@@ -74,7 +74,7 @@ export function RoleCatalog({
   return (
     <div className="catalog">
       <div className="catalog-search">
-        <Icon name="library" size={16} />
+        <Icon name="search" size={16} />
         <input
           type="search"
           value={filters.query}

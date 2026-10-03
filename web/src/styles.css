@@ -561,6 +561,7 @@ legend {
 input[type='text'],
 input[type='email'],
 input[type='password'],
+input[type='search'],
 input:not([type]),
 select,
 textarea {
