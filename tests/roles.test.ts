@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getRoleFamily } from '../shared/roleFamilies';
+import { baCapacity } from '../shared/roleFamilies/businessAnalyst';
+import { regionMath } from '../shared/roleFamilies/dataAnalyst';
 import { experimentMath } from '../shared/roleFamilies/productAnalyst';
 import { sdrPlayMath } from '../shared/roleFamilies/sdr';
 import type { Currency } from '../shared/types';
@@ -86,6 +88,33 @@ describe('hand-built roles keep their planted facts', () => {
         expect(address).toBeLessThan(other - 0.15);
       }
       expect(n(v, 'redesignWeeks')).toBeGreaterThan(n(v, 'engineerWeeks'));
+    });
+  });
+
+  it('Data analyst: the dashboard says East, the clean data says West', () => {
+    eachVariant('data-analyst', (v) => {
+      const rows = regionMath(v);
+      const top = (key: 'shownGrowth' | 'trueGrowth') => [...rows].sort((a, b) => b[key] - a[key])[0].region;
+      expect(top('shownGrowth')).toBe('East');
+      expect(top('trueGrowth')).toBe('West');
+    });
+  });
+
+  it('BA: manual checks can never keep up, risk routing can', () => {
+    eachVariant('business-analyst', (v) => {
+      const c = baCapacity(v);
+      expect(c.shortfall).toBeGreaterThan(0);
+      expect(c.manualIfRouted).toBeLessThan(c.capacity);
+    });
+  });
+
+  it('IT support: distinct ticket numbers and the phishing ticket is present', () => {
+    eachVariant('it-support', (v) => {
+      const ids = ['phish', 'vpn', 'ceo', 'joiner', 'printer', 'resets', 'laptop', 'software'].map((k) =>
+        s(v, `${k}Id`),
+      );
+      expect(new Set(ids).size).toBe(8);
+      expect(n(v, 'outageMins')).toBeLessThan(60);
     });
   });
 });

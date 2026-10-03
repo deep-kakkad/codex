@@ -2,6 +2,8 @@ import type { Block, RoleFamily } from '../types';
 import { n, s } from '../variants';
 import { ADAPTS, FICTIONAL_CALLOUT, NEXT_STEPS, aiAllowedStage, pastWorkStage, warmupStage } from './common';
 
+const capitalise = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 const PRODUCTS = [
   {
     company: 'Kirana Konnect',
@@ -133,7 +135,7 @@ export const productManager: RoleFamily = {
         columns: ['Request', 'From', 'Estimate'],
         rows: [
           [
-            `${s(v, 'ceoFeature')} for ${s(v, 'bigCustomer')} (${fmt.num(n(v, 'bigCustomerUsers'))} users)`,
+            `${capitalise(s(v, 'ceoFeature'))} for ${s(v, 'bigCustomer')} (${fmt.num(n(v, 'bigCustomerUsers'))} users)`,
             'CEO',
             `${n(v, 'ceoWeeks')} engineer-weeks`,
           ],
