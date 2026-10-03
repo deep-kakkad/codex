@@ -1,14 +1,4 @@
-import {
-  type FormEvent,
-  type ReactNode,
-  type RefObject,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { type FormEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type {
   AiStageReview,
@@ -19,7 +9,7 @@ import type {
   VerificationRecord,
 } from '../../../shared/api';
 import { formatDuration } from '../../../shared/signals';
-import { type Decision, type Delivery, type Recommendation, STAGE_KIND_LABEL } from '../../../shared/types';
+import type { Decision, Delivery, Recommendation } from '../../../shared/types';
 import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { AudioPlayer, SpeedPicker } from '../components/AudioPlayer';
@@ -27,7 +17,15 @@ import { Blocks } from '../components/Blocks';
 import { Icon, type IconName } from '../components/Icon';
 import { Avatar, type Evidence, Highlighted, ScoreRing, findEvidence } from '../components/ReviewBits';
 import { ThinkAloudReview } from '../components/ThinkAloudReview';
-import { Collapsible, CopyButton, DecisionBadge, ErrorNote, StatusBadge, candidateLink } from '../components/ui';
+import {
+  Collapsible,
+  CopyButton,
+  DecisionBadge,
+  ErrorNote,
+  KindBadge,
+  StatusBadge,
+  candidateLink,
+} from '../components/ui';
 import { formatDate, useApi } from '../hooks';
 
 type Tab = 'review' | 'verification' | 'scenario';
@@ -35,10 +33,6 @@ const POLL_MS = 4000;
 const FLASH_MS = 1400;
 /** The entrance plays while the page carries `rv-intro`; this is how long it keeps it. */
 const INTRO_MS = 1100;
-/** The question crossing this line (a share of the window's height) is the one being read. */
-const READING_LINE = 0.3;
-/** Space between margin notes; matches `.crit-note + .crit-note`. */
-const NOTE_GAP = 24;
 
 const REC_LABEL: Record<Recommendation, string> = { advance: 'Advance', hold: 'Hold', reject: 'Do not advance' };
 const DECISIONS: { value: Decision; label: string; icon: IconName }[] = [
@@ -81,24 +75,27 @@ export function CandidateReportPage() {
 
   return (
     <div className={`rv ${settled !== introKey ? 'rv-intro' : ''}`}>
-      <div className="rv-topline">
-        <Link to={`/app/assessments/${report.assessment.id}`} className="back-link">
-          <Icon name="back" size={14} />
-          {report.assessment.title}
-        </Link>
+      <div className="rv-crumbs">
+        <nav aria-label="Breadcrumb" className="crumbs">
+          <Link to="/app" aria-label="Home">
+            <Icon name="home" size={15} />
+          </Link>
+          <Icon name="next" size={12} />
+          <Link to="/app">Assessments</Link>
+          <Icon name="next" size={12} />
+          <Link to={`/app/assessments/${report.assessment.id}`}>{report.assessment.title}</Link>
+          <Icon name="next" size={12} />
+          <span aria-current="page">Candidate review</span>
+        </nav>
         <Pager report={report} />
       </div>
 
       <SummaryHeader report={report} finished={finished} tab={tab} onTab={setTab} onReport={setReport} />
 
       {tab === 'review' && <ReviewTab key={candidate.id} report={report} finished={finished} onReport={setReport} />}
-      {tab === 'verification' && (
-        <div className="rv-pane">
-          <VerificationTab report={report} finished={finished} onReport={setReport} />
-        </div>
-      )}
+      {tab === 'verification' && <VerificationTab report={report} finished={finished} onReport={setReport} />}
       {tab === 'scenario' && (
-        <div className="rv-pane rv-scenario">
+        <div className="rv-card rv-scenario">
           <p className="callout callout-info">
             {report.family.generated
               ? 'Every candidate on this assessment saw this same scenario.'
@@ -154,8 +151,6 @@ function Pager({ report, compact = false }: { report: CandidateReport; compact?:
   );
 }
 
-// Summary header ----------------------------------------------------------------
-
 function firstSentence(text: string) {
   const sentence = text.trim().split(/(?<=[.!?])\s/)[0] ?? '';
   return sentence.length > 160 ? `${sentence.slice(0, 157)}…` : sentence;
@@ -175,7 +170,7 @@ function teamLean(report: CandidateReport) {
     .join(' · ');
 }
 
-/** Who they are, the verdict, and the decision, composed as one block. */
+/** Who they are, the overall score, the AI's recommendation and the decision. */
 function SummaryHeader({
   report,
   finished,
@@ -194,22 +189,21 @@ function SummaryHeader({
   const r = review?.result ?? null;
   const overall = report.adjusted?.overall ?? r?.overall ?? null;
   const recommendation = report.adjusted?.recommendation ?? r?.recommendation ?? null;
-  const headline = r ? r.headline?.trim() || firstSentence(r.summary) : null;
   const bench = report.benchmark;
   const scoring = !review || review.status === 'pending' || review.status === 'running';
   const reached = report.stages.filter((s) => s.response).length;
 
   return (
-    <header className="rv-head">
-      <div className="rv-head-who">
+    <header className="rv-card rv-head">
+      <div className="rv-who">
         <Avatar name={candidate.name} size="xl" />
-        <div className="rv-head-text">
+        <div className="rv-who-text">
+          <span className="rv-eyebrow">Candidate</span>
           <div className="rv-name-row">
             <h1 className="rv-name">{candidate.name}</h1>
             <StarToggle report={report} onReport={onReport} />
           </div>
           <div className="rv-meta">
-            <StatusBadge status={candidate.status} />
             <span>{candidate.email}</span>
             {candidate.submittedAt ? (
               <span title={`Invited ${formatDate(candidate.createdAt)} · started ${formatDate(candidate.startedAt)}`}>
@@ -219,68 +213,9 @@ function SummaryHeader({
               <span>Invited {formatDate(candidate.createdAt)}</span>
             )}
             {candidate.timeMultiplier > 1 && <span>{candidate.timeMultiplier}× time</span>}
+            <StatusBadge status={candidate.status} />
           </div>
-          {headline && <p className="rv-headline">{headline}</p>}
         </div>
-      </div>
-
-      <div className="rv-unit">
-        {!finished ? (
-          <div className="rv-unit-wait">
-            <span className="rv-label">{candidate.status === 'invited' ? "Hasn't started yet" : 'Still working'}</span>
-            <p>
-              {candidate.status === 'invited'
-                ? 'Send them their link. The AI review starts as soon as they submit.'
-                : `On question ${reached} of ${report.stages.length}. The AI review starts as soon as they submit.`}
-            </p>
-            <CopyButton text={candidateLink(candidate.token)} label="Copy candidate link" />
-          </div>
-        ) : (
-          <>
-            <div className="rv-unit-verdict">
-              {r ? (
-                <ScoreRing value={overall} size={88} />
-              ) : (
-                <div className="rv-ring-empty" aria-hidden="true">
-                  {scoring ? <span className="spinner" /> : '—'}
-                </div>
-              )}
-              <div className="rv-rec">
-                <span className="rv-label">AI recommends</span>
-                {r ? (
-                  <strong className={`rv-rec-value rec-${recommendation ?? 'none'}`}>
-                    {recommendation ? REC_LABEL[recommendation] : '—'}
-                  </strong>
-                ) : (
-                  <strong className="rv-rec-value rec-none">{scoring ? 'Scoring…' : 'No AI score'}</strong>
-                )}
-                <span className="rv-rank">
-                  {!r ? (
-                    scoring ? (
-                      'Usually takes a minute or two.'
-                    ) : (
-                      'You can still review the answers and decide.'
-                    )
-                  ) : bench ? (
-                    <>
-                      Ranked <strong>{ordinal(bench.rank)}</strong> of {bench.of}
-                      {bench.overallAverage !== null && <> · pool average {bench.overallAverage.toFixed(1)}</>}
-                    </>
-                  ) : (
-                    'The first reviewed candidate here'
-                  )}
-                </span>
-                {r && report.adjusted && (
-                  <span className="rv-rank">
-                    AI scored {r.overall?.toFixed(1)}; {report.overrides.length} score
-                    {report.overrides.length === 1 ? '' : 's'} changed by your team
-                  </span>
-                )}
-              </div>
-            </div>
-            <DecisionControl report={report} onReport={onReport} />
-          </>
-        )}
       </div>
 
       <div className="rv-tabs" role="tablist">
@@ -301,6 +236,69 @@ function SummaryHeader({
             {label}
           </button>
         ))}
+      </div>
+
+      <div className="rv-scorecard">
+        {r ? (
+          <ScoreRing value={overall} size={104} />
+        ) : (
+          <div className="rv-ring-empty" aria-hidden="true">
+            {finished && scoring ? <span className="spinner" /> : '—'}
+          </div>
+        )}
+        <span className="rv-scorecard-label">Overall score</span>
+      </div>
+
+      <div className="rv-reco">
+        {!finished ? (
+          <div className="rv-reco-card">
+            <span className="rv-eyebrow">{candidate.status === 'invited' ? "Hasn't started" : 'Still working'}</span>
+            <p className="rv-reco-note">
+              {candidate.status === 'invited'
+                ? 'Send them their link. The AI review starts as soon as they submit.'
+                : `On question ${reached} of ${report.stages.length}. The AI review starts as soon as they submit.`}
+            </p>
+            <CopyButton text={candidateLink(candidate.token)} label="Copy candidate link" />
+          </div>
+        ) : (
+          <>
+            <div className="rv-reco-card">
+              <span className="rv-eyebrow rv-eyebrow-accent">
+                <Icon name="sparkle" size={13} filled /> AI recommendation
+              </span>
+              {r ? (
+                <strong className={`rv-reco-value rec-${recommendation ?? 'none'}`}>
+                  {recommendation ? REC_LABEL[recommendation] : '—'}
+                </strong>
+              ) : (
+                <strong className="rv-reco-value rec-none">{scoring ? 'Scoring…' : 'No AI score'}</strong>
+              )}
+              <span className="rv-reco-note">
+                {!r ? (
+                  scoring ? (
+                    'Usually takes a minute or two.'
+                  ) : (
+                    'You can still review the answers and decide.'
+                  )
+                ) : bench ? (
+                  <>
+                    Ranked {ordinal(bench.rank)} of {bench.of}
+                    {bench.overallAverage !== null && <> · Pool average {bench.overallAverage.toFixed(1)}</>}
+                  </>
+                ) : (
+                  'The first reviewed candidate here'
+                )}
+              </span>
+              {r && report.adjusted && (
+                <span className="rv-reco-note">
+                  AI scored {r.overall?.toFixed(1)}; {report.overrides.length} score
+                  {report.overrides.length === 1 ? '' : 's'} changed by your team
+                </span>
+              )}
+            </div>
+            <DecisionControl report={report} onReport={onReport} />
+          </>
+        )}
       </div>
     </header>
   );
@@ -450,6 +448,21 @@ function useInView(selector: string, inset = 72) {
   return visible;
 }
 
+const TONE_WORD: Record<string, string> = { good: 'Strong', mid: 'Mixed', low: 'Weak', none: '' };
+
+/** The AI's quotes for one question, and which of them appear in the candidate's own words. */
+function stageEvidence(report: CandidateReport, stage: ReportStage) {
+  const { ai, response: r } = stageFacts(report, stage);
+  const evidence: Evidence[] = ai
+    ? stage.rubric.flatMap((c) =>
+        ai.criteria[c.id]?.evidence ? [{ id: c.id, label: c.label, quote: ai.criteria[c.id].evidence }] : [],
+      )
+    : [];
+  const searchable = [r?.text, ai?.transcript, r?.reflection, r?.aiTranscript].filter(Boolean).join('\n');
+  const found = new Set(findEvidence(searchable, evidence).map((s) => s.id));
+  return { evidence, found };
+}
+
 function ReviewTab({
   report,
   finished,
@@ -460,59 +473,35 @@ function ReviewTab({
   onReport: (r: CandidateReport) => void;
 }) {
   const navigate = useNavigate();
-  const [open, setOpen] = useState<Set<string>>(new Set());
-  const [current, setCurrent] = useState<string | null>(null);
-  const [flash, setFlash] = useState<string | null>(null);
-  // While a jump scrolls the page, the reading line would point at questions passing by.
-  const holdCurrentUntil = useRef(0);
-  const headerVisible = useInView('.rv-head');
   const stages = report.stages;
+  const [current, setCurrent] = useState<string | null>(
+    () => (stages.find((s) => s.scored && s.response) ?? stages[0])?.id ?? null,
+  );
+  const [view, setView] = useState<'questions' | 'transcript'>('questions');
+  const [flash, setFlash] = useState(false);
+  const headerVisible = useInView('.rv-head');
   const { prev, next } = report.siblings;
+  const index = stages.findIndex((s) => s.id === current);
+  const stage = index >= 0 ? stages[index] : null;
 
+  /** Selects a question; brings the question card into view if its top is off screen. */
   const show = useCallback((stageId: string) => {
-    setOpen((now) => new Set(now).add(stageId));
+    setView('questions');
     setCurrent(stageId);
-    holdCurrentUntil.current = Date.now() + 1000;
-    setFlash(stageId);
-    window.setTimeout(() => setFlash((now) => (now === stageId ? null : now)), FLASH_MS);
-    requestAnimationFrame(() =>
-      document
-        .getElementById(`stage-${stageId}`)
-        ?.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }),
-    );
-  }, []);
-  const toggle = (stageId: string) =>
-    setOpen((now) => {
-      const nextOpen = new Set(now);
-      if (nextOpen.has(stageId)) nextOpen.delete(stageId);
-      else nextOpen.add(stageId);
-      return nextOpen;
+    setFlash(true);
+    window.setTimeout(() => setFlash(false), FLASH_MS);
+    requestAnimationFrame(() => {
+      const card = document.getElementById('rv-questions');
+      if (card && card.getBoundingClientRect().top < 72)
+        card.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
+      else if (card && card.getBoundingClientRect().top > window.innerHeight * 0.6)
+        card.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
     });
-
-  // The current question is the last one whose top has crossed the reading line.
-  useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      if (Date.now() < holdCurrentUntil.current) return;
-      const line = window.innerHeight * READING_LINE;
-      let found: string | null = null;
-      for (const stage of stages) {
-        const el = document.getElementById(`stage-${stage.id}`);
-        if (el && el.getBoundingClientRect().top <= line) found = stage.id;
-      }
-      setCurrent(found);
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(update);
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    update();
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      cancelAnimationFrame(frame);
-    };
-  }, [stages]);
+  }, []);
+  const step = (delta: number) => {
+    const target = stages[Math.min(stages.length - 1, Math.max(0, index + delta))];
+    if (target && target.id !== current) show(target.id);
+  };
 
   // J / K move between questions; [ and ] move between candidates.
   useEffect(() => {
@@ -521,56 +510,67 @@ function ReviewTab({
       if (event.metaKey || event.ctrlKey || event.altKey || /INPUT|TEXTAREA|SELECT/.test(target.tagName)) return;
       if (event.key === '[' && prev) navigate(`/app/candidates/${prev.id}`);
       if (event.key === ']' && next) navigate(`/app/candidates/${next.id}`);
-      if (event.key !== 'j' && event.key !== 'k') return;
-      const index = current ? stages.findIndex((s) => s.id === current) : -1;
-      const step = stages[Math.min(stages.length - 1, Math.max(0, index + (event.key === 'j' ? 1 : -1)))];
-      if (step) show(step.id);
+      if (event.key === 'j') step(1);
+      if (event.key === 'k') step(-1);
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [current, stages, show, prev, next, navigate]);
+  });
 
-  const allOpen = open.size === stages.length;
+  const r = report.aiReview?.result ?? null;
   return (
     <>
       <StickyBar report={report} current={current} shown={!headerVisible} onJump={show} onReport={onReport} />
-      <QuestionNav report={report} current={current} onJump={show} />
+      <div className="rv-body">
+        <div className="rv-main">
+          <ExecutiveSummary report={report} finished={finished} onReport={onReport} />
 
-      <div className="rv-sheet">
-        <Overview report={report} finished={finished} onJump={show} onReport={onReport} />
-        <TeamNotes report={report} onReport={onReport} />
-
-        <div className="rv-row rv-answers-head">
-          <div className="rv-c">
-            <h2 className="rv-section">Answers</h2>
-            <span className="rv-legend">
-              <i className="marker-swatch" aria-hidden="true" /> Highlighted: what the AI quoted as evidence
-            </span>
-          </div>
-          <div className="rv-r">
-            <h2 className="rv-label">AI evaluation</h2>
-            <button
-              type="button"
-              className="rv-text-btn"
-              onClick={() => setOpen(allOpen ? new Set() : new Set(stages.map((s) => s.id)))}
-            >
-              {allOpen ? 'Collapse all' : 'Expand all'}
-            </button>
-          </div>
+          <section id="rv-questions" className={`rv-card rv-questions ${flash ? 'is-flash' : ''}`}>
+            <div className="rv-seg" role="tablist" aria-label="How to read the answers">
+              <button
+                role="tab"
+                aria-selected={view === 'questions'}
+                className={view === 'questions' ? 'active' : ''}
+                onClick={() => setView('questions')}
+              >
+                Question by question
+              </button>
+              <button
+                role="tab"
+                aria-selected={view === 'transcript'}
+                className={view === 'transcript' ? 'active' : ''}
+                onClick={() => setView('transcript')}
+              >
+                Full transcript
+              </button>
+            </div>
+            {view === 'questions' ? (
+              <div className="rv-qwrap">
+                <Stepper report={report} current={current} onSelect={show} />
+                {stage && (
+                  <QuestionDetail
+                    key={stage.id}
+                    report={report}
+                    stage={stage}
+                    prevStage={index > 0 ? stages[index - 1] : null}
+                    nextStage={index < stages.length - 1 ? stages[index + 1] : null}
+                    onSelect={show}
+                    onReport={onReport}
+                  />
+                )}
+              </div>
+            ) : (
+              <FullTranscript report={report} onSelect={show} />
+            )}
+          </section>
         </div>
 
-        {stages.map((stage) => (
-          <StageReview
-            key={stage.id}
-            report={report}
-            stage={stage}
-            open={open.has(stage.id)}
-            current={current === stage.id}
-            flashing={flash === stage.id}
-            onToggle={() => toggle(stage.id)}
-            onReport={onReport}
-          />
-        ))}
+        <aside className="rv-side" aria-label="Scores and notes">
+          <ScoreBreakdown report={report} current={current} onSelect={show} />
+          {r && <WithAndWithoutAi report={report} text={r.withAndWithoutAi} />}
+          {r && <EvidenceCheck report={report} />}
+          <TeamNotes report={report} onReport={onReport} />
+        </aside>
       </div>
     </>
   );
@@ -643,74 +643,6 @@ function StickyBar({
   );
 }
 
-/** The questions down the left, with a marker that follows the one you're reading. */
-function QuestionNav({
-  report,
-  current,
-  onJump,
-}: {
-  report: CandidateReport;
-  current: string | null;
-  onJump: (stageId: string) => void;
-}) {
-  const list = useRef<HTMLOListElement | null>(null);
-  const marker = useRef<HTMLSpanElement | null>(null);
-  const stages = report.stages;
-  const index = current ? stages.findIndex((s) => s.id === current) : -1;
-
-  useLayoutEffect(() => {
-    const item = current ? list.current?.querySelector<HTMLElement>(`[data-nav="${current}"]`) : null;
-    const el = marker.current;
-    if (!el) return;
-    el.classList.toggle('is-on', Boolean(item));
-    if (!item) return;
-    el.style.transform = `translateY(${item.offsetTop}px)`;
-    el.style.height = `${item.offsetHeight}px`;
-  }, [current]);
-
-  return (
-    <nav className="rv-nav" aria-label="Questions">
-      <div className="rv-nav-head">
-        <span className="rv-label">Questions</span>
-        <span className="rv-nav-pos num">{index >= 0 ? `${index + 1} of ${stages.length}` : stages.length}</span>
-      </div>
-      <div className="rv-nav-track">
-        <span ref={marker} className="rv-nav-marker" aria-hidden="true" />
-        <ol ref={list}>
-          {stages.map((stage) => {
-            const { score, response } = stageFacts(report, stage);
-            return (
-              <li key={stage.id} data-nav={stage.id}>
-                <button
-                  type="button"
-                  className={`rv-nav-item ${current === stage.id ? 'is-current' : ''} ${response ? '' : 'is-empty'}`}
-                  aria-current={current === stage.id ? 'step' : undefined}
-                  onClick={() => onJump(stage.id)}
-                >
-                  <span className="rv-nav-num">Q{stage.index + 1}</span>
-                  <span className="rv-nav-title">{stage.title}</span>
-                  {worthALook(report, stage) ? <span className="rv-flag-dot" title="Worth a closer look" /> : <span />}
-                  <span className={`rv-nav-score num tone-${stage.scored ? scoreTone(score) : 'none'}`}>
-                    {stage.scored ? (score?.toFixed(1) ?? '—') : '–'}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-      <p className="rv-nav-keys">
-        <span>
-          <kbd>J</kbd> <kbd>K</kbd> questions
-        </span>
-        <span>
-          <kbd>[</kbd> <kbd>]</kbd> candidates
-        </span>
-      </p>
-    </nav>
-  );
-}
-
 /** Plain-language reason for a failed review; the raw error stays available underneath. */
 function friendlyReviewError(error: string | null): string {
   const text = error ?? '';
@@ -721,26 +653,14 @@ function friendlyReviewError(error: string | null): string {
   return 'Something went wrong while the AI was reviewing.';
 }
 
-/** A row of the sheet: the centre column and the evaluation rail beside it. */
-function Row({ className = '', centre, rail }: { className?: string; centre: ReactNode; rail?: ReactNode }) {
-  return (
-    <section className={`rv-row ${className}`}>
-      <div className="rv-c">{centre}</div>
-      <div className="rv-r">{rail}</div>
-    </section>
-  );
-}
-
-/** The evidence at a glance, then the reasoning: strengths and concerns beside the scores. */
-function Overview({
+/** The verdict in a sentence, the reasoning, then strengths and concerns. */
+function ExecutiveSummary({
   report,
   finished,
-  onJump,
   onReport,
 }: {
   report: CandidateReport;
   finished: boolean;
-  onJump: (stageId: string) => void;
   onReport: (r: CandidateReport) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -760,51 +680,28 @@ function Overview({
     }
   }
 
-  if (!finished) {
+  if (!finished || !review || review.status === 'pending' || review.status === 'running' || !r) {
+    const failed = finished && review?.status === 'failed';
     return (
-      <Row
-        className="rv-state"
-        centre={
+      <section className="rv-card rv-exec rv-state">
+        <span className="rv-eyebrow">Executive summary</span>
+        {!finished ? (
           <>
-            <h2 className="rv-section">No answers to review yet</h2>
-            <p className="muted">Answers appear below as they come in. The AI review starts once they submit.</p>
+            <h2 className="rv-state-title">No answers to review yet</h2>
+            <p className="rv-summary">Answers appear below as they come in. The AI review starts once they submit.</p>
           </>
-        }
-      />
-    );
-  }
-  if (!review || review.status === 'pending' || review.status === 'running') {
-    return (
-      <Row
-        className="rv-state"
-        centre={
+        ) : failed ? (
           <>
-            <h2 className="rv-section reviewing">
-              <span className="spinner" aria-hidden="true" />
-              {review?.status === 'running' ? 'Transcribing audio and scoring answers…' : 'AI review queued…'}
-            </h2>
-            <p className="muted">This usually takes a minute or two. The page updates by itself.</p>
-          </>
-        }
-      />
-    );
-  }
-  if (review.status === 'failed' || !r) {
-    return (
-      <Row
-        className="rv-state"
-        centre={
-          <>
-            <h2 className="rv-section">No AI review yet</h2>
-            <p>
-              {friendlyReviewError(review.error)} Every answer and recording is below, and you can still make a
-              decision.
+            <h2 className="rv-state-title">No AI review yet</h2>
+            <p className="rv-summary">
+              {friendlyReviewError(review?.error ?? null)} Every answer and recording is below, and you can still
+              decide.
             </p>
             <div className="row-gap">
               <button className="btn btn-secondary btn-sm" onClick={rerun} disabled={busy}>
                 {busy ? 'Starting…' : 'Try the AI review again'}
               </button>
-              {review.error && (
+              {review?.error && (
                 <details className="tiny muted error-details">
                   <summary>Technical details</summary>
                   {review.error}
@@ -813,49 +710,39 @@ function Overview({
             </div>
             <ErrorNote error={error} />
           </>
-        }
-      />
+        ) : (
+          <>
+            <h2 className="rv-state-title reviewing">
+              <span className="spinner" aria-hidden="true" />
+              {review?.status === 'running' ? 'Transcribing audio and scoring answers…' : 'AI review queued…'}
+            </h2>
+            <p className="rv-summary">This usually takes a minute or two. The page updates by itself.</p>
+          </>
+        )}
+      </section>
     );
   }
 
+  const headline = r.headline?.trim() || firstSentence(r.summary);
   return (
-    <>
-      <Row
-        className="rv-ov"
-        centre={
-          <div className="rv-points-pair">
-            <PointList kind="good" icon="check" title="Strengths" items={r.strengths} />
-            <PointList kind="warn" icon="alert" title="Concerns" items={r.concerns} />
-          </div>
-        }
-        rail={<ByQuestion report={report} onJump={onJump} />}
-      />
-      <Row
-        className="rv-ov"
-        centre={
-          <div className="rv-why rv-fade">
-            <h2 className="rv-label">
-              <Icon name="sparkle" size={14} /> Why this score
-            </h2>
-            <p className="rv-summary">{r.summary}</p>
-          </div>
-        }
-        rail={
-          <>
-            <WithAndWithoutAi report={report} text={r.withAndWithoutAi} />
-            <div className="rv-ai-foot">
-              <span>
-                Reviewed {formatDate(review.updatedAt)} by {r.models.review}
-              </span>
-              <button className="rv-text-btn" onClick={rerun} disabled={busy}>
-                {busy ? 'Starting…' : 'Re-run AI review'}
-              </button>
-              <ErrorNote error={error} />
-            </div>
-          </>
-        }
-      />
-    </>
+    <section className="rv-card rv-exec">
+      <span className="rv-eyebrow">Executive summary</span>
+      <h2 className="rv-headline">{headline}</h2>
+      <p className="rv-summary">{r.summary}</p>
+      <div className="rv-points-pair">
+        <PointList kind="good" icon="check" title="Key strengths" items={r.strengths} />
+        <PointList kind="warn" icon="alert" title="Key concerns" items={r.concerns} />
+      </div>
+      <div className="rv-exec-foot">
+        <span>
+          Reviewed {formatDate(review.updatedAt)} by {r.models.review}
+        </span>
+        <button className="rv-text-btn" onClick={rerun} disabled={busy}>
+          {busy ? 'Starting…' : 'Re-run AI review'}
+        </button>
+        <ErrorNote error={error} />
+      </div>
+    </section>
   );
 }
 
@@ -865,18 +752,19 @@ function PointList({ kind, icon, title, items }: { kind: string; icon: IconName;
   const shown = all ? items : items.slice(0, 3);
   const hidden = items.length - 3;
   return (
-    <div className={`rv-points rv-points-${kind} rv-fade`}>
-      <h3 className="rv-points-head">
-        <span className="rv-points-icon">
-          <Icon name={icon} size={14} />
-        </span>
-        {title}
-        <span className="rv-points-count num">{items.length}</span>
+    <div className={`rv-points rv-points-${kind}`}>
+      <h3>
+        {title} <span className="rv-count num">{items.length}</span>
       </h3>
       {items.length ? (
         <ul>
           {shown.map((item, i) => (
-            <li key={i}>{item}</li>
+            <li key={i}>
+              <span className="rv-pt-icon" aria-hidden="true">
+                <Icon name={icon} size={12} />
+              </span>
+              <span>{item}</span>
+            </li>
           ))}
         </ul>
       ) : (
@@ -891,50 +779,542 @@ function PointList({ kind, icon, title, items }: { kind: string; icon: IconName;
   );
 }
 
-/** One bar per scored question, with the pool average marked. Each bar opens its question. */
-function ByQuestion({ report, onJump }: { report: CandidateReport; onJump: (stageId: string) => void }) {
-  const bench = report.benchmark;
+/** Every question as a step, coloured by score. */
+function Stepper({
+  report,
+  current,
+  onSelect,
+}: {
+  report: CandidateReport;
+  current: string | null;
+  onSelect: (stageId: string) => void;
+}) {
+  const list = useRef<HTMLOListElement | null>(null);
+  // On phones the steps scroll sideways: keep the current one in view.
+  useEffect(() => {
+    const el = list.current;
+    const item = el?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (el && item && el.scrollWidth > el.clientWidth)
+      el.scrollTo({ left: item.offsetLeft - 16, behavior: reducedMotion() ? 'auto' : 'smooth' });
+  }, [current]);
   return (
-    <div className="rv-byq">
-      <div className="rv-r-head">
-        <h2 className="rv-label">By question</h2>
-        {bench && (
-          <span className="rv-legend">
-            <i className="legend-avg" aria-hidden="true" /> Pool average
-          </span>
+    <nav className="rv-stepper" aria-label="Questions">
+      <ol ref={list}>
+        {report.stages.map((stage) => {
+          const { score, response } = stageFacts(report, stage);
+          const tone = stage.scored ? scoreTone(score) : 'none';
+          return (
+            <li key={stage.id}>
+              <button
+                type="button"
+                className={`rv-step-item ${current === stage.id ? 'is-current' : ''} ${response ? '' : 'is-empty'}`}
+                aria-current={current === stage.id ? 'step' : undefined}
+                onClick={() => onSelect(stage.id)}
+              >
+                <span className={`rv-step-dot dot-${tone}`} aria-hidden="true" />
+                <span className="rv-qbadge">Q{stage.index + 1}</span>
+                <span className="rv-step-title">{stage.title}</span>
+                {worthALook(report, stage) ? <span className="rv-flag-dot" title="Worth a closer look" /> : <span />}
+                <span className={`rv-step-score num tone-${tone}`}>
+                  {stage.scored ? (score?.toFixed(1) ?? '—') : '–'}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="rv-keys">
+        <kbd>J</kbd> <kbd>K</kbd> questions · <kbd>[</kbd> <kbd>]</kbd> candidates
+      </p>
+    </nav>
+  );
+}
+
+type StagePanel = 'saw' | 'key' | null;
+
+/** One question: the AI's take and score, the rubric, the candidate's answer and the evidence. */
+function QuestionDetail({
+  report,
+  stage,
+  prevStage,
+  nextStage,
+  onSelect,
+  onReport,
+}: {
+  report: CandidateReport;
+  stage: ReportStage;
+  prevStage: ReportStage | null;
+  nextStage: ReportStage | null;
+  onSelect: (stageId: string) => void;
+  onReport: (r: CandidateReport) => void;
+}) {
+  const { ai, aiScore, score, overrides, response: r, flags, delivery } = stageFacts(report, stage);
+  const [panel, setPanel] = useState<StagePanel>(null);
+  const [rate, setRate] = useState(1);
+  const [hot, setHot] = useState<string | null>(null);
+  const root = useRef<HTMLElement | null>(null);
+  const { evidence, found } = useMemo(() => stageEvidence(report, stage), [report, stage]);
+  const inTranscript = Boolean(ai?.transcript && findEvidence(ai.transcript, evidence).length);
+  const tone = stage.scored ? scoreTone(score) : 'none';
+
+  function showEvidence(criterionId: string) {
+    const mark = root.current?.querySelector<HTMLElement>(`mark[data-crit="${criterionId}"]`);
+    if (!mark) return;
+    mark.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
+    mark.classList.remove('is-flash');
+    void mark.offsetWidth;
+    mark.classList.add('is-flash');
+  }
+
+  const choiceKinds = stage.kind === 'decision' || stage.kind === 'branch';
+  const take = !r
+    ? 'Not reached.'
+    : ai?.summary || (stage.scored ? 'No AI review yet.' : 'Not scored. Use it as a voice sample for the call.');
+  return (
+    <article
+      ref={root}
+      className="rv-detail"
+      aria-label={`Question ${stage.index + 1}: ${stage.title}`}
+      onMouseOver={(e) => setHot((e.target as HTMLElement).closest('[data-crit]')?.getAttribute('data-crit') ?? null)}
+      onMouseLeave={() => setHot(null)}
+    >
+      <div className="rv-detail-top">
+        <span className="rv-qbadge">Q{stage.index + 1}</span>
+        <KindBadge kind={stage.kind} />
+        {stage.thinkAloud && <span className="badge badge-think">Think aloud</span>}
+        <DeliveryIcon delivery={delivery} />
+        <TimeUsed used={r?.timeUsedSec ?? null} limit={stage.timeLimitSec} timedOut={r?.closedReason === 'timeout'} />
+        <span className="rv-detail-nav">
+          <button
+            type="button"
+            className="rv-round-btn"
+            onClick={() => prevStage && onSelect(prevStage.id)}
+            disabled={!prevStage}
+            aria-label="Previous question"
+          >
+            <Icon name="back" size={14} />
+          </button>
+          <button
+            type="button"
+            className="rv-round-btn"
+            onClick={() => nextStage && onSelect(nextStage.id)}
+            disabled={!nextStage}
+            aria-label="Next question"
+          >
+            <Icon name="next" size={14} />
+          </button>
+        </span>
+      </div>
+
+      <div className="rv-detail-head">
+        <div>
+          <h2 className="rv-detail-title">{stage.title}</h2>
+          <p className="rv-detail-take">{take}</p>
+          {flags.length > 0 && (
+            <div className="rv-flags">
+              {flags.map((f) => (
+                <span key={f.text} className={`badge ${f.tone === 'warn' ? 'badge-warn' : 'badge-muted'}`}>
+                  {f.text}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {stage.scored && (
+          <div className={`rv-detail-score is-${tone}`}>
+            <span className="rv-detail-score-n num">
+              {score?.toFixed(1) ?? '—'}
+              <small>/ 4</small>
+            </span>
+            {TONE_WORD[tone] && <span className="rv-detail-score-w">{TONE_WORD[tone]}</span>}
+          </div>
         )}
       </div>
-      {report.stages
-        .filter((s) => s.scored)
-        .map((stage, i) => {
+
+      {choiceKinds && <ChoicePath report={report} stage={stage} />}
+
+      {stage.scored && ai && (
+        <section className="rv-block rv-quality">
+          <h3 className="rv-block-title">
+            <Icon name="bars" size={16} /> Answer quality
+            <span className="rv-block-hint">Open a line for the AI's reasoning</span>
+          </h3>
+          {stage.rubric.map((criterion) => (
+            <QualityRow
+              key={criterion.id}
+              criterion={criterion}
+              scored={ai.criteria[criterion.id] ?? null}
+              override={overrides.find((o) => o.criterionId === criterion.id)}
+              candidateId={report.candidate.id}
+              stageId={stage.id}
+              hot={hot === criterion.id}
+              onReport={onReport}
+            />
+          ))}
+          {overrides.length > 0 && aiScore !== null && (
+            <p className="rv-note">
+              AI scored this question {aiScore.toFixed(1)}; with your team's changes it is {score?.toFixed(1) ?? '—'}.
+            </p>
+          )}
+        </section>
+      )}
+
+      <section className="rv-block rv-answer">
+        <h3 className="rv-block-title">Candidate answer</h3>
+        {!r ? (
+          <p className="muted">Not reached yet.</p>
+        ) : (
+          <>
+            {r.choiceLabel && (
+              <AnswerPart label="Their choice">
+                <p className="q-choice">{r.choiceLabel}</p>
+              </AnswerPart>
+            )}
+            {stage.thinkAloud ? (
+              <AnswerPart
+                label="Recording"
+                aside={r.audio.length ? formatDuration(r.audio.reduce((sum, a) => sum + (a.sec ?? 0), 0)) : null}
+              >
+                <ThinkAloudReview response={r} delivery={ai?.delivery ?? null} />
+              </AnswerPart>
+            ) : (
+              r.audio.length > 0 && (
+                <AnswerPart label="Voice note">
+                  <div className="voice-notes">
+                    {r.audio.map((a) => (
+                      <AudioPlayer
+                        key={a.url}
+                        src={a.url}
+                        knownSec={a.sec}
+                        rate={rate}
+                        label={ai?.delivery ? `AI: ${DELIVERY_TEXT[ai.delivery.label].toLowerCase()}` : undefined}
+                      />
+                    ))}
+                    <SpeedPicker rate={rate} onChange={setRate} />
+                  </div>
+                </AnswerPart>
+              )
+            )}
+            {ai?.transcript && (
+              <AnswerPart label="Transcript" aside="by AI">
+                <Collapsible
+                  title={stage.thinkAloud || inTranscript ? 'Hide transcript' : 'Show transcript'}
+                  className="inset"
+                  defaultOpen={stage.thinkAloud || inTranscript}
+                >
+                  <div className="answer-text transcript">
+                    <Highlighted text={ai.transcript} evidence={evidence} hot={hot} />
+                  </div>
+                </Collapsible>
+              </AnswerPart>
+            )}
+            {stage.thinkAloud ? (
+              r.text &&
+              !r.scratch.length && (
+                <AnswerPart label={r.audio.length ? 'Scratchpad' : 'Typed working'}>
+                  <div className="answer-text">
+                    <Highlighted text={r.text} evidence={evidence} hot={hot} />
+                  </div>
+                </AnswerPart>
+              )
+            ) : r.text ? (
+              <AnswerPart label="Written answer">
+                <div className="answer-text">
+                  <Highlighted text={r.text} evidence={evidence} hot={hot} />
+                </div>
+              </AnswerPart>
+            ) : (
+              !r.audio.length && r.closedReason && <p className="muted">No answer.</p>
+            )}
+            {stage.kind === 'ai_allowed' && (
+              <>
+                <AnswerPart
+                  label="Their AI conversation"
+                  aside={r.aiTranscript ? `${r.aiTranscript.length.toLocaleString()} characters` : 'none given'}
+                >
+                  {r.aiTranscript ? (
+                    <Collapsible title="Show conversation" className="inset">
+                      <div className="answer-text transcript is-scrollbox">
+                        <Highlighted text={r.aiTranscript} evidence={evidence} hot={hot} />
+                      </div>
+                    </Collapsible>
+                  ) : (
+                    <p className="muted">They didn't paste a conversation.</p>
+                  )}
+                </AnswerPart>
+                {r.reflection && (
+                  <AnswerPart label="What they kept, changed or rejected">
+                    <div className="answer-text">
+                      <Highlighted text={r.reflection} evidence={evidence} hot={hot} />
+                    </div>
+                  </AnswerPart>
+                )}
+              </>
+            )}
+            {r.signalNotes.length > 0 && (
+              <AnswerPart label="Signals" aside="weak hints, not proof">
+                <div className="q-signals">
+                  {r.signalNotes.map((note, i) => (
+                    <span key={i} className={note.level === 'notable' ? 'is-notable' : ''}>
+                      {note.text}
+                    </span>
+                  ))}
+                </div>
+              </AnswerPart>
+            )}
+          </>
+        )}
+      </section>
+
+      {evidence.length > 0 && (
+        <section className="rv-block rv-evidence">
+          <h3 className="rv-block-title">Evidence from answer</h3>
+          <div className="rv-evidence-grid">
+            {evidence.map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                className={`rv-ev-card ${hot === e.id ? 'is-hot' : ''}`}
+                data-crit={e.id}
+                onClick={() => showEvidence(e.id)}
+                disabled={!found.has(e.id)}
+                title={found.has(e.id) ? 'Show in their answer' : "This quote wasn't found word for word in the answer"}
+              >
+                <span className="rv-ev-icon" aria-hidden="true">
+                  <Icon name="quote" size={15} />
+                </span>
+                <span className="rv-ev-label">{e.label}</span>
+                <q className="rv-ev-quote">{e.quote}</q>
+                {found.has(e.id) && <span className="rv-ev-link">Show in answer</span>}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <div className="q-extra">
+        {stage.shown && (
+          <button
+            type="button"
+            className={`q-extra-tab ${panel === 'saw' ? 'is-active' : ''}`}
+            aria-expanded={panel === 'saw'}
+            onClick={() => setPanel(panel === 'saw' ? null : 'saw')}
+          >
+            What they saw
+          </button>
+        )}
+        <button
+          type="button"
+          className={`q-extra-tab ${panel === 'key' ? 'is-active' : ''}`}
+          aria-expanded={panel === 'key'}
+          onClick={() => setPanel(panel === 'key' ? null : 'key')}
+        >
+          Answer key used by the AI
+        </button>
+      </div>
+      {panel === 'saw' && stage.shown && (
+        <div className="q-extra-panel">
+          <Blocks blocks={stage.shown.prompt} />
+          {stage.shown.material.length > 0 && <Blocks blocks={stage.shown.material} />}
+        </div>
+      )}
+      {panel === 'key' && (
+        <div className="q-extra-panel guide-panel">
+          <Blocks blocks={stage.reviewerGuide} />
+        </div>
+      )}
+
+      <div className="rv-detail-foot">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => prevStage && onSelect(prevStage.id)}
+          disabled={!prevStage}
+        >
+          <Icon name="back" size={14} /> Previous question
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => nextStage && onSelect(nextStage.id)}
+          disabled={!nextStage}
+        >
+          Next question <Icon name="next" size={14} />
+        </button>
+      </div>
+    </article>
+  );
+}
+
+/** One rubric line as a bar; open it for the AI's reasoning, the rubric and "disagree". */
+function QualityRow({
+  criterion,
+  scored,
+  override,
+  candidateId,
+  stageId,
+  hot,
+  onReport,
+}: {
+  criterion: ReportStage['rubric'][number];
+  scored: AiStageReview['criteria'][string] | null;
+  override: ScoreOverride | undefined;
+  candidateId: string;
+  stageId: string;
+  hot: boolean;
+  onReport: (r: CandidateReport) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [showRubric, setShowRubric] = useState(false);
+  const value = override?.score ?? scored?.score ?? null;
+  const tone = scoreTone(value);
+  return (
+    <div className={`rv-qrow ${open ? 'is-open' : ''} ${hot ? 'is-hot' : ''}`} data-crit={criterion.id}>
+      <button type="button" className="rv-qrow-head" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span className="rv-qrow-label">
+          {criterion.label}
+          {criterion.weight > 1 && <span className="rv-qrow-weight"> ×{criterion.weight}</span>}
+          {override && <span className="rv-qrow-changed">changed</span>}
+        </span>
+        <span className="rv-track" aria-hidden="true">
+          <span className={`rv-track-fill fill-${tone}`} style={{ width: `${((value ?? 0) / 4) * 100}%` }} />
+        </span>
+        <span className={`rv-qrow-value num tone-${tone}`}>{value ?? '—'}/4</span>
+        <Icon name="chevron" size={14} className="rv-qrow-chevron" />
+      </button>
+      {open && (
+        <div className="rv-qrow-body">
+          {scored?.rationale && <p>{scored.rationale}</p>}
+          <div className="crit-actions">
+            <button type="button" className="rv-text-btn" onClick={() => setShowRubric(!showRubric)}>
+              {showRubric ? 'Hide rubric' : 'See rubric'}
+            </button>
+            {scored && (
+              <OverrideControl
+                candidateId={candidateId}
+                stageId={stageId}
+                criterionId={criterion.id}
+                aiScore={scored.score}
+                override={override}
+                onReport={onReport}
+              />
+            )}
+          </div>
+          {showRubric && (
+            <div className="anchors">
+              {criterion.anchors.map((anchor, i) => (
+                <div
+                  key={i}
+                  className={`anchor static ${scored?.score === i + 1 ? 'selected' : ''} ${override?.score === i + 1 ? 'overridden' : ''}`}
+                >
+                  <span className="anchor-score">{i + 1}</span>
+                  <span className="anchor-text">{anchor}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Every answer in order, for reading straight through. */
+function FullTranscript({ report, onSelect }: { report: CandidateReport; onSelect: (stageId: string) => void }) {
+  const answered = report.stages.filter((s) => s.response);
+  if (!answered.length) return <p className="rv-transcript muted">No answers yet.</p>;
+  return (
+    <div className="rv-transcript">
+      {answered.map((stage) => {
+        const { ai, response: r } = stageFacts(report, stage);
+        const { evidence } = stageEvidence(report, stage);
+        return (
+          <section key={stage.id} className="rv-transcript-part">
+            <h3>
+              <span className="rv-qbadge">Q{stage.index + 1}</span>
+              <button type="button" className="rv-text-btn rv-transcript-title" onClick={() => onSelect(stage.id)}>
+                {stage.title}
+              </button>
+            </h3>
+            {r?.choiceLabel && <p className="q-choice">{r.choiceLabel}</p>}
+            {ai?.transcript && (
+              <div className="answer-text transcript">
+                <Highlighted text={ai.transcript} evidence={evidence} />
+              </div>
+            )}
+            {r?.text && (!stage.thinkAloud || !r.scratch.length) && (
+              <div className="answer-text">
+                <Highlighted text={r.text} evidence={evidence} />
+              </div>
+            )}
+            {r?.reflection && (
+              <div className="answer-text">
+                <Highlighted text={r.reflection} evidence={evidence} />
+              </div>
+            )}
+            {!ai?.transcript && !r?.text && !r?.reflection && (
+              <p className="muted">No written or transcribed answer.</p>
+            )}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** One bar per question, with the pool average marked. Each row opens its question. */
+function ScoreBreakdown({
+  report,
+  current,
+  onSelect,
+}: {
+  report: CandidateReport;
+  current: string | null;
+  onSelect: (stageId: string) => void;
+}) {
+  const bench = report.benchmark;
+  return (
+    <section className="rv-card rv-side-card">
+      <h2 className="rv-card-title">
+        Score breakdown
+        <span className="rv-info" title="Each question out of 4. The thin line is the pool average.">
+          <Icon name="info" size={15} />
+        </span>
+      </h2>
+      <div className="rv-sb">
+        {report.stages.map((stage, i) => {
           const { score } = stageFacts(report, stage);
+          const tone = stage.scored ? scoreTone(score) : 'none';
           const avg = bench?.byStage[stage.id] ?? null;
           return (
             <button
               key={stage.id}
               type="button"
-              className="rv-byq-row"
-              onClick={() => onJump(stage.id)}
+              className={`rv-sb-row ${current === stage.id ? 'is-current' : ''}`}
+              onClick={() => onSelect(stage.id)}
               style={{ ['--i' as string]: i }}
-              title={avg !== null ? `Pool average ${avg.toFixed(1)}` : undefined}
             >
-              <span className="rv-byq-label">
-                <span className="rv-byq-num">Q{stage.index + 1}</span>
-                {stage.title}
-                {worthALook(report, stage) && <span className="rv-flag-dot" title="Worth a closer look" />}
-              </span>
-              <span className={`rv-byq-value num tone-${scoreTone(score)}`}>{score?.toFixed(1) ?? '—'}</span>
-              <span className="rv-byq-track">
-                <span
-                  className={`rv-byq-fill tone-${scoreTone(score)}`}
-                  style={{ width: `${((score ?? 0) / 4) * 100}%` }}
-                />
-                {avg !== null && <span className="rv-byq-avg" style={{ left: `${(avg / 4) * 100}%` }} />}
-              </span>
+              <span className={`rv-qbadge badge-${tone}`}>Q{stage.index + 1}</span>
+              <span className="rv-sb-title">{stage.title}</span>
+              {stage.scored ? (
+                <span className="rv-track">
+                  <span className={`rv-track-fill fill-${tone}`} style={{ width: `${((score ?? 0) / 4) * 100}%` }} />
+                  {avg !== null && <span className="rv-track-avg" style={{ left: `${(avg / 4) * 100}%` }} />}
+                </span>
+              ) : (
+                <span className="rv-sb-none">Not scored</span>
+              )}
+              <span className={`rv-sb-value num tone-${tone}`}>{stage.scored ? (score?.toFixed(1) ?? '—') : '–'}</span>
             </button>
           );
         })}
-    </div>
+      </div>
+      {bench && (
+        <div className="rv-legend">
+          <span className="rv-legend-avg" aria-hidden="true" /> Pool average of {bench.of} reviewed candidates
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -956,8 +1336,8 @@ function WithAndWithoutAi({ report, text }: { report: CandidateReport; text: str
   const ownCount = scored.filter((x) => x.stage.kind !== 'ai_allowed').length;
 
   return (
-    <div className="rv-wai rv-fade">
-      <h2 className="rv-label">With and without AI</h2>
+    <section className="rv-card rv-side-card rv-wai">
+      <h2 className="rv-card-title">With and without AI</h2>
       {own !== null && withAi !== null && delta !== null ? (
         <>
           <div className="rv-wai-nums">
@@ -998,7 +1378,113 @@ function WithAndWithoutAi({ report, text }: { report: CandidateReport; text: str
         </>
       ) : null}
       <p className="rv-wai-text">{text || 'No AI-allowed question in this assessment.'}</p>
-    </div>
+    </section>
+  );
+}
+
+/**
+ * How well the scores rest on the candidate's own work: quotes found word for word in their
+ * answers, how the recordings sound, time, and any signals. All from data already on the page.
+ */
+function EvidenceCheck({ report }: { report: CandidateReport }) {
+  let total = 0;
+  let quoted = 0;
+  let read = 0;
+  let unsure = 0;
+  let recordings = 0;
+  let timedOut = 0;
+  let notable = 0;
+  for (const stage of report.stages) {
+    const { ai, response } = stageFacts(report, stage);
+    if (stage.scored && ai) {
+      const { evidence, found } = stageEvidence(report, stage);
+      total += evidence.length;
+      quoted += evidence.filter((e) => found.has(e.id)).length;
+    }
+    if (ai?.delivery) {
+      recordings += 1;
+      if (ai.delivery.label === 'read') read += 1;
+      if (ai.delivery.label === 'unsure') unsure += 1;
+    }
+    if (response?.closedReason === 'timeout') timedOut += 1;
+    notable += response?.signalNotes.filter((n) => n.level === 'notable').length ?? 0;
+  }
+  const share = total ? quoted / total : 0;
+  const items: { ok: boolean; text: string }[] = [
+    { ok: share >= 0.8, text: `${quoted} of ${total} scores quote their own words` },
+    recordings === 0
+      ? { ok: true, text: 'No recordings were rated for delivery' }
+      : read > 0
+        ? {
+            ok: false,
+            text: `${read} recording${read === 1 ? '' : 's'} sound${read === 1 ? 's' : ''} read or rehearsed`,
+          }
+        : unsure > 0
+          ? { ok: false, text: `Delivery unclear on ${unsure} recording${unsure === 1 ? '' : 's'}` }
+          : { ok: true, text: 'Recordings sound like live reasoning' },
+    timedOut > 0
+      ? { ok: false, text: `Ran out of time on ${timedOut} question${timedOut === 1 ? '' : 's'}` }
+      : { ok: true, text: 'Finished every question in time' },
+    notable > 0
+      ? { ok: false, text: `${notable} signal${notable === 1 ? '' : 's'} worth asking about on the call` }
+      : { ok: true, text: 'No unusual signals' },
+  ];
+  const solid = items.every((i) => i.ok);
+  const c = 2 * Math.PI * 42;
+  return (
+    <section className="rv-card rv-side-card rv-ec">
+      <h2 className="rv-card-title">
+        Evidence check
+        <span
+          className="rv-info"
+          title="Checks how far the scores rest on the candidate's own words, and anything to ask about on the call."
+        >
+          <Icon name="info" size={15} />
+        </span>
+      </h2>
+      <div className="rv-ec-body">
+        <div className={`rv-ec-ring ${solid ? 'is-solid' : 'is-check'}`}>
+          <svg width="100" height="100" viewBox="0 0 100 100" aria-hidden="true">
+            <circle cx="50" cy="50" r="42" fill="none" strokeWidth="8" className="rv-ec-track" />
+            <circle
+              cx="50"
+              cy="50"
+              r="42"
+              fill="none"
+              strokeWidth="8"
+              strokeLinecap="round"
+              className="rv-ec-arc"
+              strokeDasharray={c}
+              strokeDashoffset={c * (1 - share)}
+              transform="rotate(-90 50 50)"
+              style={{ ['--ring-c' as string]: c }}
+            />
+          </svg>
+          <span className="rv-ec-pct num">{Math.round(share * 100)}%</span>
+        </div>
+        <ul className="rv-ec-list">
+          {items.map((item) => (
+            <li key={item.text} className={item.ok ? 'is-ok' : 'is-flag'}>
+              <span className="rv-ec-icon" aria-hidden="true">
+                <Icon name={item.ok ? 'check' : 'alert'} size={12} />
+              </span>
+              {item.text}
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="rv-ec-callout">
+        <Icon name="sparkle" size={18} filled />
+        <div>
+          <strong>{solid ? 'Well supported' : 'Check on the call'}</strong>
+          <p>
+            {solid
+              ? 'The scores rest on their own words, and nothing stands out to probe.'
+              : 'Some of the above is worth a question on the verification call.'}
+          </p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -1017,25 +1503,6 @@ function TeamNotes({ report, onReport }: { report: CandidateReport; onReport: (r
   const [composing, setComposing] = useState(false);
   const finished = ['submitted', 'reviewed', 'decided'].includes(report.candidate.status);
   if (!finished) return null;
-
-  if (!report.notes.length && !composing) {
-    return (
-      <Row
-        className="rv-notes is-empty"
-        centre={
-          <div className="rv-notes-empty">
-            <span className="rv-label">
-              <Icon name="note" size={14} /> Team notes
-            </span>
-            <span className="muted">None yet</span>
-            <button className="rv-text-btn" onClick={() => setComposing(true)}>
-              Add a note
-            </button>
-          </div>
-        }
-      />
-    );
-  }
 
   async function post(event: FormEvent) {
     event.preventDefault();
@@ -1061,18 +1528,21 @@ function TeamNotes({ report, onReport }: { report: CandidateReport; onReport: (r
     }
   }
 
+  const empty = !report.notes.length && !composing;
   return (
-    <Row
-      className="rv-notes"
-      centre={
+    <section className={`rv-card rv-side-card rv-notes ${empty ? 'is-empty' : ''}`}>
+      <h2 className="rv-card-title">
+        Team notes {report.notes.length > 0 && <span className="rv-count num">{report.notes.length}</span>}
+      </h2>
+      {empty ? (
+        <div className="rv-notes-empty">
+          <span className="muted">Nothing from the team yet.</span>
+          <button className="btn btn-secondary btn-sm" onClick={() => setComposing(true)}>
+            Add a note
+          </button>
+        </div>
+      ) : (
         <>
-          <div className="rv-notes-head">
-            <h2 className="rv-label">
-              <Icon name="note" size={14} /> Team notes
-              {report.notes.length > 0 && <span className="num">{report.notes.length}</span>}
-            </h2>
-            <span className="rv-hint">Visible to everyone on your team</span>
-          </div>
           {report.notes.length > 0 && (
             <ul className="note-list">
               {report.notes.map((note) => (
@@ -1104,20 +1574,21 @@ function TeamNotes({ report, onReport }: { report: CandidateReport; onReport: (r
               placeholder="Your take, e.g. “Strong on the numbers; ask about Q4 on the call.”"
               aria-label="Your note"
             />
-            <div className="row-between note-actions">
-              <div className="lean-picker" role="group" aria-label="Your lean (optional)">
-                {LEANS.map((l) => (
-                  <button
-                    key={l.value}
-                    type="button"
-                    className={`lean lean-${l.value} ${lean === l.value ? 'is-on' : ''}`}
-                    aria-pressed={lean === l.value}
-                    onClick={() => setLean(lean === l.value ? null : l.value)}
-                  >
-                    {l.label}
-                  </button>
-                ))}
-              </div>
+            <div className="lean-picker" role="group" aria-label="Your lean (optional)">
+              {LEANS.map((l) => (
+                <button
+                  key={l.value}
+                  type="button"
+                  className={`lean lean-${l.value} ${lean === l.value ? 'is-on' : ''}`}
+                  aria-pressed={lean === l.value}
+                  onClick={() => setLean(lean === l.value ? null : l.value)}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+            <div className="note-actions">
+              <span className="rv-hint">Visible to everyone on your team</span>
               <span className="row-gap">
                 {!report.notes.length && (
                   <button type="button" className="btn btn-ghost btn-sm" onClick={() => setComposing(false)}>
@@ -1132,8 +1603,8 @@ function TeamNotes({ report, onReport }: { report: CandidateReport; onReport: (r
             <ErrorNote error={error} />
           </form>
         </>
-      }
-    />
+      )}
+    </section>
   );
 }
 
@@ -1201,465 +1672,6 @@ function AnswerPart({ label, aside, children }: { label: string; aside?: string 
         {aside && <span className="answer-aside">{aside}</span>}
       </div>
       {children}
-    </div>
-  );
-}
-
-/** Mounts content on first open, then lets CSS animate it open and closed. */
-function useDisclosure(open: boolean) {
-  const [mounted, setMounted] = useState(open);
-  const [expanded, setExpanded] = useState(open);
-  useEffect(() => {
-    if (!open) {
-      setExpanded(false);
-      return;
-    }
-    setMounted(true);
-    // One frame closed first, so the height has something to grow from.
-    let frame = requestAnimationFrame(() => {
-      frame = requestAnimationFrame(() => setExpanded(true));
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [open]);
-  return { mounted, expanded };
-}
-
-/**
- * Beside an open answer, each criterion's note starts level with the passage it quotes, like a
- * comment in the margin. Notes keep rubric order, so one never moves above the one before it.
- */
-function useEvidenceAlignment(item: RefObject<HTMLElement | null>, expanded: boolean) {
-  useLayoutEffect(() => {
-    const root = item.current;
-    const list = root?.querySelector<HTMLElement>('.rv-crit-notes');
-    const answer = root?.querySelector<HTMLElement>('.rv-q-main');
-    if (!root || !list || !answer) return;
-    const notes = [...list.querySelectorAll<HTMLElement>(':scope > .crit-note')];
-
-    const place = () => {
-      const sideBySide = list.getBoundingClientRect().left >= answer.getBoundingClientRect().right;
-      if (!expanded || !sideBySide) {
-        for (const note of notes) note.style.marginTop = '';
-        return;
-      }
-      const top = list.getBoundingClientRect().top;
-      let bottom = 0;
-      notes.forEach((note, i) => {
-        const natural = i === 0 ? 0 : bottom + NOTE_GAP;
-        const mark = answer.querySelector<HTMLElement>(`mark[data-crit="${note.dataset.crit}"]`);
-        const visible = mark && mark.getClientRects().length > 0 && !mark.closest('.is-scrollbox');
-        const at = visible ? Math.max(natural, mark.getBoundingClientRect().top - top - 3) : natural;
-        note.style.marginTop = `${at - bottom}px`;
-        bottom = at + note.offsetHeight;
-      });
-    };
-
-    place();
-    const observer = new ResizeObserver(place);
-    observer.observe(answer);
-    for (const note of notes) observer.observe(note);
-    window.addEventListener('resize', place);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', place);
-    };
-  }, [item, expanded]);
-}
-
-type StagePanel = 'saw' | 'key' | null;
-
-function StageReview({
-  report,
-  stage,
-  open,
-  current,
-  flashing,
-  onToggle,
-  onReport,
-}: {
-  report: CandidateReport;
-  stage: ReportStage;
-  open: boolean;
-  current: boolean;
-  flashing: boolean;
-  onToggle: () => void;
-  onReport: (r: CandidateReport) => void;
-}) {
-  const { ai, aiScore, score, overrides, response: r, flags, delivery } = stageFacts(report, stage);
-  const [panel, setPanel] = useState<StagePanel>(null);
-  const [rate, setRate] = useState(1);
-  const [hot, setHot] = useState<string | null>(null);
-  const item = useRef<HTMLElement | null>(null);
-  const { mounted, expanded } = useDisclosure(open);
-  useEvidenceAlignment(item, expanded);
-
-  // The AI's quotes, highlighted where they appear in the answer.
-  const evidence: Evidence[] = useMemo(
-    () =>
-      ai
-        ? stage.rubric.flatMap((c) =>
-            ai.criteria[c.id]?.evidence ? [{ id: c.id, label: c.label, quote: ai.criteria[c.id].evidence }] : [],
-          )
-        : [],
-    [ai, stage.rubric],
-  );
-  const searchable = [r?.text, ai?.transcript, r?.reflection, r?.aiTranscript].filter(Boolean).join('\n');
-  const found = useMemo(() => new Set(findEvidence(searchable, evidence).map((s) => s.id)), [searchable, evidence]);
-  const inTranscript = Boolean(ai?.transcript && findEvidence(ai.transcript, evidence).length);
-
-  function showEvidence(criterionId: string) {
-    const mark = item.current?.querySelector<HTMLElement>(`mark[data-crit="${criterionId}"]`);
-    if (!mark) return;
-    mark.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'center' });
-    mark.classList.remove('is-flash');
-    void mark.offsetWidth;
-    mark.classList.add('is-flash');
-  }
-
-  const choiceKinds = stage.kind === 'decision' || stage.kind === 'branch';
-  const take = !r
-    ? 'Not reached.'
-    : ai?.summary || (stage.scored ? 'No AI review yet.' : 'Not scored. A voice sample.');
-  return (
-    <section
-      ref={item}
-      id={`stage-${stage.id}`}
-      data-stage={stage.id}
-      className={`rv-row rv-q ${expanded ? 'is-expanded' : ''} ${current ? 'is-current' : ''} ${flashing ? 'is-flash' : ''} ${r ? '' : 'is-empty'}`}
-      onMouseOver={(e) => setHot((e.target as HTMLElement).closest('[data-crit]')?.getAttribute('data-crit') ?? null)}
-      onMouseLeave={() => setHot(null)}
-    >
-      <div className="rv-c rv-q-main">
-        <button type="button" className="rv-q-toggle" onClick={onToggle} aria-expanded={open}>
-          <span className="rv-q-meta">
-            <span className="rv-q-num">Q{stage.index + 1}</span>
-            <span>{STAGE_KIND_LABEL[stage.kind]}</span>
-            {stage.thinkAloud && <span>Think aloud</span>}
-            <DeliveryIcon delivery={delivery} />
-            <TimeUsed
-              used={r?.timeUsedSec ?? null}
-              limit={stage.timeLimitSec}
-              timedOut={r?.closedReason === 'timeout'}
-            />
-          </span>
-          <span className="rv-q-title">
-            {stage.title}
-            <Icon name="chevron" size={16} className="rv-q-chevron" />
-          </span>
-          <span className="rv-q-take">{take}</span>
-        </button>
-        {flags.length > 0 && (
-          <div className="rv-q-flags">
-            {flags.map((f) => (
-              <span key={f.text} className={`badge ${f.tone === 'warn' ? 'badge-warn' : 'badge-muted'}`}>
-                {f.text}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {mounted && (
-          <div className="rv-q-body" inert={!expanded}>
-            <div className="rv-q-inner">
-              {choiceKinds && <ChoicePath report={report} stage={stage} />}
-              {!r ? (
-                <p className="muted">Not reached yet.</p>
-              ) : (
-                <>
-                  {r.choiceLabel && (
-                    <AnswerPart label="Their choice">
-                      <p className="q-choice">{r.choiceLabel}</p>
-                    </AnswerPart>
-                  )}
-                  {stage.thinkAloud ? (
-                    <AnswerPart
-                      label="Recording"
-                      aside={r.audio.length ? formatDuration(r.audio.reduce((sum, a) => sum + (a.sec ?? 0), 0)) : null}
-                    >
-                      <ThinkAloudReview response={r} delivery={ai?.delivery ?? null} />
-                    </AnswerPart>
-                  ) : (
-                    r.audio.length > 0 && (
-                      <AnswerPart label="Voice note">
-                        <div className="voice-notes">
-                          {r.audio.map((a) => (
-                            <AudioPlayer
-                              key={a.url}
-                              src={a.url}
-                              knownSec={a.sec}
-                              rate={rate}
-                              label={ai?.delivery ? `AI: ${DELIVERY_TEXT[ai.delivery.label].toLowerCase()}` : undefined}
-                            />
-                          ))}
-                          <SpeedPicker rate={rate} onChange={setRate} />
-                        </div>
-                      </AnswerPart>
-                    )
-                  )}
-                  {ai?.transcript && (
-                    <AnswerPart label="Transcript" aside="by AI">
-                      <Collapsible
-                        title={stage.thinkAloud || inTranscript ? 'Hide transcript' : 'Show transcript'}
-                        className="inset"
-                        defaultOpen={stage.thinkAloud || inTranscript}
-                      >
-                        <div className="answer-text transcript">
-                          <Highlighted text={ai.transcript} evidence={evidence} hot={hot} />
-                        </div>
-                      </Collapsible>
-                    </AnswerPart>
-                  )}
-                  {stage.thinkAloud ? (
-                    r.text &&
-                    !r.scratch.length && (
-                      <AnswerPart label={r.audio.length ? 'Scratchpad' : 'Typed working'}>
-                        <div className="answer-text">
-                          <Highlighted text={r.text} evidence={evidence} hot={hot} />
-                        </div>
-                      </AnswerPart>
-                    )
-                  ) : r.text ? (
-                    <AnswerPart label="Written answer">
-                      <div className="answer-text">
-                        <Highlighted text={r.text} evidence={evidence} hot={hot} />
-                      </div>
-                    </AnswerPart>
-                  ) : (
-                    !r.audio.length && r.closedReason && <p className="muted">No answer.</p>
-                  )}
-                  {stage.kind === 'ai_allowed' && (
-                    <>
-                      <AnswerPart
-                        label="Their AI conversation"
-                        aside={r.aiTranscript ? `${r.aiTranscript.length.toLocaleString()} characters` : 'none given'}
-                      >
-                        {r.aiTranscript ? (
-                          <Collapsible title="Show conversation" className="inset">
-                            <div className="answer-text transcript is-scrollbox">
-                              <Highlighted text={r.aiTranscript} evidence={evidence} hot={hot} />
-                            </div>
-                          </Collapsible>
-                        ) : (
-                          <p className="muted">They didn't paste a conversation.</p>
-                        )}
-                      </AnswerPart>
-                      {r.reflection && (
-                        <AnswerPart label="What they kept, changed or rejected">
-                          <div className="answer-text">
-                            <Highlighted text={r.reflection} evidence={evidence} hot={hot} />
-                          </div>
-                        </AnswerPart>
-                      )}
-                    </>
-                  )}
-                  {r.signalNotes.length > 0 && (
-                    <AnswerPart label="Signals" aside="weak hints, not proof">
-                      <div className="q-signals">
-                        {r.signalNotes.map((note, i) => (
-                          <span key={i} className={note.level === 'notable' ? 'is-notable' : ''}>
-                            {note.text}
-                          </span>
-                        ))}
-                      </div>
-                    </AnswerPart>
-                  )}
-                </>
-              )}
-
-              <div className="q-extra">
-                {stage.shown && (
-                  <button
-                    type="button"
-                    className={`q-extra-tab ${panel === 'saw' ? 'is-active' : ''}`}
-                    aria-expanded={panel === 'saw'}
-                    onClick={() => setPanel(panel === 'saw' ? null : 'saw')}
-                  >
-                    What they saw
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className={`q-extra-tab ${panel === 'key' ? 'is-active' : ''}`}
-                  aria-expanded={panel === 'key'}
-                  onClick={() => setPanel(panel === 'key' ? null : 'key')}
-                >
-                  Answer key used by the AI
-                </button>
-              </div>
-              {panel === 'saw' && stage.shown && (
-                <div className="q-extra-panel">
-                  <Blocks blocks={stage.shown.prompt} />
-                  {stage.shown.material.length > 0 && <Blocks blocks={stage.shown.material} />}
-                </div>
-              )}
-              {panel === 'key' && (
-                <div className="q-extra-panel guide-panel">
-                  <Blocks blocks={stage.reviewerGuide} />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="rv-r rv-q-rail" onClick={open ? undefined : onToggle}>
-        <div className="rv-q-score">
-          <span className="rv-label">{stage.scored ? 'AI score' : 'Not scored'}</span>
-          {stage.scored && (
-            <span className={`rv-score num tone-${scoreTone(score)}`}>
-              {score?.toFixed(1) ?? '—'}
-              <small>/4</small>
-            </span>
-          )}
-        </div>
-        {stage.scored && ai ? (
-          <>
-            <div className="rv-scoreboard">
-              {stage.rubric.map((criterion) => {
-                const value =
-                  overrides.find((o) => o.criterionId === criterion.id)?.score ??
-                  ai.criteria[criterion.id]?.score ??
-                  null;
-                return (
-                  <div
-                    key={criterion.id}
-                    className={`crit-score ${hot === criterion.id ? 'is-hot' : ''}`}
-                    data-crit={criterion.id}
-                  >
-                    <span className="crit-label">
-                      {criterion.label}
-                      {criterion.weight > 1 && <span className="crit-weight"> ×{criterion.weight}</span>}
-                    </span>
-                    <Meter value={value} />
-                  </div>
-                );
-              })}
-            </div>
-            {mounted && (
-              <div className="rv-notes-wrap" inert={!expanded}>
-                <div className="rv-notes-inner">
-                  <div className="rv-crit-notes">
-                    {stage.rubric.map((criterion) => (
-                      <CriterionNote
-                        key={criterion.id}
-                        criterion={criterion}
-                        scored={ai.criteria[criterion.id] ?? null}
-                        override={overrides.find((o) => o.criterionId === criterion.id)}
-                        candidateId={report.candidate.id}
-                        stageId={stage.id}
-                        inAnswer={found.has(criterion.id)}
-                        hot={hot === criterion.id}
-                        onShowEvidence={() => showEvidence(criterion.id)}
-                        onReport={onReport}
-                      />
-                    ))}
-                  </div>
-                  {overrides.length > 0 && aiScore !== null && (
-                    <p className="rv-rail-note">
-                      AI scored this question {aiScore.toFixed(1)}; with your team's changes it is{' '}
-                      {score?.toFixed(1) ?? '—'}.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <p className="rv-rail-note">
-            {!stage.scored
-              ? 'A voice sample for the call.'
-              : r
-                ? 'Waiting for the AI review.'
-                : 'Nothing to score yet.'}
-          </p>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/** A four-step meter with the number on the score axis. */
-function Meter({ value }: { value: number | null }) {
-  return (
-    <span className={`meter tone-${scoreTone(value)}`} aria-label={`${value ?? 'No score'} out of 4`}>
-      {[1, 2, 3, 4].map((step) => (
-        <i key={step} className={value !== null && step <= value ? 'on' : ''} />
-      ))}
-      <b className="num">{value ?? '—'}</b>
-    </span>
-  );
-}
-
-/** A criterion's margin note: the quote it rests on, the reason, and the controls. */
-function CriterionNote({
-  criterion,
-  scored,
-  override,
-  candidateId,
-  stageId,
-  inAnswer,
-  hot,
-  onShowEvidence,
-  onReport,
-}: {
-  criterion: ReportStage['rubric'][number];
-  scored: AiStageReview['criteria'][string] | null;
-  override: ScoreOverride | undefined;
-  candidateId: string;
-  stageId: string;
-  inAnswer: boolean;
-  hot: boolean;
-  onShowEvidence: () => void;
-  onReport: (r: CandidateReport) => void;
-}) {
-  const [showRubric, setShowRubric] = useState(false);
-  const value = override?.score ?? scored?.score ?? null;
-  return (
-    <div className={`crit-note ${hot ? 'is-hot' : ''}`} data-crit={criterion.id}>
-      <div className="crit-note-head">
-        <span>{criterion.label}</span>
-        <b className={`num tone-${scoreTone(value)}`}>{value ?? '—'}</b>
-      </div>
-      {scored?.evidence &&
-        (inAnswer ? (
-          <button type="button" className="crit-quote is-linked" onClick={onShowEvidence}>
-            <q>{scored.evidence}</q>
-            <span className="crit-quote-hint">
-              <Icon name="highlighter" size={13} /> Show in answer
-            </span>
-          </button>
-        ) : (
-          <q className="crit-quote">{scored.evidence}</q>
-        ))}
-      {scored?.rationale && <p className="crit-why">{scored.rationale}</p>}
-      <div className="crit-actions">
-        <button type="button" className="rv-text-btn" onClick={() => setShowRubric(!showRubric)}>
-          {showRubric ? 'Hide rubric' : 'See rubric'}
-        </button>
-        {scored && (
-          <OverrideControl
-            candidateId={candidateId}
-            stageId={stageId}
-            criterionId={criterion.id}
-            aiScore={scored.score}
-            override={override}
-            onReport={onReport}
-          />
-        )}
-      </div>
-      {showRubric && (
-        <div className="anchors">
-          {criterion.anchors.map((anchor, i) => (
-            <div
-              key={i}
-              className={`anchor static ${scored?.score === i + 1 ? 'selected' : ''} ${override?.score === i + 1 ? 'overridden' : ''}`}
-            >
-              <span className="anchor-score">{i + 1}</span>
-              <span className="anchor-text">{anchor}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
