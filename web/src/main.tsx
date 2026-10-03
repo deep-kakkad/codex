@@ -7,6 +7,7 @@ import { AssessmentPage } from './pages/AssessmentPage';
 import { AuthPage } from './pages/AuthPage';
 import { CandidateHome } from './pages/CandidateHome';
 import { CandidateReportPage } from './pages/CandidateReport';
+import { CandidateReportPageV1 } from './pages/CandidateReportV1';
 import { ComparePage } from './pages/ComparePage';
 import { Dashboard } from './pages/Dashboard';
 import { Landing } from './pages/Landing';
@@ -19,6 +20,14 @@ import { Team } from './pages/Team';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/newsreader/opsz.css';
 import './styles.css';
+import { applyUi, useUi } from './ui';
+
+applyUi();
+
+/** The review page in whichever interface the recruiter chose in the sidebar. */
+function CandidateReportRoute() {
+  return useUi() === 'v1' ? <CandidateReportPageV1 /> : <CandidateReportPage />;
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -49,7 +58,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="new" element={<NewAssessment />} />
             <Route path="assessments/:id" element={<AssessmentPage />} />
             <Route path="assessments/:id/compare" element={<ComparePage />} />
-            <Route path="candidates/:id" element={<CandidateReportPage />} />
+            <Route path="candidates/:id" element={<CandidateReportRoute />} />
             <Route path="library" element={<RoleLibrary />} />
             <Route path="library/:id" element={<RolePreview />} />
             <Route path="team" element={<Team />} />

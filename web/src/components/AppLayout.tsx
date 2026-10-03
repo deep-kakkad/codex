@@ -3,12 +3,14 @@ import { useAuth } from '../auth';
 import { Icon } from './Icon';
 import { Logo } from './Logo';
 import { Avatar } from './ReviewBits';
+import { setUi, useUi } from '../ui';
 
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   // The candidate review is a working canvas: it uses the full width of the screen.
   const wide = useMatch('/app/candidates/:id') !== null;
+  const ui = useUi();
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -37,6 +39,28 @@ export function AppLayout() {
             Team
           </NavLink>
         </nav>
+        <div className="ui-switch" role="group" aria-label="Interface">
+          <span className="ui-switch-label">Interface</span>
+          <div className="ui-switch-buttons">
+            {(
+              [
+                ['v1', 'UI 1'],
+                ['v2', 'UI 2'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className={ui === value ? 'is-on' : ''}
+                aria-pressed={ui === value}
+                title={value === 'v1' ? 'The earlier design' : 'The current design'}
+                onClick={() => setUi(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="sidebar-foot">
           {user && (
             <>
