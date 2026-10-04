@@ -8,12 +8,15 @@ import { dataAnalyst } from './dataAnalyst';
 import { equityResearch } from './equityResearch';
 import { foundersOffice } from './foundersOffice';
 import { fpaAnalyst } from './fpaAnalyst';
+import { hrbp } from './hrbp';
 import { itSupport } from './itSupport';
+import { learningDevelopment } from './learningDevelopment';
 import { operationsManager } from './operationsManager';
 import { performanceMarketing } from './performanceMarketing';
 import { productAnalyst } from './productAnalyst';
 import { productManager } from './productManager';
 import { projectManager } from './projectManager';
+import { recruiter } from './recruiter';
 import { sdr } from './sdr';
 import { seo } from './seo';
 import { socialMedia } from './socialMedia';
@@ -41,6 +44,9 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   fpaAnalyst,
   accountant,
   equityResearch,
+  hrbp,
+  recruiter,
+  learningDevelopment,
 ];
 
 export function getRoleFamily(id: string): RoleFamily | undefined {

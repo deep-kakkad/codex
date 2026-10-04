@@ -5,6 +5,7 @@ import { baCapacity } from '../shared/roleFamilies/businessAnalyst';
 import { regionMath } from '../shared/roleFamilies/dataAnalyst';
 import { equityMath } from '../shared/roleFamilies/equityResearch';
 import { fpaMath } from '../shared/roleFamilies/fpaAnalyst';
+import { attritionMath } from '../shared/roleFamilies/hrbp';
 import { siteMath } from '../shared/roleFamilies/operationsManager';
 import { experimentMath } from '../shared/roleFamilies/productAnalyst';
 import { projectGoLive } from '../shared/roleFamilies/projectManager';
@@ -183,6 +184,34 @@ describe('hand-built roles keep their planted facts', () => {
         expect(rows[i].pledgePct).toBeGreaterThan(rows[i - 1].pledgePct);
       }
       expect(n(v, 'pe')).toBeLessThan(n(v, 'peerPe'));
+    });
+  });
+
+  it('HRBP: one team carries the attrition; pay is the same gap everywhere', () => {
+    eachVariant('hr-business-partner', (v) => {
+      const a = attritionMath(v);
+      const [hot, ...rest] = a.teams;
+      for (const t of rest) expect(hot.rate).toBeGreaterThan(t.rate * 2);
+      expect(hot.rate).toBeGreaterThan(a.overall + 10);
+      expect(n(v, 'exitManagerPct')).toBeGreaterThan(n(v, 'exitPayPct') * 2);
+    });
+  });
+
+  it('Recruiter: distinct names and a budget below the market', () => {
+    eachVariant('recruiter', (v) => {
+      const names = ['brand', 'fit', 'hopper', 'overband', 'switcher', 'mba', 'mismatch', 'gap'].map((k) =>
+        s(v, `${k}Name`),
+      );
+      expect(new Set(names).size).toBe(8);
+      expect(s(v, 'fitName')).not.toBe(s(v, 'switcherName'));
+    });
+  });
+
+  it('L&D: training everyone costs more than the budget; new managers fit', () => {
+    eachVariant('learning-development', (v) => {
+      expect(n(v, 'managers') * n(v, 'perHeadTwoDay')).toBeGreaterThan(n(v, 'budget'));
+      expect(n(v, 'newManagers') * n(v, 'perHeadTwoDay') * 1.5).toBeLessThan(n(v, 'budget'));
+      expect(n(v, 'selfFeedback') - n(v, 'teamFeedback')).toBeGreaterThan(1);
     });
   });
 });
