@@ -2,7 +2,9 @@ import type { RoleFamily } from '../types';
 import { accountExecutive } from './accountExecutive';
 import { accountant } from './accountant';
 import { businessAnalyst } from './businessAnalyst';
+import { communityInfluencer } from './communityInfluencer';
 import { contentBrand } from './contentBrand';
+import { copywriter } from './copywriter';
 import { customerSupport } from './customerSupport';
 import { dataAnalyst } from './dataAnalyst';
 import { equityResearch } from './equityResearch';
@@ -15,11 +17,13 @@ import { operationsManager } from './operationsManager';
 import { performanceMarketing } from './performanceMarketing';
 import { productAnalyst } from './productAnalyst';
 import { productManager } from './productManager';
+import { productMarketing } from './productMarketing';
 import { projectManager } from './projectManager';
 import { recruiter } from './recruiter';
 import { sdr } from './sdr';
 import { seo } from './seo';
 import { socialMedia } from './socialMedia';
+import { socialMediaExecutive } from './socialMediaExecutive';
 import { supportExecutive } from './supportExecutive';
 import { uxDesigner } from './uxDesigner';
 
@@ -47,6 +51,10 @@ export const ROLE_FAMILIES: RoleFamily[] = [
   hrbp,
   recruiter,
   learningDevelopment,
+  productMarketing,
+  communityInfluencer,
+  copywriter,
+  socialMediaExecutive,
 ];
 
 export function getRoleFamily(id: string): RoleFamily | undefined {

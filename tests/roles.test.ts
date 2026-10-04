@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { getRoleFamily } from '../shared/roleFamilies';
 import { reconMath } from '../shared/roleFamilies/accountant';
 import { baCapacity } from '../shared/roleFamilies/businessAnalyst';
+import { creatorMath } from '../shared/roleFamilies/communityInfluencer';
 import { regionMath } from '../shared/roleFamilies/dataAnalyst';
 import { equityMath } from '../shared/roleFamilies/equityResearch';
 import { fpaMath } from '../shared/roleFamilies/fpaAnalyst';
 import { attritionMath } from '../shared/roleFamilies/hrbp';
 import { siteMath } from '../shared/roleFamilies/operationsManager';
 import { experimentMath } from '../shared/roleFamilies/productAnalyst';
+import { winLoss } from '../shared/roleFamilies/productMarketing';
 import { projectGoLive } from '../shared/roleFamilies/projectManager';
+import { formatMath } from '../shared/roleFamilies/socialMediaExecutive';
 import { sdrPlayMath } from '../shared/roleFamilies/sdr';
 import type { Currency } from '../shared/types';
 import { generateVariant, n, s } from '../shared/variants';
@@ -212,6 +215,46 @@ describe('hand-built roles keep their planted facts', () => {
       expect(n(v, 'managers') * n(v, 'perHeadTwoDay')).toBeGreaterThan(n(v, 'budget'));
       expect(n(v, 'newManagers') * n(v, 'perHeadTwoDay') * 1.5).toBeLessThan(n(v, 'budget'));
       expect(n(v, 'selfFeedback') - n(v, 'teamFeedback')).toBeGreaterThan(1);
+    });
+  });
+
+  it('PMM: wins are mid-size, losses are large companies', () => {
+    eachVariant('product-marketing', (v) => {
+      const w = winLoss(v);
+      expect(w.midWins / (w.midWins + w.midLosses)).toBeGreaterThan(0.65);
+      expect(w.entWins / (w.entWins + w.entLosses)).toBeLessThan(0.25);
+      expect(w.midWins + w.midLosses + w.entWins + w.entLosses).toBe(40);
+      expect(w.winSpeed).toBeGreaterThan(w.winFeatures * 2);
+    });
+  });
+
+  it('Influencer: the biggest account is the worst value per real view', () => {
+    eachVariant('community-influencer', (v) => {
+      const rows = creatorMath(v);
+      const bought = rows.find((r) => r.key === 'bought')!;
+      for (const r of rows) if (r.key !== 'bought') expect(bought.costPer1k).toBeGreaterThan(r.costPer1k);
+      expect(n(v, 'boughtFollowers')).toBeGreaterThan(n(v, 'macroFollowers'));
+      expect(new Set(rows.map((r) => r.handle)).size).toBe(6);
+    });
+  });
+
+  it('Copywriter: the insight beats features and price', () => {
+    eachVariant('copywriter', (v) => {
+      expect(n(v, 'insightPct')).toBeGreaterThan(n(v, 'pricePct') + n(v, 'featurePct'));
+    });
+  });
+
+  it('Social media executive: trends win reach, carousels win clicks', () => {
+    eachVariant('social-media-executive', (v) => {
+      const rows = formatMath(v);
+      const get = (k: string) => rows.find((r) => r.key === k)!;
+      expect(get('trends').reach).toBeGreaterThan(
+        Math.max(...rows.filter((r) => r.key !== 'trends').map((r) => r.reach)),
+      );
+      expect(get('carousels').clicks).toBeGreaterThan(
+        Math.max(...rows.filter((r) => r.key !== 'carousels').map((r) => r.clicks)),
+      );
+      expect(n(v, 'typoPrice')).not.toBe(n(v, 'price'));
     });
   });
 });
