@@ -4,9 +4,14 @@
 //   npm run admin -- requests                 upgrade requests and current plans
 //   npm run admin -- plan <email> <plan> [credits]
 //        set the plan of the workspace that <email> belongs to; queues held reviews
+//   npm run admin -- leads [days]             work emails left at the end of the guided demo
+//   npm run admin -- password <email> <file>  set a recruiter's password to the contents of <file>
+//        (read from a file so the password never appears in the shell history or output)
+import { readFileSync } from 'node:fs';
 import { neon } from '@neondatabase/serverless';
 import { PLAN_NAMES, type PlanId } from '../shared/plans';
-import { type DB, all, fromNeonHttp, one } from './db';
+import { hashPassword } from './auth';
+import { type DB, all, fromNeonHttp, one, run } from './db';
 import { openLocalDb } from './localDb';
 import { setPlan } from './plans';
 
@@ -93,7 +98,42 @@ if (command === 'costs') {
     `Set to ${PLAN_NAMES[plan as PlanId]}. ${unlocked} held review${unlocked === 1 ? '' : 's'} queued; ` +
       'the scheduled sweep starts them within 10 minutes.',
   );
+} else if (command === 'leads') {
+  const days = Number(args[0] ?? 30);
+  const rows = await all<{ email: string; source: string; created_at: number }>(
+    db,
+    'SELECT email, source, created_at FROM demo_leads WHERE created_at >= ? ORDER BY created_at DESC',
+    Date.now() - days * 24 * 60 * 60 * 1000,
+  );
+  console.log(`${rows.length} demo lead${rows.length === 1 ? '' : 's'} in the last ${days} days\n`);
+  for (const r of rows) {
+    console.log(
+      `${new Date(r.created_at).toISOString().slice(0, 16).replace('T', ' ')}  ${r.source.padEnd(15)} ${r.email}`,
+    );
+  }
+} else if (command === 'password') {
+  const [address, file] = args;
+  if (!address || !file) {
+    console.error('Usage: password <email> <file containing the new password>');
+    process.exit(1);
+  }
+  const password = readFileSync(file, 'utf8').trim();
+  if (password.length < 12) {
+    console.error('Use a password of at least 12 characters.');
+    process.exit(1);
+  }
+  const user = await one<{ id: string }>(db, 'SELECT id FROM users WHERE lower(email) = lower(?)', address);
+  if (!user) {
+    console.error(`No recruiter with the email ${address}`);
+    process.exit(1);
+  }
+  await run(db, 'UPDATE users SET password_hash = ? WHERE id = ?', hashPassword(password), user.id);
+  // Signed-in browsers keep working only if they know the new password.
+  await run(db, 'DELETE FROM sessions WHERE user_id = ?', user.id);
+  console.log(`Changed the password for ${address} and signed out its other sessions.`);
 } else {
-  console.error('Commands: costs [days] | requests | plan <email> <plan> [credits]');
+  console.error(
+    'Commands: costs [days] | requests | plan <email> <plan> [credits] | leads [days] | password <email> <file>',
+  );
   process.exit(1);
 }

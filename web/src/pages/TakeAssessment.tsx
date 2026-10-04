@@ -11,6 +11,7 @@ import { Collapsible, ErrorNote, KindBadge } from '../components/ui';
 import { ThinkAloudPanel, useThinkAloud } from '../components/ThinkAloud';
 import { VoiceRecorder, voiceSupported } from '../components/VoiceRecorder';
 import { DEMO_SAMPLE_CANDIDATE, useDemo } from '../demo/mode';
+import { useCandidatePreview } from '../demo/tour';
 import { formatClock, formatMinutes, useCountdown, useLatest } from '../hooks';
 
 const AUTOSAVE_MS = 4000;
@@ -169,7 +170,7 @@ function Intro({
         </p>
       )}
 
-      <section className="card">
+      <section className="card" data-tour="how-it-works">
         <h2>How it works</h2>
         <ul className="check-list">
           <li>
@@ -226,7 +227,7 @@ function Intro({
         )}
       </section>
 
-      <section className="card">
+      <section className="card" data-tour="how-reviewed">
         <h2>How your answers are reviewed</h2>
         <div className="two-col">
           <div>
@@ -447,6 +448,8 @@ function StageScreen({
 }) {
   const stage: CandidateStageView = state.stage;
   const draft = state.draft ?? {};
+  // The demo walkthrough shows still frames: no microphone, no running clock.
+  const preview = useCandidatePreview();
   const [text, setText] = useState(draft.text ?? '');
   const [choiceId, setChoiceId] = useState(draft.choiceId ?? '');
   const [aiTranscript, setAiTranscript] = useState(draft.aiTranscript ?? '');
@@ -457,7 +460,7 @@ function StageScreen({
   const [openedAt] = useState(() => state.deadlineAt - stage.timeLimitSec * 1000 - offset);
   const [existingParts] = useState(() => (stage.thinkAloud ? (state.audio?.parts ?? 0) : 0));
   const thinkAloud = useThinkAloud({
-    enabled: stage.thinkAloud,
+    enabled: stage.thinkAloud && !preview,
     url: `${base}/stages/${stage.id}/stream`,
     existingParts,
     openedAt,
@@ -473,7 +476,8 @@ function StageScreen({
   const [error, setError] = useState<string | null>(null);
   const submittingRef = useRef(false);
   const uploadRef = useRef<Promise<unknown> | null>(null);
-  const remaining = useCountdown(state.deadlineAt, offset);
+  const countdown = useCountdown(preview ? null : state.deadlineAt, offset);
+  const remaining = preview ? stage.timeLimitSec * 1000 : countdown;
 
   // Integrity signals: weak evidence, disclosed to the candidate up front.
   const signals = useRef<StageSignals>({ ...EMPTY_SIGNALS });
@@ -645,10 +649,10 @@ function StageScreen({
           <div className="card answer-card">
             {stage.thinkAloud && (
               <ThinkAloudPanel
-                status={thinkAloud.status}
-                elapsed={thinkAloud.elapsed}
-                level={thinkAloud.level}
-                uploadError={thinkAloud.uploadError}
+                status={preview ? 'recording' : thinkAloud.status}
+                elapsed={preview ? 42 : thinkAloud.elapsed}
+                level={preview ? 0.45 : thinkAloud.level}
+                uploadError={preview ? null : thinkAloud.uploadError}
                 existingParts={existingParts}
               />
             )}

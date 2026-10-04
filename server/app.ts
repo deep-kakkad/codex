@@ -9,6 +9,7 @@ import { errorHandler, jsonBody, notFound } from './http';
 import { authRoutes } from './routes/auth';
 import { candidateRoutes } from './routes/candidate';
 import { candidateAccountRoutes } from './routes/candidateAccount';
+import { leadRoutes } from './routes/leads';
 import { managerRoutes } from './routes/manager';
 
 export interface AppOptions {
@@ -59,6 +60,7 @@ export function createApi(options: AppOptions) {
   router.use('/auth', jsonBody('32kb'), authRoutes(deps));
   router.use('/candidate', jsonBody('32kb'), candidateAccountRoutes(deps));
   router.use('/c', candidateRoutes(deps));
+  router.use('/leads', jsonBody('4kb'), leadRoutes(deps));
   router.use(jsonBody('256kb'), managerRoutes(deps));
   router.use(() => {
     throw notFound('Unknown API route');

@@ -32,6 +32,7 @@ import candidateJson from './content/candidate.json';
 import libraryJson from './content/library.json';
 import fixtures from './fixtures.json';
 import { DEMO_STATE_KEY, DEMO_TOKEN, demoEpoch, exitDemo } from './mode';
+import { tourState } from './tour';
 
 const LIBRARY = libraryJson as RoleFamilySummary[];
 // The candidate demo: a short version of a real assessment, timers halved.
@@ -143,6 +144,8 @@ function save() {
 }
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+/** A pause that stands in for AI writing something; short while a guided tour is driving the page. */
+const writing = (ms: number) => wait(tourState() ? 200 : ms);
 const fail = (status: number, message: string): never => {
   throw new ApiError(status, message);
 };
@@ -324,6 +327,41 @@ function stored(candidateId: string): CandidateReport {
 /** Lets someone take the candidate demo again from the start. */
 export function restartCandidateDemo() {
   load().candidateDemo = { status: 'invited', responses: [] };
+  save();
+}
+
+/** A point in the candidate walkthrough: before starting, the brief, one question (by index) or the end. */
+export type CandidateFrame = 'intro' | 'brief' | number | 'done';
+
+/**
+ * Puts the candidate demo at one screen of the walkthrough: earlier questions
+ * answered (the decision with its first option), no timer pressure.
+ */
+export function showCandidateFrame(frame: CandidateFrame) {
+  const demo = load().candidateDemo;
+  if (frame === 'intro' || frame === 'done') {
+    demo.status = frame === 'intro' ? 'invited' : 'submitted';
+    demo.responses = [];
+  } else {
+    demo.status = 'in_progress';
+    const upTo = frame === 'brief' ? 0 : frame + 1;
+    const choices: Record<string, string> = {};
+    demo.responses = CANDIDATE.stages.slice(0, upTo).map((stage, index) => {
+      const view = stage.views[choiceKey(choices)] ?? stage.views[''];
+      const choiceId = view.choices?.[0]?.id ?? null;
+      if (choiceId) choices[stage.id] = choiceId;
+      const open = index === upTo - 1;
+      return {
+        stageId: stage.id,
+        view,
+        // A day away: the walkthrough never runs out of time.
+        deadlineAt: Date.now() + (open ? 24 * 60 * 60 * 1000 : -SUBMIT_GRACE_MS * 2),
+        draft: null,
+        closed: !open,
+        choiceId: open ? null : choiceId,
+      };
+    });
+  }
   save();
 }
 
@@ -711,20 +749,20 @@ async function recruiterCall(
       const r = stored(id);
       if (!r.integrity.aiChecked)
         fail(409, 'In the demo, integrity checks are written in advance for the finished candidates.');
-      await wait(900);
+      await writing(900);
       return r;
     }
     if (sub === 'interview-kit') {
       const r = stored(id);
       if (!r.interviewKit) fail(409, 'In the demo, interview kits are written in advance for the finished candidates.');
-      await wait(1500);
+      await writing(1500);
       r.interviewKit = { ...r.interviewKit!, createdAt: now };
       return r;
     }
     if (sub === 'decision-email') {
       const r = stored(id);
       const decision = r.candidate.decision ?? fail(409, 'Make a decision first');
-      await wait(1000);
+      await writing(1000);
       const written = s.emails[id]?.[decision];
       r.decisionEmail = written
         ? { ...written, createdAt: now }

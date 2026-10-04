@@ -30,7 +30,7 @@ async function testDb(): Promise<DB> {
   await sharedPg.query(
     `TRUNCATE orgs, users, sessions, candidate_accounts, candidate_sessions, assessments, candidates,
        responses, audio_parts, ai_reviews, transcripts, verifications, custom_families, candidate_stars,
-       review_notes, score_overrides, ai_usage, upgrade_requests, candidate_extras CASCADE`,
+       review_notes, score_overrides, ai_usage, upgrade_requests, candidate_extras, demo_leads CASCADE`,
   );
   return sharedPg;
 }
@@ -1511,5 +1511,27 @@ describe('plans, costs and AI extras', () => {
     expect(String(writer.messages[1].content)).toContain('<job_description>');
     const usage = (await db.query<{ kind: string }>('SELECT kind FROM ai_usage')).rows;
     expect(usage.map((u) => u.kind)).toContain('generation');
+  });
+});
+
+describe('demo leads', () => {
+  it('keeps one row per email and source, and rejects bad input', async () => {
+    const send = (body: object) => request(app).post('/api/leads').send(body);
+    expect((await send({ email: 'Head@Agency.example', source: 'recruiter-tour' })).status).toBe(201);
+    clock += 1000;
+    expect((await send({ email: 'head@agency.example', source: 'recruiter-tour' })).status).toBe(201);
+    expect((await send({ email: 'not an email', source: 'recruiter-tour' })).status).toBe(400);
+    expect((await send({ email: 'a@b.example', source: 'somewhere' })).status).toBe(400);
+    const { rows } = await db.query<{ email: string; created_at: number }>('SELECT email, created_at FROM demo_leads');
+    expect(rows).toEqual([{ email: 'head@agency.example', created_at: clock }]);
+  });
+
+  it('limits how often one address can send', async () => {
+    const send = (n: number) =>
+      request(app)
+        .post('/api/leads')
+        .send({ email: `person${n}@example.com`, source: 'candidate-tour' });
+    for (let i = 0; i < 5; i++) expect((await send(i)).status).toBe(201);
+    expect((await send(5)).status).toBe(429);
   });
 });

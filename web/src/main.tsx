@@ -1,6 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { BrowserRouter, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, RequireAuth, RequireCandidate } from './auth';
 import { AppLayout } from './components/AppLayout';
 import { AssessmentPage } from './pages/AssessmentPage';
@@ -9,6 +9,7 @@ import { CandidateHome } from './pages/CandidateHome';
 import { CandidateReportPage } from './pages/CandidateReport';
 import { CandidateReportPageV1 } from './pages/CandidateReportV1';
 import { DemoBanner, DemoStart } from './demo/DemoBanner';
+import { TourOverlay } from './demo/TourOverlay';
 import { ComparePage } from './pages/ComparePage';
 import { Dashboard } from './pages/Dashboard';
 import { Landing } from './pages/Landing';
@@ -27,6 +28,12 @@ import { applyUi, useUi } from './ui';
 
 applyUi();
 
+/** A candidate's assessment. The demo walkthrough moves between screens by query, so each one loads afresh. */
+function TakeAssessmentRoute() {
+  const { search } = useLocation();
+  return <TakeAssessment key={search} />;
+}
+
 /** The review page in whichever interface the recruiter chose in the sidebar. */
 function CandidateReportRoute() {
   return useUi() === 'v1' ? <CandidateReportPageV1 /> : <CandidateReportPage />;
@@ -44,7 +51,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/demo/candidate" element={<DemoStart side="candidate" />} />
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/signup" element={<AuthPage mode="signup" />} />
-          <Route path="/c/:token" element={<TakeAssessment />} />
+          <Route path="/c/:token" element={<TakeAssessmentRoute />} />
           <Route
             path="/candidate"
             element={
@@ -74,6 +81,7 @@ createRoot(document.getElementById('root')!).render(
           </Route>
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <TourOverlay />
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

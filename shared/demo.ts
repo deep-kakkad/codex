@@ -24,3 +24,7 @@ export function choiceKey(choices: Record<string, string | null | undefined>) {
     .sort()
     .join('&');
 }
+
+/** Where a demo visitor left their email. */
+export const LEAD_SOURCES = ['recruiter-tour', 'candidate-tour'] as const;
+export type LeadSource = (typeof LEAD_SOURCES)[number];

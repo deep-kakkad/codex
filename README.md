@@ -24,7 +24,7 @@ Demo logins (password `demo-password`):
 
 The seed leaves two candidates submitted; with the key set, the server reviews them with AI when it starts. Or skip the seed and sign up at `/signup` as a recruiter or a candidate.
 
-Visitors can also try the product without an account at `/demo/recruiter` and `/demo/candidate`. That demo is static: it runs in the browser on sample data in `web/src/demo` (its AI reviews, integrity checks, interview kits and emails were written in advance), never calls the API and saves nothing.
+Visitors can try the product without an account. `/demo/recruiter` is a guided tour of the recruiter side (create an assessment, invite, read an AI review, compare, decide and email) and `/demo/candidate` walks through what a candidate sees; afterwards they can explore the sample workspace freely. The demo is static: it runs in the browser on sample data in `web/src/demo` (its AI reviews, integrity checks, interview kits and emails were written in advance) and saves nothing. Its one server call is the optional "leave your work email" form at the end; `npm run admin -- leads` lists those emails. Role content for the demo is generated with `npm run demo-data`, which leaves answer keys out for every role without sample candidates.
 
 ## What's in it
 

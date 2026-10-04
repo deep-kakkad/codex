@@ -21,10 +21,11 @@ export function applyUi(version: UiVersion = current) {
   document.documentElement.dataset.ui = version;
 }
 
-export function setUi(version: UiVersion) {
+/** `persist: false` switches for now without changing the saved choice (the demo tour does this). */
+export function setUi(version: UiVersion, persist = true) {
   current = version;
   try {
-    localStorage.setItem(KEY, version);
+    if (persist) localStorage.setItem(KEY, version);
   } catch {
     // Private windows can refuse storage; the choice still holds for this visit.
   }

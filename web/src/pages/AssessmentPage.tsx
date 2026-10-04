@@ -143,7 +143,7 @@ export function AssessmentPage() {
           <p className="muted">Invite someone above. You'll get a private link to send them.</p>
         </EmptyState>
       ) : (
-        <div className="card flush">
+        <div className="card flush" data-tour="candidates">
           <div className="card-head">
             <div className="row-gap">
               <h2>Candidates</h2>

@@ -1,7 +1,9 @@
 import { useCallback, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth';
-import { DEMO_TOKEN, enterDemo, exitDemo, isDemo, useDemo } from './mode';
+import { enterDemo, exitDemo, useDemo } from './mode';
+import { type TourId, endTour, startTour, useTour } from './tour';
+import { TOURS } from './tourSteps';
 
 /** Leaves the demo, reloads who is signed in for real, then goes to `to`. */
 export function useLeaveDemo() {
@@ -9,6 +11,7 @@ export function useLeaveDemo() {
   const navigate = useNavigate();
   return useCallback(
     async (to: string) => {
+      endTour();
       exitDemo();
       await refresh();
       navigate(to);
@@ -17,17 +20,19 @@ export function useLeaveDemo() {
   );
 }
 
-/** /demo/recruiter and /demo/candidate: start the static demo and open that side of it. */
-export function DemoStart({ side }: { side: 'recruiter' | 'candidate' }) {
+/** /demo/recruiter and /demo/candidate: open a fresh demo and start that side's guided tour. */
+export function DemoStart({ side }: { side: TourId }) {
   const { refresh } = useAuth();
   const navigate = useNavigate();
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      if (!isDemo()) enterDemo();
-      if (side === 'candidate') (await import('./fakeApi')).restartCandidateDemo();
+      enterDemo();
       await refresh();
-      if (!cancelled) navigate(side === 'candidate' ? `/c/${DEMO_TOKEN}` : '/app', { replace: true });
+      if (cancelled) return;
+      // Replace this address, so Back from the tour doesn't start it over.
+      navigate(TOURS[side][0].path, { replace: true });
+      startTour(side);
     })();
     return () => {
       cancelled = true;
@@ -39,18 +44,36 @@ export function DemoStart({ side }: { side: 'recruiter' | 'candidate' }) {
 /** Shown on every page while the demo is on. */
 export function DemoBanner() {
   const demo = useDemo();
+  const tour = useTour();
   const leave = useLeaveDemo();
   const { pathname } = useLocation();
   if (!demo || /^\/demo(\/|$)/.test(pathname)) return null;
   const candidateSide = pathname.startsWith('/c/');
+  const side: TourId = candidateSide ? 'candidate' : 'recruiter';
   return (
     <div className="demo-banner" role="status">
       <span className="demo-banner-tag">Demo</span>
       <span className="demo-banner-text">
-        Sample data in your browser. <span className="demo-banner-more">Nothing is saved or sent.</span>
+        Sample data in your browser. <span className="demo-banner-more">Nothing you do here is saved.</span>
       </span>
       <span className="demo-banner-actions">
-        {candidateSide ? <Link to="/app">Recruiter side</Link> : <Link to="/demo/candidate">Candidate side</Link>}
+        {!tour && (
+          <button
+            type="button"
+            onClick={() => {
+              // The recruiter tour reads best on the untouched sample workspace.
+              if (side === 'recruiter') enterDemo();
+              startTour(side);
+            }}
+          >
+            Take the tour
+          </button>
+        )}
+        {candidateSide ? (
+          <Link to="/demo/recruiter">Recruiter side</Link>
+        ) : (
+          <Link to="/demo/candidate">Candidate side</Link>
+        )}
         <button type="button" onClick={() => void leave('/signup')}>
           Start free
         </button>

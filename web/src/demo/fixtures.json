@@ -598,7 +598,7 @@
           "reviewerGuide": [
             {
               "type": "p",
-              "text": "Capacity today is about 900 tickets (20 \u00d7 45) against 1,460 inbound plus 1,460 already open. More effort alone cannot catch up."
+              "text": "Capacity today is about 900 tickets (20 × 45) against 1,460 inbound plus 1,460 already open. More effort alone cannot catch up."
             },
             { "type": "p", "text": "Strong answers go after demand:" },
             {
@@ -927,7 +927,7 @@
       "verification": {
         "script": {
           "opening": [
-            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Plan for 10–15 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
             "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
           ],
           "identity": [
@@ -986,11 +986,11 @@
           "caption": "Last month, as reported by each ad platform",
           "columns": ["Channel", "Spend", "Orders (platform-reported)", "CPA", "ROAS"],
           "rows": [
-            ["Meta \u2013 prospecting", "\u20b912,48,000", "1,762", "\u20b9708", "2.1x"],
-            ["Meta \u2013 retargeting", "\u20b92,08,000", "881", "\u20b9236", "6.3x"],
-            ["Google Search (brand + generic)", "\u20b97,02,000", "1,622", "\u20b9433", "3.5x"],
-            ["Influencers (tracked by discount code)", "\u20b94,42,000", "330", "\u20b91,339", "1.1x"],
-            ["**Total (sum of dashboards)**", "**\u20b926,00,000**", "**4,595**", "**\u20b9566**", "**2.6x**"]
+            ["Meta – prospecting", "₹12,48,000", "1,762", "₹708", "2.1x"],
+            ["Meta – retargeting", "₹2,08,000", "881", "₹236", "6.3x"],
+            ["Google Search (brand + generic)", "₹7,02,000", "1,622", "₹433", "3.5x"],
+            ["Influencers (tracked by discount code)", "₹4,42,000", "330", "₹1,339", "1.1x"],
+            ["**Total (sum of dashboards)**", "**₹26,00,000**", "**4,595**", "**₹566**", "**2.6x**"]
           ]
         },
         { "type": "h", "text": "Same month, from the store backend" },
@@ -998,7 +998,7 @@
           "type": "list",
           "items": [
             "Orders: **3,304**",
-            "Average order value: **\u20b91,499**",
+            "Average order value: **₹1,499**",
             "Gross margin after product, shipping and payment costs: **50%**",
             "About 19% of customers order again within 90 days."
           ]
@@ -1099,7 +1099,7 @@
               "type": "list",
               "items": [
                 "**Over-attribution.** Dashboards claim 4,595 orders, but the store recorded 3,304, so platforms over-claim by about 39%. Channel ROAS can't be taken at face value.",
-                "**Unit economics.** Blended CPA is \u20b9787 against a first-order break-even CPA of \u20b9750 (AOV \u00d7 margin). The business is losing money on first orders, and repeat purchase (19%) has to carry the rest.",
+                "**Unit economics.** Blended CPA is ₹787 against a first-order break-even CPA of ₹750 (AOV × margin). The business is losing money on first orders, and repeat purchase (19%) has to carry the rest.",
                 "**Retargeting and brand search look too good.** 6.3x reported ROAS on retargeting mostly reflects people who were already going to buy."
               ]
             },
@@ -1151,7 +1151,7 @@
             "closedReason": "submitted",
             "timeUsedSec": 240,
             "overtimeSec": 0,
-            "text": "Biggest worry: the dashboards claim 4,595 orders but the store only saw 3,304, so about 39% of the credit is double-counted. That makes the 6.3x on retargeting close to meaningless.\n\nFirst number I'd check: blended CPA (\u20b9787) against what a first order is actually worth after margin (\u20b91,499 \u00d7 50% = \u20b9750). If blended CPA is above that we lose money on every first order, and the whole plan depends on the 19% who come back.",
+            "text": "Biggest worry: the dashboards claim 4,595 orders but the store only saw 3,304, so about 39% of the credit is double-counted. That makes the 6.3x on retargeting close to meaningless.\n\nFirst number I'd check: blended CPA (₹787) against what a first order is actually worth after margin (₹1,499 × 50% = ₹750). If blended CPA is above that we lose money on every first order, and the whole plan depends on the 19% who come back.",
             "choiceId": null,
             "choiceLabel": null,
             "aiTranscript": null,
@@ -1195,7 +1195,7 @@
             "prompt": [
               {
                 "type": "p",
-                "text": "The founder has cut next month's paid media budget by **20%**, to **\u20b920,80,000**, and wants orders to stay roughly flat. Retargeting is small; leave it out of this decision."
+                "text": "The founder has cut next month's paid media budget by **20%**, to **₹20,80,000**, and wants orders to stay roughly flat. Retargeting is small; leave it out of this decision."
               },
               { "type": "p", "text": "**Where does most of the cut come from?** Pick one, then explain:" },
               {
@@ -1344,7 +1344,7 @@
               "items": [
                 "**#2 Target ROAS is below break-even.** At 50% margin, first-order break-even ROAS is 2.00x, so a 1.7x target loses money on every attributed order, and more once you allow for platform over-claiming. The strongest expertise signal: generic AI critiques miss it unless given the margin.",
                 "**#3 Summing platform ROAS double-counts.** Dashboards over-claim by about 39% against store orders. Judge on blended CPA or MER against store orders.",
-                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 40% (20% \u00f7 50%), and the goal is flat volume, not growth.",
+                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 40% (20% ÷ 50%), and the goal is flat volume, not growth.",
                 "**#1 Awareness spend won't pay back next month**, while the budget is being cut and orders must hold."
               ]
             },
@@ -1404,7 +1404,7 @@
             },
             {
               "type": "p",
-              "text": "A polished message whose numbers do not match Brewhaus Beans's scenario (budget \u20b920,80,000, 3,304 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
+              "text": "A polished message whose numbers do not match Brewhaus Beans's scenario (budget ₹20,80,000, 3,304 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
             }
           ],
           "rubric": [
@@ -1494,7 +1494,7 @@
       "verification": {
         "script": {
           "opening": [
-            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Plan for 10–15 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
             "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
           ],
           "identity": [
@@ -1508,7 +1508,7 @@
               "priority": false,
               "reasons": [],
               "answer": {
-                "excerpt": "Biggest worry: the dashboards claim 4,595 orders but the store only saw 3,304, so about 39% of the credit is double-counted. That makes the 6.3x on retargeting close to meaningless. First number I'd check: blended CPA\u2026",
+                "excerpt": "Biggest worry: the dashboards claim 4,595 orders but the store only saw 3,304, so about 39% of the credit is double-counted. That makes the 6.3x on retargeting close to meaningless. First number I'd check: blended CPA…",
                 "hasText": true,
                 "hasVoice": false,
                 "timedOut": false
@@ -1581,11 +1581,11 @@
           "caption": "Last month, as reported by each ad platform",
           "columns": ["Channel", "Spend", "Orders (platform-reported)", "CPA", "ROAS"],
           "rows": [
-            ["Meta \u2013 prospecting", "\u20b98,10,000", "1,211", "\u20b9669", "2.2x"],
-            ["Meta \u2013 retargeting", "\u20b91,35,000", "429", "\u20b9315", "4.8x"],
-            ["Google Search (brand + generic)", "\u20b93,00,000", "693", "\u20b9433", "3.5x"],
-            ["Influencers (tracked by discount code)", "\u20b92,55,000", "154", "\u20b91,656", "0.9x"],
-            ["**Total (sum of dashboards)**", "**\u20b915,00,000**", "**2,487**", "**\u20b9603**", "**2.5x**"]
+            ["Meta – prospecting", "₹8,10,000", "1,211", "₹669", "2.2x"],
+            ["Meta – retargeting", "₹1,35,000", "429", "₹315", "4.8x"],
+            ["Google Search (brand + generic)", "₹3,00,000", "693", "₹433", "3.5x"],
+            ["Influencers (tracked by discount code)", "₹2,55,000", "154", "₹1,656", "0.9x"],
+            ["**Total (sum of dashboards)**", "**₹15,00,000**", "**2,487**", "**₹603**", "**2.5x**"]
           ]
         },
         { "type": "h", "text": "Same month, from the store backend" },
@@ -1593,7 +1593,7 @@
           "type": "list",
           "items": [
             "Orders: **1,906**",
-            "Average order value: **\u20b91,499**",
+            "Average order value: **₹1,499**",
             "Gross margin after product, shipping and payment costs: **50%**",
             "About 28% of customers order again within 90 days."
           ]
@@ -1694,7 +1694,7 @@
               "type": "list",
               "items": [
                 "**Over-attribution.** Dashboards claim 2,487 orders, but the store recorded 1,906, so platforms over-claim by about 30%. Channel ROAS can't be taken at face value.",
-                "**Unit economics.** Blended CPA is \u20b9787 against a first-order break-even CPA of \u20b9750 (AOV \u00d7 margin). The business is losing money on first orders, and repeat purchase (28%) has to carry the rest.",
+                "**Unit economics.** Blended CPA is ₹787 against a first-order break-even CPA of ₹750 (AOV × margin). The business is losing money on first orders, and repeat purchase (28%) has to carry the rest.",
                 "**Retargeting and brand search look too good.** 4.8x reported ROAS on retargeting mostly reflects people who were already going to buy."
               ]
             },
@@ -1790,7 +1790,7 @@
             "prompt": [
               {
                 "type": "p",
-                "text": "The founder has cut next month's paid media budget by **20%**, to **\u20b912,00,000**, and wants orders to stay roughly flat. Retargeting is small; leave it out of this decision."
+                "text": "The founder has cut next month's paid media budget by **20%**, to **₹12,00,000**, and wants orders to stay roughly flat. Retargeting is small; leave it out of this decision."
               },
               { "type": "p", "text": "**Where does most of the cut come from?** Pick one, then explain:" },
               {
@@ -1994,7 +1994,7 @@
             "prompt": [
               {
                 "type": "p",
-                "text": "Growthline Media has sent their plan for next month (budget \u20b912,00,000). **Pick the three problems that matter most for Loom Lane right now, in order.** For each, say why it is a problem using the numbers, and what you would do instead."
+                "text": "Growthline Media has sent their plan for next month (budget ₹12,00,000). **Pick the three problems that matter most for Loom Lane right now, in order.** For each, say why it is a problem using the numbers, and what you would do instead."
               },
               { "type": "p", "text": "You do not need to comment on every item." }
             ],
@@ -2021,7 +2021,7 @@
               "items": [
                 "**#2 Target ROAS is below break-even.** At 50% margin, first-order break-even ROAS is 2.00x, so a 1.5x target loses money on every attributed order, and more once you allow for platform over-claiming. The strongest expertise signal: generic AI critiques miss it unless given the margin.",
                 "**#3 Summing platform ROAS double-counts.** Dashboards over-claim by about 30% against store orders. Judge on blended CPA or MER against store orders.",
-                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 40% (20% \u00f7 50%), and the goal is flat volume, not growth.",
+                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 40% (20% ÷ 50%), and the goal is flat volume, not growth.",
                 "**#1 Awareness spend won't pay back next month**, while the budget is being cut and orders must hold."
               ]
             },
@@ -2123,7 +2123,7 @@
                 "items": [
                   "Paste your final message.",
                   "Paste your full AI conversation, or write \"none\".",
-                  "In 2\u20133 lines, say what you kept, changed or rejected from the AI and why."
+                  "In 2–3 lines, say what you kept, changed or rejected from the AI and why."
                 ]
               }
             ],
@@ -2137,7 +2137,7 @@
             },
             {
               "type": "p",
-              "text": "A polished message whose numbers do not match Loom Lane's scenario (budget \u20b912,00,000, 1,906 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
+              "text": "A polished message whose numbers do not match Loom Lane's scenario (budget ₹12,00,000, 1,906 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
             }
           ],
           "rubric": [
@@ -2299,20 +2299,20 @@
                 "numbers": {
                   "score": 1,
                   "evidence": "I would focus on improving creatives and optimising targeting to bring the CPA down.",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "rationale": "No figure from the scenario appears anywhere in the answer."
                 },
                 "skepticism": {
                   "score": 2,
                   "evidence": "We should also look at the funnel and conversion rate on the website.",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "rationale": "Looks beyond the ads, but never questions the platform numbers themselves."
                 },
                 "priority": {
                   "score": 1,
                   "evidence": "Retargeting is performing really well so we should put more budget there.",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "rationale": "Backs the most over-credited channel, so the first move would make things worse."
                 }
               },
-              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "summary": "Generic optimisation advice; takes the dashboards at face value and wants more budget in retargeting.",
               "transcript": null,
               "delivery": null
             },
@@ -2321,21 +2321,21 @@
               "criteria": {
                 "tradeoff": {
                   "score": 1,
-                  "evidence": "Spreading the cut evenly is the safest option because it reduces risk and keeps",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "Spreading the cut evenly is the safest option because it reduces risk and keeps all channels running.",
+                  "rationale": "Avoids the decision; nothing about which channel earns its cost."
                 },
                 "estimate": {
                   "score": 2,
                   "evidence": "Orders should drop a bit but we can optimise to make up for it.",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "rationale": "Expects a drop but gives no number or assumption."
                 },
                 "risk": {
                   "score": 1,
-                  "evidence": "Spreading the cut evenly is the safest option because it reduces risk and keeps",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "it reduces risk and keeps all channels running",
+                  "rationale": "Treats spreading the cut as risk-free, with nothing to watch and no trigger to act."
                 }
               },
-              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "summary": "Spread the cut evenly rather than choose, with no estimate of the impact.",
               "transcript": null,
               "delivery": null
             },
@@ -2344,21 +2344,21 @@
               "criteria": {
                 "update": {
                   "score": 1,
-                  "evidence": "I would explain to the founder that data takes time and we should wait",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "we should wait another two weeks before making any big changes",
+                  "rationale": "Doesn’t engage with the drop in search orders."
                 },
                 "mechanism": {
                   "score": 2,
-                  "evidence": "Meanwhile we can test new creatives.",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "data takes time",
+                  "rationale": "Hints that results lag, but never explains why search fell."
                 },
                 "action": {
                   "score": 1,
-                  "evidence": "I would explain to the founder that data takes time and we should wait",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "Meanwhile we can test new creatives.",
+                  "rationale": "The only action doesn’t address what changed."
                 }
               },
-              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "summary": "Asks the founder to wait another two weeks instead of reading the new data.",
               "transcript": null,
               "delivery": null
             },
@@ -2367,21 +2367,21 @@
               "criteria": {
                 "flaws": {
                   "score": 1,
-                  "evidence": "YouTube is expensive and hard to measure, so it may not deliver immediate ROI",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "YouTube is expensive and hard to measure, so it may not deliver immediate ROI for Loom Lane.",
+                  "rationale": "Misses both planted flaws: the ROAS target below break-even and the summed platform ROAS."
                 },
                 "ranking": {
                   "score": 2,
-                  "evidence": "Refreshing creatives every two weeks may be too frequent and can reduce learning for",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "Refreshing creatives every two weeks may be too frequent and can reduce learning for the algorithm.",
+                  "rationale": "Gives an order, but leads with the least costly issues."
                 },
                 "fixes": {
                   "score": 1,
-                  "evidence": "The discount could affect brand perception in the long run.",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "Overall the plan needs clearer KPIs, a proper measurement framework and alignment with business goals.",
+                  "rationale": "Asks for clearer KPIs without saying what they should be."
                 }
               },
-              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "summary": "Raised style points about YouTube, creative cadence and brand; missed the below-break-even target and the double counting.",
               "transcript": null,
               "delivery": null
             },
@@ -2390,21 +2390,21 @@
               "criteria": {
                 "judgment": {
                   "score": 1,
-                  "evidence": "Hi, next month we will optimise our marketing mix to drive efficient growth while",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "Hi, next month we will optimise our marketing mix to drive efficient growth while reducing CAC.",
+                  "rationale": "Reads like AI boilerplate and gives the founder nothing to act on."
                 },
                 "accuracy": {
                   "score": 2,
                   "evidence": "We will focus on high-performing channels and continuously test and learn.",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "rationale": "Not wrong, but leaves out the budget, the cut and the measurement problem."
                 },
                 "communication": {
                   "score": 1,
                   "evidence": "The main risk is market volatility.",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "rationale": "The stated risk is vague and not the real one: losing new customers."
                 }
               },
-              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "summary": "A generic update with no numbers from the scenario; he says he wrote it himself.",
               "transcript": null,
               "delivery": null
             },
@@ -2413,16 +2413,16 @@
               "criteria": {
                 "specificity": {
                   "score": 1,
-                  "evidence": "In my last role we had a campaign that did not perform well, so",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "evidence": "In my last role we had a campaign that did not perform well, so we analysed the data and optimised it, and results improved.",
+                  "rationale": "No channel, numbers or dates; it could describe any campaign."
                 },
                 "ownership": {
                   "score": 2,
                   "evidence": "I learned that it is important to be data driven.",
-                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                  "rationale": "Draws a lesson, but a generic one, with no sign of what he would do differently."
                 }
               },
-              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "summary": "A generic story with no channel, numbers or timeline.",
               "transcript": null,
               "delivery": null
             }
@@ -2437,15 +2437,15 @@
             "real-decision": 1.5
           },
           "recommendation": "reject",
-          "headline": "Generic answers that trust the dashboards; the AI-allowed answer stands apart.",
-          "summary": "Rarely used the scenario numbers and recommended moving budget into retargeting, which the data shows is over-credited. The founder update was far more polished than the rest and the AI conversation was not provided.",
+          "headline": "Generic answers that trust the dashboards and skip the numbers.",
+          "summary": "Rarely used the scenario numbers and wanted more budget in retargeting, which the data shows is over-credited. The founder update is generic and reads like AI boilerplate, though he says he wrote it himself.",
           "strengths": ["Clear, structured writing"],
           "concerns": [
             "Trusted the dashboard numbers",
-            "Founder update reads like unedited AI output",
+            "Founder update reads like AI boilerplate",
             "Past-work story lacked any specifics"
           ],
-          "withAndWithoutAi": "The AI-allowed answer was noticeably more polished than the rest, and the AI conversation was not provided.",
+          "withAndWithoutAi": "No real difference with and without AI: the AI-allowed answer is as generic as the rest, and he says he didn’t use AI.",
           "probes": ["Which number told you retargeting was working?"],
           "models": { "review": "google/gemini-3.8-flash", "audio": "google/gemini-3.8-flash" }
         }
@@ -2455,7 +2455,7 @@
       "verification": {
         "script": {
           "opening": [
-            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Plan for 10–15 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
             "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
           ],
           "identity": [
@@ -2469,7 +2469,7 @@
               "priority": true,
               "reasons": ["Integrity signals on this answer: ask them to rebuild the reasoning live."],
               "answer": {
-                "excerpt": "1. YouTube is expensive and hard to measure, so it may not deliver immediate ROI for Loom Lane. 2. Refreshing creatives every two weeks may be too frequent and can reduce learning for the algorithm. 3. The discount\u2026",
+                "excerpt": "1. YouTube is expensive and hard to measure, so it may not deliver immediate ROI for Loom Lane. 2. Refreshing creatives every two weeks may be too frequent and can reduce learning for the algorithm. 3. The discount…",
                 "hasText": true,
                 "hasVoice": false,
                 "timedOut": false
@@ -2501,7 +2501,7 @@
               "priority": false,
               "reasons": [],
               "answer": {
-                "excerpt": "I would focus on improving creatives and optimising targeting to bring the CPA down. We should also look at the funnel and conversion rate on the website. Retargeting is performing really well so we should put more\u2026",
+                "excerpt": "I would focus on improving creatives and optimising targeting to bring the CPA down. We should also look at the funnel and conversion rate on the website. Retargeting is performing really well so we should put more…",
                 "hasText": true,
                 "hasVoice": false,
                 "timedOut": false
@@ -2623,7 +2623,7 @@
           },
           {
             "stageId": "budget-cut",
-            "question": "When cutting the budget, you chose to spread the reduction evenly across all channels to reduce risk. Walk me through what happens to top-of-funnel prospecting versus retargeting if you cut them equally\u2014how does that impact blended CAC and new customer acquisition over the following weeks?",
+            "question": "When cutting the budget, you chose to spread the reduction evenly across all channels to reduce risk. Walk me through what happens to top-of-funnel prospecting versus retargeting if you cut them equally—how does that impact blended CAC and new customer acquisition over the following weeks?",
             "why": "Evaluates analytical rigor and understanding of channel tradeoffs, which were missing in their evenly spread budget cut answer.",
             "listenFor": "Recognition that cutting prospecting starves the funnel, which eventually collapses retargeting volume; an explanation of why equal percentage cuts across channels with different roles is inefficient.",
             "redFlags": "Insisting an even split is 'safe' without acknowledging that top-of-funnel cuts reduce future retargeting audiences and choke off new customer growth."
@@ -2640,7 +2640,7 @@
             "question": "In your update to the founder, you stated that the main risk facing the business next month is 'market volatility.' What specific external or category factors were you referring to for Loom Lane, and what operational contingency did you have in mind?",
             "why": "Probes whether the candidate's polished founder update was AI-generated filler or grounded in the actual business context.",
             "listenFor": "Concrete factors relevant to ecommerce/DTC (e.g., seasonal demand shifts, inventory constraints, rising platform CPMs, competitor promotional pressure) and actionable mitigation steps.",
-            "redFlags": "Broad macroeconomic clich\u00e9s (e.g., 'the economy', 'inflation', 'consumer sentiment') with no specific connection to Loom Lane's performance metrics or marketing levers."
+            "redFlags": "Broad macroeconomic clichés (e.g., 'the economy', 'inflation', 'consumer sentiment') with no specific connection to Loom Lane's performance metrics or marketing levers."
           },
           {
             "stageId": "real-decision",
@@ -2677,18 +2677,18 @@
       "brief": [
         {
           "type": "p",
-          "text": "You've just joined **Kesar & Clay** as its first in-house performance marketer. Kesar & Clay is a D2C home d\u00e9cor brand selling hand-painted ceramic planters online. The founder runs the business day to day, and an agency, BlueKite Digital, runs paid media."
+          "text": "You've just joined **Kesar & Clay** as its first in-house performance marketer. Kesar & Clay is a D2C home décor brand selling hand-painted ceramic planters online. The founder runs the business day to day, and an agency, BlueKite Digital, runs paid media."
         },
         {
           "type": "table",
           "caption": "Last month, as reported by each ad platform",
           "columns": ["Channel", "Spend", "Orders (platform-reported)", "CPA", "ROAS"],
           "rows": [
-            ["Meta \u2013 prospecting", "\u20b910,00,000", "1,625", "\u20b9615", "2.9x"],
-            ["Meta \u2013 retargeting", "\u20b91,80,000", "794", "\u20b9227", "7.9x"],
-            ["Google Search (brand + generic)", "\u20b95,40,000", "1,390", "\u20b9388", "4.6x"],
-            ["Influencers (tracked by discount code)", "\u20b92,80,000", "254", "\u20b91,102", "1.6x"],
-            ["**Total (sum of dashboards)**", "**\u20b920,00,000**", "**4,063**", "**\u20b9492**", "**3.7x**"]
+            ["Meta – prospecting", "₹10,00,000", "1,625", "₹615", "2.9x"],
+            ["Meta – retargeting", "₹1,80,000", "794", "₹227", "7.9x"],
+            ["Google Search (brand + generic)", "₹5,40,000", "1,390", "₹388", "4.6x"],
+            ["Influencers (tracked by discount code)", "₹2,80,000", "254", "₹1,102", "1.6x"],
+            ["**Total (sum of dashboards)**", "**₹20,00,000**", "**4,063**", "**₹492**", "**3.7x**"]
           ]
         },
         { "type": "h", "text": "Same month, from the store backend" },
@@ -2696,7 +2696,7 @@
           "type": "list",
           "items": [
             "Orders: **3,088**",
-            "Average order value: **\u20b91,799**",
+            "Average order value: **₹1,799**",
             "Gross margin after product, shipping and payment costs: **45%**",
             "About 24% of customers order again within 90 days."
           ]
@@ -2741,7 +2741,7 @@
               "type": "list",
               "items": [
                 "**Over-attribution.** Dashboards claim 4,063 orders, but the store recorded 3,088, so platforms over-claim by about 32%. Channel ROAS can't be taken at face value.",
-                "**Unit economics.** Blended CPA is \u20b9648 against a first-order break-even CPA of \u20b9810 (AOV \u00d7 margin). The business is only just profitable on first orders, and repeat purchase (24%) has to carry the rest.",
+                "**Unit economics.** Blended CPA is ₹648 against a first-order break-even CPA of ₹810 (AOV × margin). The business is only just profitable on first orders, and repeat purchase (24%) has to carry the rest.",
                 "**Retargeting and brand search look too good.** 7.9x reported ROAS on retargeting mostly reflects people who were already going to buy."
               ]
             },
@@ -2915,7 +2915,7 @@
               "items": [
                 "**#2 Target ROAS is below break-even.** At 45% margin, first-order break-even ROAS is 2.22x, so a 1.8x target loses money on every attributed order, and more once you allow for platform over-claiming. The strongest expertise signal: generic AI critiques miss it unless given the margin.",
                 "**#3 Summing platform ROAS double-counts.** Dashboards over-claim by about 32% against store orders. Judge on blended CPA or MER against store orders.",
-                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 44% (20% \u00f7 45%), and the goal is flat volume, not growth.",
+                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 44% (20% ÷ 45%), and the goal is flat volume, not growth.",
                 "**#1 Awareness spend won't pay back next month**, while the budget is being cut and orders must hold."
               ]
             },
@@ -2975,7 +2975,7 @@
             },
             {
               "type": "p",
-              "text": "A polished message whose numbers do not match Kesar & Clay's scenario (budget \u20b915,00,000, 3,088 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
+              "text": "A polished message whose numbers do not match Kesar & Clay's scenario (budget ₹15,00,000, 3,088 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
             }
           ],
           "rubric": [
@@ -3065,7 +3065,7 @@
       "verification": {
         "script": {
           "opening": [
-            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Plan for 10–15 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
             "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
           ],
           "identity": [
@@ -3117,18 +3117,18 @@
       "brief": [
         {
           "type": "p",
-          "text": "You've just joined **Kesar & Clay** as its first in-house performance marketer. Kesar & Clay is a D2C home d\u00e9cor brand selling hand-painted ceramic planters online. The founder runs the business day to day, and an agency, BlueKite Digital, runs paid media."
+          "text": "You've just joined **Kesar & Clay** as its first in-house performance marketer. Kesar & Clay is a D2C home décor brand selling hand-painted ceramic planters online. The founder runs the business day to day, and an agency, BlueKite Digital, runs paid media."
         },
         {
           "type": "table",
           "caption": "Last month, as reported by each ad platform",
           "columns": ["Channel", "Spend", "Orders (platform-reported)", "CPA", "ROAS"],
           "rows": [
-            ["Meta \u2013 prospecting", "\u20b98,00,000", "1,268", "\u20b9631", "2.4x"],
-            ["Meta \u2013 retargeting", "\u20b91,44,000", "485", "\u20b9297", "5.0x"],
-            ["Google Search (brand + generic)", "\u20b94,32,000", "896", "\u20b9482", "3.1x"],
-            ["Influencers (tracked by discount code)", "\u20b92,24,000", "159", "\u20b91,409", "1.1x"],
-            ["**Total (sum of dashboards)**", "**\u20b916,00,000**", "**2,808**", "**\u20b9570**", "**2.6x**"]
+            ["Meta – prospecting", "₹8,00,000", "1,268", "₹631", "2.4x"],
+            ["Meta – retargeting", "₹1,44,000", "485", "₹297", "5.0x"],
+            ["Google Search (brand + generic)", "₹4,32,000", "896", "₹482", "3.1x"],
+            ["Influencers (tracked by discount code)", "₹2,24,000", "159", "₹1,409", "1.1x"],
+            ["**Total (sum of dashboards)**", "**₹16,00,000**", "**2,808**", "**₹570**", "**2.6x**"]
           ]
         },
         { "type": "h", "text": "Same month, from the store backend" },
@@ -3136,7 +3136,7 @@
           "type": "list",
           "items": [
             "Orders: **2,156**",
-            "Average order value: **\u20b91,499**",
+            "Average order value: **₹1,499**",
             "Gross margin after product, shipping and payment costs: **55%**",
             "About 29% of customers order again within 90 days."
           ]
@@ -3237,7 +3237,7 @@
               "type": "list",
               "items": [
                 "**Over-attribution.** Dashboards claim 2,808 orders, but the store recorded 2,156, so platforms over-claim by about 30%. Channel ROAS can't be taken at face value.",
-                "**Unit economics.** Blended CPA is \u20b9742 against a first-order break-even CPA of \u20b9824 (AOV \u00d7 margin). The business is only just profitable on first orders, and repeat purchase (29%) has to carry the rest.",
+                "**Unit economics.** Blended CPA is ₹742 against a first-order break-even CPA of ₹824 (AOV × margin). The business is only just profitable on first orders, and repeat purchase (29%) has to carry the rest.",
                 "**Retargeting and brand search look too good.** 5.0x reported ROAS on retargeting mostly reflects people who were already going to buy."
               ]
             },
@@ -3289,7 +3289,7 @@
             "closedReason": "submitted",
             "timeUsedSec": 240,
             "overtimeSec": 0,
-            "text": "Biggest worry: the dashboards claim 2,808 orders but the store only saw 2,156, so about 30% of the credit is double-counted. That makes the 5.0x on retargeting close to meaningless.\n\nFirst number I'd check: blended CPA (\u20b9742) against what a first order is actually worth after margin (\u20b91,499 \u00d7 55% = \u20b9824). If blended CPA is above that we lose money on every first order, and the whole plan depends on the 29% who come back.",
+            "text": "Biggest worry: the dashboards claim 2,808 orders but the store only saw 2,156, so about 30% of the credit is double-counted. That makes the 5.0x on retargeting close to meaningless.\n\nFirst number I'd check: blended CPA (₹742) against what a first order is actually worth after margin (₹1,499 × 55% = ₹824). If blended CPA is above that we lose money on every first order, and the whole plan depends on the 29% who come back.",
             "choiceId": null,
             "choiceLabel": null,
             "aiTranscript": null,
@@ -3333,7 +3333,7 @@
             "prompt": [
               {
                 "type": "p",
-                "text": "The founder has cut next month's paid media budget by **25%**, to **\u20b912,00,000**, and wants orders to stay roughly flat. Retargeting is small; leave it out of this decision."
+                "text": "The founder has cut next month's paid media budget by **25%**, to **₹12,00,000**, and wants orders to stay roughly flat. Retargeting is small; leave it out of this decision."
               },
               { "type": "p", "text": "**Where does most of the cut come from?** Pick one, then explain:" },
               {
@@ -3401,7 +3401,7 @@
             "closedReason": "submitted",
             "timeUsedSec": 300,
             "overtimeSec": 0,
-            "text": "Most of the \u20b94,00,000 comes out of Meta prospecting. It's the biggest line and its marginal CPA is worse than its average, so I'd assume ~1.3\u00d7 blended: that's roughly 415 fewer orders, before any fixes. To claw some back I'd concentrate what's left on the top two ad sets and pause the rest.\n\nRisk: prospecting feeds retargeting and brand search two or three weeks later. Early warning: branded search impressions and retargeting audience size, checked weekly. If either drops more than 15% I'd restore part of the budget.",
+            "text": "Most of the ₹4,00,000 comes out of Meta prospecting. It's the biggest line and its marginal CPA is worse than its average, so I'd assume ~1.3× blended: that's roughly 415 fewer orders, before any fixes. To claw some back I'd concentrate what's left on the top two ad sets and pause the rest.\n\nRisk: prospecting feeds retargeting and brand search two or three weeks later. Early warning: branded search impressions and retargeting audience size, checked weekly. If either drops more than 15% I'd restore part of the budget.",
             "choiceId": "meta",
             "choiceLabel": "Meta prospecting",
             "aiTranscript": null,
@@ -3537,7 +3537,7 @@
             "prompt": [
               {
                 "type": "p",
-                "text": "BlueKite Digital has sent their plan for next month (budget \u20b912,00,000). **Pick the three problems that matter most for Kesar & Clay right now, in order.** For each, say why it is a problem using the numbers, and what you would do instead."
+                "text": "BlueKite Digital has sent their plan for next month (budget ₹12,00,000). **Pick the three problems that matter most for Kesar & Clay right now, in order.** For each, say why it is a problem using the numbers, and what you would do instead."
               },
               { "type": "p", "text": "You do not need to comment on every item." }
             ],
@@ -3564,7 +3564,7 @@
               "items": [
                 "**#2 Target ROAS is below break-even.** At 55% margin, first-order break-even ROAS is 1.82x, so a 1.4x target loses money on every attributed order, and more once you allow for platform over-claiming. The strongest expertise signal: generic AI critiques miss it unless given the margin.",
                 "**#3 Summing platform ROAS double-counts.** Dashboards over-claim by about 30% against store orders. Judge on blended CPA or MER against store orders.",
-                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 36% (20% \u00f7 55%), and the goal is flat volume, not growth.",
+                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 36% (20% ÷ 55%), and the goal is flat volume, not growth.",
                 "**#1 Awareness spend won't pay back next month**, while the budget is being cut and orders must hold."
               ]
             },
@@ -3663,7 +3663,7 @@
                 "items": [
                   "Paste your final message.",
                   "Paste your full AI conversation, or write \"none\".",
-                  "In 2\u20133 lines, say what you kept, changed or rejected from the AI and why."
+                  "In 2–3 lines, say what you kept, changed or rejected from the AI and why."
                 ]
               }
             ],
@@ -3677,7 +3677,7 @@
             },
             {
               "type": "p",
-              "text": "A polished message whose numbers do not match Kesar & Clay's scenario (budget \u20b912,00,000, 2,156 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
+              "text": "A polished message whose numbers do not match Kesar & Clay's scenario (budget ₹12,00,000, 2,156 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
             }
           ],
           "rubric": [
@@ -3723,10 +3723,10 @@
             "closedReason": "submitted",
             "timeUsedSec": 420,
             "overtimeSec": 0,
-            "text": "Hi! Plan for next month on the new budget of \u20b912,00,000:\n\u2022 Most of the cut comes from Meta prospecting; search and retargeting stay.\n\u2022 We judge everything on store orders and blended CPA, not the ad dashboards (they over-count by ~30%).\n\u2022 No sitewide discount: it would eat ~36% of profit per order.\nRisk: fewer new customers could shrink brand search in 2\u20133 weeks. I'm watching it weekly and will flag early if we need to put some budget back.",
+            "text": "Hi! Plan for next month on the new budget of ₹12,00,000:\n• Most of the cut comes from Meta prospecting; search and retargeting stay.\n• We judge everything on store orders and blended CPA, not the ad dashboards (they over-count by ~30%).\n• No sitewide discount: it would eat ~36% of profit per order.\nRisk: fewer new customers could shrink brand search in 2–3 weeks. I'm watching it weekly and will flag early if we need to put some budget back.",
             "choiceId": null,
             "choiceLabel": null,
-            "aiTranscript": "Me: Draft a 150 word WhatsApp update to a D2C founder. Budget cut 25% to \u20b912,00,000. Cutting Meta prospecting. Dashboards over-count orders by 30%. Margin 55%.\nAI: Hi [Founder]! Exciting times ahead! \ud83d\ude80 We're optimising our marketing mix to drive efficient growth. By reallocating budget from Meta to higher-ROAS channels we expect to maintain strong performance while reducing CAC by 20%...\nMe: Remove the hype and emojis. Don't promise a CAC reduction, we have no basis for that. Use bullets. Add the one risk: prospecting cut may shrink brand search.\nAI: Hi! Here's the plan for next month...",
+            "aiTranscript": "Me: Draft a 150 word WhatsApp update to a D2C founder. Budget cut 25% to ₹12,00,000. Cutting Meta prospecting. Dashboards over-count orders by 30%. Margin 55%.\nAI: Hi [Founder]! Exciting times ahead! 🚀 We're optimising our marketing mix to drive efficient growth. By reallocating budget from Meta to higher-ROAS channels we expect to maintain strong performance while reducing CAC by 20%...\nMe: Remove the hype and emojis. Don't promise a CAC reduction, we have no basis for that. Use bullets. Add the one risk: prospecting cut may shrink brand search.\nAI: Hi! Here's the plan for next month...",
             "reflection": "Kept the bullet structure. Rejected the \"reduce CAC by 20%\" line (made up) and the hype. Added the discount point and the actual budget myself because the AI had them wrong.",
             "audio": [],
             "scratch": [],
@@ -3838,21 +3838,21 @@
               "criteria": {
                 "numbers": {
                   "score": 4,
-                  "evidence": "Biggest worry: the dashboards claim 2,808 orders but the store only saw 2,156, so",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "the dashboards claim 2,808 orders but the store only saw 2,156, so about 30% of the credit is double-counted.",
+                  "rationale": "Reconciles platform orders with store orders and puts a size on the gap."
                 },
                 "skepticism": {
                   "score": 3,
                   "evidence": "That makes the 5.0x on retargeting close to meaningless.",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "rationale": "Questions the most flattering number on the dashboard, but doesn’t say how she would measure it properly."
                 },
                 "priority": {
                   "score": 3,
-                  "evidence": "First number I'd check: blended CPA (\u20b9742) against what a first order is actually",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "First number I'd check: blended CPA (₹742) against what a first order is actually worth after margin (₹1,499 × 55% = ₹824).",
+                  "rationale": "Picks the number that decides whether growth is profitable, with the sum shown. Leading with it would make the point faster."
                 }
               },
-              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "summary": "Reconciled the dashboards with the store and checked whether a first order pays for itself.",
               "transcript": null,
               "delivery": null
             },
@@ -3861,21 +3861,21 @@
               "criteria": {
                 "tradeoff": {
                   "score": 4,
-                  "evidence": "Most of the \u20b94,00,000 comes out of Meta prospecting.",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "Most of the ₹4,00,000 comes out of Meta prospecting. It's the biggest line and its marginal CPA is worse than its average",
+                  "rationale": "Commits to one channel and justifies it with marginal rather than average cost."
                 },
                 "estimate": {
                   "score": 3,
-                  "evidence": "It's the biggest line and its marginal CPA is worse than its average, so",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "I'd assume ~1.3× blended: that's roughly 415 fewer orders, before any fixes.",
+                  "rationale": "Gives a number and the assumption behind it, but no range or worst case."
                 },
                 "risk": {
                   "score": 3,
-                  "evidence": "To claw some back I'd concentrate what's left on the top two ad sets",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "If either drops more than 15% I'd restore part of the budget.",
+                  "rationale": "Names the halo risk, a leading indicator and a threshold to act on. Doesn’t allow for the two to three weeks the signal lags."
                 }
               },
-              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "summary": "Cut Meta prospecting, estimated the lost orders from a stated assumption, and named the signal she’d watch.",
               "transcript": null,
               "delivery": null
             },
@@ -3885,20 +3885,20 @@
                 "update": {
                   "score": 4,
                   "evidence": "Not a mistake, but I under-weighted the halo.",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "rationale": "Updates her view on the new data instead of defending the original call."
                 },
                 "mechanism": {
                   "score": 3,
-                  "evidence": "Brand search and retargeting were harvesting demand that prospecting created, which is exactly what",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "Brand search and retargeting were harvesting demand that prospecting created",
+                  "rationale": "Explains why search fell and ties it to the over-counting she flagged at the start; no estimate of how big the effect is."
                 },
                 "action": {
                   "score": 3,
-                  "evidence": "This week: restore about a third of the prospecting cut, funded from the lowest-intent",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "restore about a third of the prospecting cut, funded from the lowest-intent generic search terms, and set up a two-week geo holdout on Meta",
+                  "rationale": "Specific moves for this week, with where the money comes from. The holdout won’t report before the month ends."
                 }
               },
-              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "summary": "Owned the miss without getting defensive, explained the halo and set up a holdout to measure it.",
               "transcript": null,
               "delivery": null
             },
@@ -3907,21 +3907,21 @@
               "criteria": {
                 "flaws": {
                   "score": 4,
-                  "evidence": "1) Target ROAS of 1.4x is below break-even.",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "Target ROAS of 1.4x is below break-even. At 55% margin we need 1.82x just to break even on first orders",
+                  "rationale": "Finds the planted break-even flaw with the arithmetic, and the double counting."
                 },
                 "ranking": {
                   "score": 2,
-                  "evidence": "At 55% margin we need 1.82x just to break even on first orders, and",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "2) Summing platform ROAS double-counts.",
+                  "rationale": "Puts the reporting fix above the discount, which costs profit on every order this month. The list reads in the order written, not by impact."
                 },
                 "fixes": {
                   "score": 2,
                   "evidence": "I'd set the floor around 2.4x platform-reported.",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "rationale": "A concrete floor for ROAS and a home for YouTube, but nothing to use instead of the discount and no owner or timing."
                 }
               },
-              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "summary": "Found the below-break-even target with the sums and the double counting; the ranking and fixes are thinner.",
               "transcript": null,
               "delivery": null
             },
@@ -3930,21 +3930,21 @@
               "criteria": {
                 "judgment": {
                   "score": 4,
-                  "evidence": "Plan for next month on the new budget of \u20b912,00,000:",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "Rejected the \"reduce CAC by 20%\" line (made up) and the hype.",
+                  "rationale": "Kept the AI’s structure, cut a number it made up, and fixed the figures it got wrong."
                 },
                 "accuracy": {
                   "score": 3,
-                  "evidence": "\u2022 Most of the cut comes from Meta prospecting; search and retargeting stay.",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "We judge everything on store orders and blended CPA, not the ad dashboards (they over-count by ~30%).",
+                  "rationale": "Every figure matches the scenario. It doesn’t say how many fewer orders to expect."
                 },
                 "communication": {
                   "score": 3,
-                  "evidence": "\u2022 We judge everything on store orders and blended CPA, not the ad dashboards",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "I'm watching it weekly and will flag early if we need to put some budget back.",
+                  "rationale": "Short and easy to read on WhatsApp, with a clear risk. It never asks the founder to decide anything."
                 }
               },
-              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "summary": "Used AI for the draft, then removed an invented claim and corrected the numbers herself.",
               "transcript": null,
               "delivery": null
             },
@@ -3953,16 +3953,16 @@
               "criteria": {
                 "specificity": {
                   "score": 4,
-                  "evidence": "At a previous job I moved 30% of our Google budget into a new",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "I moved 30% of our Google budget into a new YouTube campaign in October because view-through conversions looked great.",
+                  "rationale": "Channel, share of budget, month, result and when she reversed it."
                 },
                 "ownership": {
                   "score": 3,
-                  "evidence": "Orders fell about 12% in three weeks.",
-                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                  "evidence": "Now I never scale a channel without a holdout or at least a post-purchase survey.",
+                  "rationale": "Owns the call and the rollback, with a lesson that changed how she works. Doesn’t say what the mistake cost."
                 }
               },
-              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "summary": "A specific story with numbers and a timeline, and a lesson she still applies.",
               "transcript": null,
               "delivery": null
             }
@@ -3978,15 +3978,15 @@
           },
           "recommendation": "advance",
           "headline": "Reads the data sharply and adapts; one weak call in the critique.",
-          "summary": "Spotted that the ad dashboards over-count orders and rebuilt the budget from break-even ROAS. Adapted well when the situation changed, but ranked a minor flaw first in the critique and gave few specifics about her own past decision.",
+          "summary": "Spotted that the ad dashboards over-count orders and judged every choice against break-even. Adapted well when the situation changed. In the critique she found the right flaws but didn’t rank them by what they cost, and her fixes were thinner than her diagnosis.",
           "strengths": [
             "Works from the real numbers, not the dashboards",
             "Sized the budget cut from break-even, with the arithmetic shown",
             "Gave the AI the context, then corrected its arithmetic"
           ],
           "concerns": [
-            "Ranked creative refresh above the below-break-even target in the critique",
-            "Past-work story light on numbers and her own role"
+            "Critique lists the right flaws but doesn’t rank them by cost",
+            "Few concrete fixes in the critique, none for the discount"
           ],
           "withAndWithoutAi": "Similar reasoning with and without AI; on the AI task she kept the structure but rewrote the numbers herself and removed an invented claim.",
           "probes": ["Walk me through break-even again."],
@@ -3998,7 +3998,7 @@
       "verification": {
         "script": {
           "opening": [
-            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Plan for 10–15 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
             "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
           ],
           "identity": [
@@ -4012,7 +4012,7 @@
               "priority": true,
               "reasons": ["Past-work stories are easy to fabricate asynchronously: dig into specifics."],
               "answer": {
-                "excerpt": "At a previous job I moved 30% of our Google budget into a new YouTube campaign in October because view-through conversions looked great. Orders fell about 12% in three weeks. The view-through numbers were mostly people\u2026",
+                "excerpt": "At a previous job I moved 30% of our Google budget into a new YouTube campaign in October because view-through conversions looked great. Orders fell about 12% in three weeks. The view-through numbers were mostly people…",
                 "hasText": true,
                 "hasVoice": false,
                 "timedOut": false
@@ -4028,7 +4028,7 @@
               "priority": false,
               "reasons": [],
               "answer": {
-                "excerpt": "Biggest worry: the dashboards claim 2,808 orders but the store only saw 2,156, so about 30% of the credit is double-counted. That makes the 5.0x on retargeting close to meaningless. First number I'd check: blended CPA\u2026",
+                "excerpt": "Biggest worry: the dashboards claim 2,808 orders but the store only saw 2,156, so about 30% of the credit is double-counted. That makes the 5.0x on retargeting close to meaningless. First number I'd check: blended CPA…",
                 "hasText": true,
                 "hasVoice": false,
                 "timedOut": false
@@ -4044,7 +4044,7 @@
               "priority": false,
               "reasons": [],
               "answer": {
-                "excerpt": "Most of the \u20b94,00,000 comes out of Meta prospecting. It's the biggest line and its marginal CPA is worse than its average, so I'd assume ~1.3\u00d7 blended: that's roughly 415 fewer orders, before any fixes. To claw some\u2026",
+                "excerpt": "Most of the ₹4,00,000 comes out of Meta prospecting. It's the biggest line and its marginal CPA is worse than its average, so I'd assume ~1.3× blended: that's roughly 415 fewer orders, before any fixes. To claw some…",
                 "choiceId": "meta",
                 "choiceLabel": "Meta prospecting",
                 "hasText": true,
@@ -4062,7 +4062,7 @@
               "priority": false,
               "reasons": [],
               "answer": {
-                "excerpt": "Not a mistake, but I under-weighted the halo. Brand search and retargeting were harvesting demand that prospecting created, which is exactly what the over-attribution in the first table hinted at. This week: restore\u2026",
+                "excerpt": "Not a mistake, but I under-weighted the halo. Brand search and retargeting were harvesting demand that prospecting created, which is exactly what the over-attribution in the first table hinted at. This week: restore…",
                 "hasText": true,
                 "hasVoice": true,
                 "voiceSec": 24,
@@ -4079,7 +4079,7 @@
               "priority": false,
               "reasons": [],
               "answer": {
-                "excerpt": "1) Target ROAS of 1.4x is below break-even. At 55% margin we need 1.82x just to break even on first orders, and platform ROAS is already inflated by ~30%. I'd set the floor around 2.4x platform-reported. 2) Summing\u2026",
+                "excerpt": "1) Target ROAS of 1.4x is below break-even. At 55% margin we need 1.82x just to break even on first orders, and platform ROAS is already inflated by ~30%. I'd set the floor around 2.4x platform-reported. 2) Summing…",
                 "hasText": true,
                 "hasVoice": false,
                 "timedOut": false
@@ -4095,7 +4095,7 @@
               "priority": false,
               "reasons": [],
               "answer": {
-                "excerpt": "Hi! Plan for next month on the new budget of \u20b912,00,000: \u2022 Most of the cut comes from Meta prospecting; search and retargeting stay. \u2022 We judge everything on store orders and blended CPA, not the ad dashboards (they\u2026",
+                "excerpt": "Hi! Plan for next month on the new budget of ₹12,00,000: • Most of the cut comes from Meta prospecting; search and retargeting stay. • We judge everything on store orders and blended CPA, not the ad dashboards (they…",
                 "hasText": true,
                 "hasVoice": false,
                 "timedOut": false
@@ -4175,10 +4175,10 @@
           },
           {
             "stageId": "budget-cut",
-            "question": "When cutting \u20b94,00,000 from Meta prospecting, you assumed marginal CPA would be 1.3 times the blended CPA, estimating roughly 415 lost orders. Walk me through the logic and arithmetic behind that 1.3 multiplier.",
+            "question": "When cutting ₹4,00,000 from Meta prospecting, you assumed marginal CPA would be 1.3 times the blended CPA, estimating roughly 415 lost orders. Walk me through the logic and arithmetic behind that 1.3 multiplier.",
             "why": "Confirms whether her strongest analytical models reflect true understanding of diminishing returns or were just arbitrary estimates.",
-            "listenFor": "Clear explanation of diminishing marginal returns (the last spend is always less efficient than the first), and how trimming underperforming ad sets changes average efficiency to arrive at ~\u20b9960 marginal CPA and ~415 orders.",
-            "redFlags": "Inability to recreate the arithmetic connecting \u20b94,00,000, 1.3x CPA, and 415 orders, or stating it was merely an ungrounded guess."
+            "listenFor": "Clear explanation of diminishing marginal returns (the last spend is always less efficient than the first), and how trimming underperforming ad sets changes average efficiency to arrive at ~₹960 marginal CPA and ~415 orders.",
+            "redFlags": "Inability to recreate the arithmetic connecting ₹4,00,000, 1.3x CPA, and 415 orders, or stating it was merely an ungrounded guess."
           },
           {
             "stageId": "founder-update",
@@ -4198,7 +4198,7 @@
       "advance": {
         "decision": "advance",
         "subject": "Next steps: Growth Marketing Manager at Demo Co",
-        "body": "Hi Vikram,\n\nThank you for completing the performance marketing assessment. We really enjoyed reviewing your work\u2014in particular, your clear, structured writing made your campaign recommendations easy to follow and actionable.\n\nWe would love to invite you to the next step, which is a conversation with our team to discuss your approach and background in more detail.\n\nPlease choose a convenient slot using [link to book a time].\n\nLooking forward to speaking soon!\n\nBest,\nMaya Iyer\nDemo Co",
+        "body": "Hi Vikram,\n\nThank you for completing the performance marketing assessment. We really enjoyed reviewing your work—in particular, your clear, structured writing made your campaign recommendations easy to follow and actionable.\n\nWe would love to invite you to the next step, which is a conversation with our team to discuss your approach and background in more detail.\n\nPlease choose a convenient slot using [link to book a time].\n\nLooking forward to speaking soon!\n\nBest,\nMaya Iyer\nDemo Co",
         "ai": true,
         "createdAt": 1791139998013
       },
@@ -4221,21 +4221,21 @@
       "advance": {
         "decision": "advance",
         "subject": "Next steps: Growth Marketing Manager at Demo Co",
-        "body": "Hi Asha,\n\nThank you for taking the time to complete the performance marketing assessment. We would love to move forward and invite you to the next step, a conversation with our team.\n\nWe were particularly impressed by your approach to working from the underlying data rather than taking dashboard metrics at face value. In particular, the way you sized the budget cut directly from break-even\u2014and clearly laid out your arithmetic\u2014really stood out.\n\nPlease pick a time that works best for you here: [link to book a time].\n\nLooking forward to connecting soon!\n\nBest,\nMaya Iyer\nDemo Co",
+        "body": "Hi Asha,\n\nThank you for taking the time to complete the performance marketing assessment. We would love to move forward and invite you to the next step, a conversation with our team.\n\nWe were particularly impressed by your approach to working from the underlying data rather than taking dashboard metrics at face value. In particular, the way you sized the budget cut directly from break-even—and clearly laid out your arithmetic—really stood out.\n\nPlease pick a time that works best for you here: [link to book a time].\n\nLooking forward to connecting soon!\n\nBest,\nMaya Iyer\nDemo Co",
         "ai": true,
         "createdAt": 1791140018834
       },
       "hold": {
         "decision": "hold",
         "subject": "Update on your Growth Marketing Manager application at Demo Co",
-        "body": "Hi Asha,\n\nThank you for taking the time to complete the performance marketing assessment. We are still finishing up reviews for this round, but I wanted to let you know that your application is actively being considered.\n\nI was really impressed by how you grounded your budget recommendations in the underlying data\u2014specifically how you sized the budget cut directly from break-even targets and clearly showed your arithmetic.\n\nYou can expect to hear back from us by [date] with an update on next steps. Thanks again for your time and thoughtful work on this.\n\nBest,\nMaya Iyer\nDemo Co",
+        "body": "Hi Asha,\n\nThank you for taking the time to complete the performance marketing assessment. We are still finishing up reviews for this round, but I wanted to let you know that your application is actively being considered.\n\nI was really impressed by how you grounded your budget recommendations in the underlying data—specifically how you sized the budget cut directly from break-even targets and clearly showed your arithmetic.\n\nYou can expect to hear back from us by [date] with an update on next steps. Thanks again for your time and thoughtful work on this.\n\nBest,\nMaya Iyer\nDemo Co",
         "ai": true,
         "createdAt": 1791140068345
       },
       "reject": {
         "decision": "reject",
         "subject": "Update on your Growth Marketing Manager application at Demo Co",
-        "body": "Hi Asha,\n\nThank you for completing the performance marketing assessment. We have decided not to move forward with your application for the Growth Marketing Manager role.\n\nWe really appreciated your approach to the data\u2014specifically how you worked from the raw figures rather than dashboard assumptions and clearly walked through your arithmetic to size the budget cut from break-even. In terms of areas to develop, we were looking for a stronger emphasis on addressing core efficiency targets before turning to creative refreshes in your critique.\n\nThank you again for the time and thought you put into the exercise. I wish you the very best in your search.\n\nBest,\nMaya Iyer\nDemo Co",
+        "body": "Hi Asha,\n\nThank you for completing the performance marketing assessment. We have decided not to move forward with your application for the Growth Marketing Manager role.\n\nWe really appreciated your approach to the data—specifically how you worked from the raw figures rather than dashboard assumptions and clearly walked through your arithmetic to size the budget cut from break-even. In terms of areas to develop, we were looking for a stronger emphasis on addressing core efficiency targets before turning to creative refreshes in your critique.\n\nThank you again for the time and thought you put into the exercise. I wish you the very best in your search.\n\nBest,\nMaya Iyer\nDemo Co",
         "ai": true,
         "createdAt": 1791140034095
       }

@@ -6,8 +6,9 @@ import type { CandidateSession } from '../shared/candidateApi';
 import { buildPreview } from '../shared/library';
 import { ROLE_FAMILIES } from '../shared/roleFamilies';
 import { buildDemoData, DEMO_DATA_DIR, FULL_PREVIEW_FAMILIES, PREVIEW_SEED } from '../server/demoData';
-import { handle, restartCandidateDemo } from '../web/src/demo/fakeApi';
+import { handle, restartCandidateDemo, showCandidateFrame } from '../web/src/demo/fakeApi';
 import { DEMO_SAMPLE_CANDIDATE } from '../web/src/demo/mode';
+import { REVIEW_STEP, TOURS } from '../web/src/demo/tourSteps';
 
 const committed = (file: string) => readFileSync(path.join(DEMO_DATA_DIR, file), 'utf8');
 
@@ -93,5 +94,34 @@ describe('static demo API', () => {
     }
     expect(session.state.phase).toBe('done');
     await expect(handle('GET', '/api/c/someone-else')).rejects.toThrow(/demo/);
+  });
+
+  it('shows each screen of the candidate walkthrough without a running clock', async () => {
+    const phases: [Parameters<typeof showCandidateFrame>[0], string, number?][] = [
+      ['intro', 'intro'],
+      ['brief', 'ready'],
+      [0, 'stage', 0],
+      [1, 'stage', 1],
+      [2, 'stage', 2],
+      [3, 'stage', 3],
+      ['done', 'done'],
+    ];
+    for (const [frame, phase, index] of phases) {
+      showCandidateFrame(frame);
+      const session = (await handle('GET', '/api/c/demo')) as CandidateSession;
+      expect(session.state.phase, String(frame)).toBe(phase);
+      if (session.state.phase === 'stage') {
+        expect(session.state.stage.index).toBe(index);
+        expect(session.state.deadlineAt).toBeGreaterThan(Date.now() + 60 * 60 * 1000);
+      }
+    }
+  });
+
+  it('has tours that start on the right pages', () => {
+    expect(TOURS.recruiter[0].path).toBe('/app');
+    expect(TOURS.recruiter.at(-1)?.end).toBe(true);
+    expect(TOURS.candidate.at(-1)?.end).toBe(true);
+    expect(TOURS.recruiter[REVIEW_STEP].path).toBe(`/app/candidates/${DEMO_SAMPLE_CANDIDATE}`);
+    for (const step of [...TOURS.recruiter, ...TOURS.candidate]) expect(step.end || step.target).toBeTruthy();
   });
 });

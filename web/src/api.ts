@@ -11,6 +11,8 @@ export class ApiError extends Error {
 
 // Signing in or up leaves the demo and talks to the real server.
 const SIGN_IN = /^\/api\/(candidate\/)?auth\/(login|signup)$/;
+// The demo's "talk to us" form is the one call it really sends.
+const REAL_IN_DEMO = /^\/api\/leads$/;
 
 /** In the demo, answers come from data kept in this tab; nothing reaches the server. */
 async function demo<T>(method: string, url: string, body?: unknown): Promise<T> {
@@ -19,7 +21,7 @@ async function demo<T>(method: string, url: string, body?: unknown): Promise<T> 
 }
 
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
-  if (isDemo()) {
+  if (isDemo() && !REAL_IN_DEMO.test(url)) {
     if (!SIGN_IN.test(url)) return demo<T>(method, url, body);
     exitDemo();
   }

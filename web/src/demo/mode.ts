@@ -10,6 +10,9 @@ export const DEMO_STATE_KEY = 'proofwork-demo-state';
 export const DEMO_TOKEN = 'demo';
 /** A finished, reviewed candidate to show after the candidate demo. */
 export const DEMO_SAMPLE_CANDIDATE = '890e6891-eeaa-485c-8031-3e4cb1b79767';
+/** The sample assessment the recruiter tour walks through, and its second finished candidate. */
+export const DEMO_ASSESSMENT = '72abe972-402f-4f90-bafa-7efc59f8cd46';
+export const DEMO_SECOND_CANDIDATE = '2adb54d8-9f89-40b2-bc30-4cec38ac7198';
 
 const listeners = new Set<() => void>();
 
