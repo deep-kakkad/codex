@@ -131,7 +131,7 @@ export function Landing() {
             <span className="pill-dot" /> Practical assessments for the AI era
           </span>
           <h1>
-            Hire for <span className="marker">the job</span>, not the prompt.
+            Hire for <span className="marker">the task</span>, not the prompt.
           </h1>
           <p className="lead">
             A practical check that shows how a candidate thinks with and without AI, reviewed by AI, with their
