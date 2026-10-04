@@ -1,9 +1,41 @@
+import { type ReactNode, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Icon, type IconName } from '../components/Icon';
-import { Logo } from '../components/Logo';
 import { useLeaveDemo } from '../demo/DemoBanner';
 import { useDemo } from '../demo/mode';
+
+// The example candidate shown in the hero and in step 3.
+const RUBRIC: [string, number][] = [
+  ['Strategic thinking', 4],
+  ['Execution plan', 3],
+  ['Analytical rigor', 4],
+  ['Communication', 3],
+];
+const OVERALL = (RUBRIC.reduce((sum, [, score]) => sum + score, 0) / RUBRIC.length).toFixed(1);
+
+const REASONING =
+  'I started by defining a clear north star metric for activation, then explored a few channels where we could reach high-intent users. Here’s how I prioritized the options and designed the experiment…';
+const EVIDENCE =
+  'The core insight is that many new users aren’t reaching the aha moment. I propose a product-led experiment that tests an in-app nudge at the right moment, with a simple A/B test to measure activation lift.';
+
+const ROLE_TASKS: { role: string; title: string; body: string }[] = [
+  {
+    role: 'Product Designer',
+    title: 'Redesign the onboarding experience',
+    body: 'Improve first-time activation for our product. Propose a solution and explain your reasoning.',
+  },
+  {
+    role: 'Product Manager',
+    title: 'Decide what to build next',
+    body: 'Retention dropped after a release and the CEO wants a new feature. Find the cause and make the call.',
+  },
+  {
+    role: 'Data Analyst',
+    title: 'Answer the VP before the board',
+    body: 'A VP needs one number in an hour. Find the data problems that flip the answer, then decide what to send.',
+  },
+];
 
 const PROBLEMS: { title: string; body: string }[] = [
   {
@@ -43,19 +75,6 @@ const FEATURES: { icon: IconName; title: string; body: string }[] = [
   },
 ];
 
-const STEPS = [
-  [
-    'Pick a role',
-    'Start from a practitioner-written scenario, or have AI write one for any role. Choose the activities.',
-  ],
-  [
-    'Send the link',
-    'Candidates open it and start. One question at a time, each with its own timer, about 30–40 minutes.',
-  ],
-  ['Read the verdict', 'Score, recommendation, strengths and concerns first, then every answer with quoted evidence.'],
-  ['Compare and decide', 'Put your finalists side by side, question by question. Advance, hold or reject.'],
-];
-
 type Cell = boolean | string;
 const COMPARISON: { label: string; cells: [Cell, Cell, Cell, Cell] }[] = [
   { label: 'A realistic problem from the job', cells: [true, false, 'Sometimes', true] },
@@ -66,7 +85,7 @@ const COMPARISON: { label: string; cells: [Cell, Cell, Cell, Cell] }[] = [
   { label: 'Fair to candidates’ time', cells: ['30–40 min', 'Varies', 'Varies', 'Often hours'] },
 ];
 
-const FAQ = [
+const FAQ: [string, string][] = [
   [
     'Can’t candidates just use ChatGPT?',
     'On the AI-allowed task they’re meant to, and you see the conversation. Elsewhere, each candidate has their own numbers, the critiques hide flaws that only the data reveals, and think-aloud audio makes pasted answers stand out. Weak signals become questions for an optional short call, never accusations.',
@@ -81,7 +100,7 @@ const FAQ = [
   ],
   [
     'Which roles are covered?',
-    'Practitioner-written scenarios for Performance Marketing, Content & Brand, SEO, Social Media and Customer Support leadership. For anything else, describe the role and AI writes a scenario in the same format for you to check.',
+    '27 practitioner-written roles across marketing, sales, support, product, design, data, finance, operations and people teams. For anything else, paste your job description and AI builds an assessment in the same format for you to check.',
   ],
   [
     'How long does it take?',
@@ -89,281 +108,613 @@ const FAQ = [
   ],
 ];
 
-function Mark({ value }: { value: Cell }) {
-  if (value === true) return <Icon name="check" className="yes" />;
-  if (value === false) return <Icon name="x" className="no" />;
-  return <span className="partial">{value}</span>;
+/** A speech-like waveform: deterministic, so the page renders the same every time. */
+function waveform(bars: number) {
+  return Array.from({ length: bars }, (_, i) => {
+    const envelope = 0.55 + 0.45 * Math.sin((i / (bars - 1)) * Math.PI);
+    const texture = Math.abs(Math.sin(i * 1.93) * Math.cos(i * 0.71));
+    return Math.round((0.18 + 0.82 * texture * envelope) * 100);
+  });
 }
-
-/** Start free, or open the dashboard when signed in. In the demo, starting free leaves the demo first. */
-function PrimaryAction({
-  primary,
-  demo,
-  arrow,
-}: {
-  primary: { to: string; label: string };
-  demo: boolean;
-  arrow?: boolean;
-}) {
-  const leaveDemo = useLeaveDemo();
-  const content = (
-    <>
-      {primary.label}
-      {arrow && <Icon name="arrow" />}
-    </>
-  );
-  if (demo) {
-    return (
-      <button type="button" className="btn btn-primary btn-lg" onClick={() => void leaveDemo('/signup')}>
-        {content}
-      </button>
-    );
-  }
-  return (
-    <Link to={primary.to} className="btn btn-primary btn-lg">
-      {content}
-    </Link>
-  );
-}
+const WAVE_SHORT = waveform(26);
+const WAVE_LONG = waveform(44);
 
 export function Landing() {
   const { user, candidate } = useAuth();
   const demo = useDemo();
-  const primary = user && !demo ? { to: '/app', label: 'Open dashboard' } : { to: '/signup', label: 'Start free' };
+  const signedIn = Boolean(user) && !demo;
+
+  // The landing page is paper-white edge to edge, unlike the app's tinted background.
+  useEffect(() => {
+    document.body.classList.add('is-landing');
+    return () => document.body.classList.remove('is-landing');
+  }, []);
+
   return (
-    <div className="landing">
-      <header className="landing-nav">
-        <Link to="/" className="brand">
-          <Logo /> Proofwork
+    <div className="lp">
+      <header className="lp-wrap lp-nav">
+        <Link to="/" className="lp-wordmark">
+          Proofwork
         </Link>
-        <nav className="landing-links">
+        <nav className="lp-links" aria-label="Sections">
           <a href="#how">How it works</a>
           <a href="#compare">Compare</a>
           <a href="#faq">FAQ</a>
         </nav>
-        <div className="row-gap">
-          {user || candidate ? (
-            <Link to={user ? '/app' : '/candidate'} className="btn btn-primary btn-sm">
-              {user ? 'Open dashboard' : 'My assessments'}
+        <div className="lp-nav-actions">
+          {signedIn || candidate ? (
+            <Link to={signedIn ? '/app' : '/candidate'} className="lp-btn lp-btn-sm">
+              {signedIn ? 'Open dashboard' : 'My assessments'}
             </Link>
           ) : (
             <>
-              <Link to="/login" className="btn btn-ghost btn-sm">
+              <Link to="/login" className="lp-navlink">
                 Log in
               </Link>
-              <Link to="/signup" className="btn btn-primary btn-sm">
-                Start free
-              </Link>
+              <StartFree size="sm" />
             </>
           )}
         </div>
       </header>
 
-      <section className="hero">
-        <div className="hero-copy">
-          <span className="pill">
-            <span className="pill-dot" /> Practical assessments for the AI era
-          </span>
-          <h1>
-            Hire for <span className="marker">the task</span>, not the prompt.
-          </h1>
-          <p className="lead">
-            A practical check that shows how a candidate thinks with and without AI, reviewed by AI, with their
-            reasoning in their own voice. No bot interviewer, no webcam.
-          </p>
-          <div className="hero-actions">
-            <PrimaryAction primary={primary} demo={demo} arrow />
-            <Link to="/demo/recruiter" className="btn btn-secondary btn-lg">
-              Try as a recruiter
-            </Link>
-            <Link to="/demo/candidate" className="btn btn-ghost btn-lg">
-              Try as a candidate
-            </Link>
+      <main>
+        <section className="lp-wrap lp-hero">
+          <div className="lp-hero-copy">
+            <h1 className="lp-display">
+              <span>Make hiring</span> <span>decisions you</span> <span>can explain.</span>
+            </h1>
+            <p className="lp-lead">
+              <span>Real tasks. Reasoning in their own voice.</span> <span>Clear evidence for your next hire.</span>
+            </p>
+            <div className="lp-actions">
+              {signedIn ? (
+                <Link to="/app" className="lp-btn lp-btn-lg">
+                  Open dashboard
+                  <Icon name="arrow" size={22} />
+                </Link>
+              ) : (
+                <StartFree size="lg" />
+              )}
+              <Link to="/demo/recruiter" className="lp-textlink">
+                Try the live demo
+              </Link>
+            </div>
+            <p className="lp-note">No webcam. No bot interviewer. Your team decides.</p>
           </div>
-          <p className="tiny subtle">The demo runs in your browser with sample data. No sign-up, nothing is sent.</p>
-        </div>
-        <HeroReport />
-      </section>
+          <ExampleReport />
+        </section>
 
-      <section className="band">
-        <p className="band-label">The problem</p>
-        <h2 className="band-title">Hiring signals broke when everyone got an AI assistant.</h2>
-        <div className="problem-grid">
-          {PROBLEMS.map((p) => (
-            <div key={p.title} className="problem">
-              <h3>{p.title}</h3>
-              <p className="muted">{p.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="band">
-        <p className="band-label">The product</p>
-        <h2 className="band-title">See how they think, in their own words and voice.</h2>
-        <div className="feature-grid">
-          {FEATURES.map((f) => (
-            <div key={f.title} className="feature">
-              <span className="feature-icon">
-                <Icon name={f.icon} size={18} />
-              </span>
-              <h3>{f.title}</h3>
-              <p className="muted">{f.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section id="how" className="band">
-        <p className="band-label">How it works</p>
-        <h2 className="band-title">From role to decision in an afternoon.</h2>
-        <ol className="steps">
-          {STEPS.map(([title, body]) => (
-            <li key={title}>
-              <h3>{title}</h3>
-              <p className="muted">{body}</p>
+        <section id="how" className="lp-wrap lp-section lp-steps-section" aria-labelledby="how-title">
+          <h2 id="how-title" className="lp-h2">
+            From task to decision, in three steps.
+          </h2>
+          <ol className="lp-steps">
+            <li className="lp-step">
+              <StepHead num="01" title="Set a real task">
+                Give candidates a role-specific problem based on actual work.
+              </StepHead>
+              <TaskCard />
             </li>
-          ))}
-        </ol>
-      </section>
+            <li className="lp-step">
+              <StepHead num="02" title="Capture the thinking">
+                Hear how candidates work through the task, with and without AI.
+              </StepHead>
+              <NotesCard />
+            </li>
+            <li className="lp-step">
+              <StepHead num="03" title="Review the evidence">
+                See the work, reasoning and rubric together. Your team makes the call.
+              </StepHead>
+              <MiniReport />
+            </li>
+          </ol>
+          <p className="lp-steps-foot">
+            Curious what candidates go through?{' '}
+            <Link to="/demo/candidate" className="lp-inline-link">
+              Walk through the candidate side
+            </Link>
+          </p>
+        </section>
 
-      <section id="compare" className="band">
-        <p className="band-label">Compare</p>
-        <h2 className="band-title">What you get that other approaches don’t.</h2>
-        <div className="table-scroll compare-landing">
-          <table>
-            <thead>
-              <tr>
-                <th />
-                <th className="us">Proofwork</th>
-                <th>Test libraries</th>
-                <th>AI video interviews</th>
-                <th>Take-home tasks</th>
-              </tr>
-            </thead>
-            <tbody>
-              {COMPARISON.map((row) => (
-                <tr key={row.label}>
-                  <th>{row.label}</th>
-                  {row.cells.map((cell, i) => (
-                    <td key={i} className={i === 0 ? 'us' : ''}>
-                      <Mark value={cell} />
-                    </td>
-                  ))}
+        <section className="lp-wrap lp-section" aria-labelledby="problem-title">
+          <div className="lp-section-head">
+            <h2 id="problem-title" className="lp-h2">
+              Hiring signals broke when everyone got an AI assistant.
+            </h2>
+          </div>
+          <div className="lp-columns">
+            {PROBLEMS.map((p, i) => (
+              <div key={p.title} className="lp-column">
+                <span className="lp-column-num">{String(i + 1).padStart(2, '0')}</span>
+                <h3>{p.title}</h3>
+                <p>{p.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="lp-wrap lp-section" aria-labelledby="product-title">
+          <div className="lp-section-head">
+            <h2 id="product-title" className="lp-h2">
+              See how they think, in their own words and voice.
+            </h2>
+          </div>
+          <div className="lp-features">
+            {FEATURES.map((f) => (
+              <div key={f.title} className="lp-feature">
+                <span className="lp-feature-icon" aria-hidden="true">
+                  <Icon name={f.icon} size={18} />
+                </span>
+                <h3>{f.title}</h3>
+                <p>{f.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="compare" className="lp-wrap lp-section" aria-labelledby="compare-title">
+          <div className="lp-section-head">
+            <h2 id="compare-title" className="lp-h2">
+              What you get that other approaches don’t.
+            </h2>
+          </div>
+          <div className="lp-table-scroll">
+            <table className="lp-table">
+              <thead>
+                <tr>
+                  <th>
+                    <span className="lp-sr">What you need</span>
+                  </th>
+                  <th className="is-us">Proofwork</th>
+                  <th>Test libraries</th>
+                  <th>AI video interviews</th>
+                  <th>Take-home tasks</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {COMPARISON.map((row) => (
+                  <tr key={row.label}>
+                    <th scope="row">{row.label}</th>
+                    {row.cells.map((cell, i) => (
+                      <td key={i} className={i === 0 ? 'is-us' : ''}>
+                        <Mark value={cell} />
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-      <section id="faq" className="band faq">
-        <p className="band-label">FAQ</p>
-        <h2 className="band-title">Questions hiring teams ask.</h2>
-        <div className="faq-list">
-          {FAQ.map(([q, a]) => (
-            <details key={q}>
-              <summary>{q}</summary>
-              <p className="muted">{a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
+        <section id="faq" className="lp-wrap lp-section lp-faq" aria-labelledby="faq-title">
+          <div className="lp-section-head">
+            <h2 id="faq-title" className="lp-h2">
+              Questions hiring teams ask.
+            </h2>
+          </div>
+          <div className="lp-faq-list">
+            {FAQ.map(([q, a]) => (
+              <details key={q}>
+                <summary>
+                  {q}
+                  <span className="lp-faq-sign" aria-hidden="true" />
+                </summary>
+                <p>{a}</p>
+              </details>
+            ))}
+          </div>
+        </section>
 
-      <section className="cta-band">
-        <h2>See what your next hire actually knows.</h2>
-        <p className="muted">Set up an assessment in five minutes and send your first link today.</p>
-        <div className="hero-actions center-actions">
-          <PrimaryAction primary={primary} demo={demo} />
-          <Link to="/demo/recruiter" className="btn btn-secondary btn-lg">
-            Try the demo
-          </Link>
-        </div>
-      </section>
+        <section className="lp-cta" aria-labelledby="cta-title">
+          <div className="lp-wrap lp-cta-inner">
+            <div>
+              <h2 id="cta-title">AI reviews. Your team decides.</h2>
+              <p>Real tasks. Reasoning in their own voice. Clear evidence for your next hire.</p>
+            </div>
+            <div className="lp-cta-actions">
+              {signedIn ? (
+                <Link to="/app" className="lp-btn lp-btn-lg lp-btn-invert">
+                  Open dashboard
+                  <Icon name="arrow" size={22} />
+                </Link>
+              ) : (
+                <StartFree size="lg" invert />
+              )}
+              <Link to="/demo/recruiter" className="lp-textlink lp-textlink-invert">
+                Try the live demo
+              </Link>
+            </div>
+          </div>
+        </section>
+      </main>
 
-      <footer className="landing-footer">
-        <span className="brand small">
-          <Logo size={16} /> Proofwork
-        </span>
-        <span className="tiny subtle">Practical skills, verified by people. AI reviews; your team decides.</span>
+      <footer className="lp-wrap lp-footer">
+        <span className="lp-wordmark lp-wordmark-sm">Proofwork</span>
+        <nav className="lp-footer-links" aria-label="Footer">
+          <Link to="/demo/recruiter">Recruiter demo</Link>
+          <Link to="/demo/candidate">Candidate walkthrough</Link>
+          <Link to="/login">Log in</Link>
+          <Link to="/signup">Start free</Link>
+        </nav>
+        <span className="lp-footer-note">Practical skills, verified by people. AI reviews; your team decides.</span>
       </footer>
     </div>
   );
 }
 
-/** A static picture of the recruiter's verdict, built from the real component styles. */
-function HeroReport() {
-  const chips: [string, string, string?][] = [
-    ['Q2 First read', '3.5'],
-    ['Q3 Budget cut', '3.0'],
-    ['Q4 Two weeks later', '3.5'],
-    ['Q5 Critique', '2.5', 'probe live'],
-    ['Q6 AI-allowed', '3.0'],
-    ['Q7 Real decision', '3.5'],
+/** Start free. In the demo, it leaves the demo first so the sign-up page opens. */
+function StartFree({ size, invert = false }: { size: 'sm' | 'lg'; invert?: boolean }) {
+  const demo = useDemo();
+  const leaveDemo = useLeaveDemo();
+  const className = `lp-btn lp-btn-${size} ${invert ? 'lp-btn-invert' : ''}`;
+  const content = (
+    <>
+      Start free
+      {size === 'lg' && <Icon name="arrow" size={22} />}
+    </>
+  );
+  if (demo) {
+    return (
+      <button type="button" className={className} onClick={() => void leaveDemo('/signup')}>
+        {content}
+      </button>
+    );
+  }
+  return (
+    <Link to="/signup" className={className}>
+      {content}
+    </Link>
+  );
+}
+
+function StepHead({ num, title, children }: { num: string; title: string; children: ReactNode }) {
+  return (
+    <div className="lp-step-head">
+      <span className="lp-step-num" aria-hidden="true">
+        {num}
+      </span>
+      <div>
+        <h3>{title}</h3>
+        <p>{children}</p>
+      </div>
+    </div>
+  );
+}
+
+function Mark({ value }: { value: Cell }) {
+  if (value === true)
+    return (
+      <span className="lp-yes">
+        <Icon name="check" size={18} />
+        <span className="lp-sr">Yes</span>
+      </span>
+    );
+  if (value === false)
+    return (
+      <span className="lp-no">
+        <Icon name="x" size={16} />
+        <span className="lp-sr">No</span>
+      </span>
+    );
+  return <span className="lp-partial">{value}</span>;
+}
+
+// Pieces of the example report ---------------------------------------------------
+
+function Avatar({ size }: { size: 'md' | 'sm' }) {
+  return (
+    <span className={`lp-avatar lp-avatar-${size}`} aria-hidden="true">
+      AR
+    </span>
+  );
+}
+
+function MatchBadge({ compact = false }: { compact?: boolean }) {
+  return (
+    <span className={`lp-match ${compact ? 'is-compact' : ''}`}>
+      <span className="lp-match-icon" aria-hidden="true">
+        <Icon name="check" size={compact ? 11 : 14} />
+      </span>
+      <span>
+        <span className="lp-match-label">Strong match</span>
+        {!compact && <span className="lp-match-sub">Based on evidence</span>}
+      </span>
+    </span>
+  );
+}
+
+function Waveform({ played, bars }: { played: number; bars: number[] }) {
+  return (
+    <span className="lp-wave" aria-hidden="true">
+      {bars.map((h, i) => (
+        <i key={i} className={i / bars.length < played ? 'is-played' : ''} style={{ height: `${h}%` }} />
+      ))}
+    </span>
+  );
+}
+
+function Player({ time, played, size = 'md' }: { time: string; played: number; size?: 'md' | 'lg' }) {
+  return (
+    <div className={`lp-player lp-player-${size}`} aria-label={`Think-aloud recording, ${time}`} role="img">
+      <span className="lp-play" aria-hidden="true">
+        <Icon name="play" size={size === 'lg' ? 18 : 13} filled />
+      </span>
+      <Waveform played={played} bars={size === 'lg' ? WAVE_LONG : WAVE_SHORT} />
+      <span className="lp-player-time">{time}</span>
+    </div>
+  );
+}
+
+function RubricBox({ compact = false }: { compact?: boolean }) {
+  return (
+    <div className={`lp-rubric ${compact ? 'is-compact' : ''}`}>
+      <div className="lp-rubric-head">
+        <span>Role-specific rubric</span>
+        <span className="lp-num">{OVERALL} / 4</span>
+      </div>
+      <ul>
+        {RUBRIC.map(([label, score]) => (
+          <li key={label}>
+            <span className="lp-rubric-label">{label}</span>
+            <span className="lp-bar" aria-hidden="true">
+              <span style={{ width: `${(score / 4) * 100}%` }} />
+            </span>
+            <span className="lp-num lp-rubric-score">
+              {score} / 4<span className="lp-sr"> for {label}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const REPORT_TABS = ['Overview', 'Task', 'Reasoning', 'Rubric'] as const;
+type ReportTab = (typeof REPORT_TABS)[number];
+
+/** The hero's example report. Its tabs work, so visitors can look around before trying the demo. */
+function ExampleReport() {
+  const [tab, setTab] = useState<ReportTab>('Reasoning');
+  const select = (next: ReportTab) => setTab(next);
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    const index = REPORT_TABS.indexOf(tab);
+    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const next = REPORT_TABS[(index + step + REPORT_TABS.length) % REPORT_TABS.length];
+    select(next);
+    document.getElementById(`lp-tab-${next}`)?.focus();
+  };
+  return (
+    <figure className="lp-report" aria-label="Example candidate report">
+      <div className="lp-report-top">
+        <span className="lp-wordmark lp-wordmark-xs">Proofwork</span>
+        <span>Example report</span>
+      </div>
+      <div className="lp-candidate">
+        <Avatar size="md" />
+        <div className="lp-candidate-text">
+          <strong>Asha Rao</strong>
+          <span>Growth Marketing Manager</span>
+          <span className="lp-faint">Finished 2 days ago · 34 min</span>
+        </div>
+        <MatchBadge />
+      </div>
+      <div className="lp-tabs" role="tablist" aria-label="Report sections" onKeyDown={onKeyDown}>
+        {REPORT_TABS.map((name) => (
+          <button
+            key={name}
+            id={`lp-tab-${name}`}
+            type="button"
+            role="tab"
+            aria-selected={tab === name}
+            aria-controls={`lp-panel-${name}`}
+            tabIndex={tab === name ? 0 : -1}
+            className={tab === name ? 'is-active' : ''}
+            onClick={() => select(name)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+      <div className="lp-task-row">
+        <span className="lp-task-icon" aria-hidden="true">
+          <Icon name="file" size={14} />
+        </span>
+        <strong>Plan a growth experiment</strong>
+        <span className="lp-faint">30–40 min · Timed, think-aloud</span>
+      </div>
+      <div className="lp-panels">
+        <Panel name="Overview" active={tab}>
+          <div className="lp-box lp-pad">
+            <p className="lp-box-label">AI summary</p>
+            <p className="lp-verdict">
+              Picks the metric that matters, sizes the test before launching and explains the trade-offs. Light on who
+              owns what.
+            </p>
+            <ul className="lp-points">
+              <li className="is-good">
+                <Icon name="check" size={14} /> Ties the experiment to activation, not sign-ups
+              </li>
+              <li className="is-good">
+                <Icon name="check" size={14} /> Sizes the test before it runs
+              </li>
+              <li className="is-warn">
+                <Icon name="alert" size={14} /> Owner and timeline left vague
+              </li>
+            </ul>
+          </div>
+        </Panel>
+        <Panel name="Task" active={tab}>
+          <div className="lp-box lp-pad">
+            <p className="lp-box-label">What she was asked</p>
+            <p className="lp-verdict">
+              New users sign up, but most never reach their first project. Plan one experiment to lift activation in 30
+              days: the metric, the change, how you’ll measure it and when you’d stop.
+            </p>
+            <div className="lp-chips">
+              <span>Think aloud</span>
+              <span>Her own numbers</span>
+              <span>AI allowed on one question</span>
+            </div>
+          </div>
+        </Panel>
+        <Panel name="Reasoning" active={tab}>
+          <div className="lp-box lp-split">
+            <div className="lp-pad">
+              <p className="lp-box-label">Candidate reasoning</p>
+              <blockquote className="lp-quote">{REASONING}</blockquote>
+              <Player time="1:24 / 3:12" played={0.44} />
+            </div>
+            <div className="lp-pad">
+              <p className="lp-box-label">Quoted evidence</p>
+              <blockquote className="lp-quote lp-quote-fill">{EVIDENCE}</blockquote>
+              <p className="lp-supports">Supports Strategic thinking · 4 / 4</p>
+            </div>
+          </div>
+        </Panel>
+        <Panel name="Rubric" active={tab}>
+          <div className="lp-box lp-pad">
+            <p className="lp-box-label">Why each score</p>
+            <ul className="lp-reasons">
+              <li>
+                <span>Strategic thinking</span> Chose activation over sign-ups, and said why.
+              </li>
+              <li>
+                <span>Execution plan</span> Clear steps, but no owner or launch date.
+              </li>
+              <li>
+                <span>Analytical rigor</span> Sized the sample before launch: two weeks at current traffic.
+              </li>
+              <li>
+                <span>Communication</span> Clear, though the recommendation comes last.
+              </li>
+            </ul>
+          </div>
+        </Panel>
+      </div>
+      <RubricBox />
+    </figure>
+  );
+}
+
+function Panel({ name, active, children }: { name: ReportTab; active: ReportTab; children: ReactNode }) {
+  const shown = name === active;
+  return (
+    <div
+      id={`lp-panel-${name}`}
+      role="tabpanel"
+      aria-labelledby={`lp-tab-${name}`}
+      className={`lp-panel ${shown ? 'is-shown' : ''}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** Step 1: a task card for a few of the roles in the library. */
+function TaskCard() {
+  const [index, setIndex] = useState(0);
+  const task = ROLE_TASKS[index];
+  return (
+    <div className="lp-card lp-taskcard">
+      <div className="lp-folder-tabs" role="tablist" aria-label="Example roles">
+        {ROLE_TASKS.map((t, i) => (
+          <button
+            key={t.role}
+            type="button"
+            role="tab"
+            aria-selected={i === index}
+            className={i === index ? 'is-active' : ''}
+            onClick={() => setIndex(i)}
+          >
+            {t.role}
+          </button>
+        ))}
+      </div>
+      <div className="lp-taskframe">
+        <div className="lp-inner" role="tabpanel" aria-label={task.role}>
+          <h4>{task.title}</h4>
+          <p>{task.body}</p>
+          <ul className="lp-meta">
+            <li>
+              <Icon name="clock" size={19} /> 30–40 minutes
+            </li>
+            <li>
+              <Icon name="list" size={19} /> Share your process
+            </li>
+            <li>
+              <Icon name="file" size={19} /> AI allowed on one question
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Step 2: the candidate's notes beside their think-aloud recording. */
+function NotesCard() {
+  const items: [string, boolean][] = [
+    ['Define goal and metric', true],
+    ['Explore options', true],
+    ['Evaluate trade-offs', false],
+    ['Design experiment', false],
+    ['Write recommendation', false],
   ];
   return (
-    <div className="hero-visual" aria-label="Example candidate report">
-      <div className="mock-window">
-        <div className="mock-bar">
-          <span />
-          <span />
-          <span />
-          <span className="mock-title">Asha Rao · Growth Marketing Manager</span>
-        </div>
-        <div className="mock-body">
-          <div className="mock-verdict">
-            <div>
-              <div className="tiny muted">Overall</div>
-              <div className="mock-score">
-                <span className="score score-good">
-                  3.3<span className="score-max">/4</span>
-                </span>
-              </div>
-              <span className="badge badge-decision-advance">Advance</span>
-            </div>
-            <div className="mock-text">
-              <p>
-                Spotted that the dashboards over-count orders and rebuilt the budget from break-even. Changed course
-                when the situation changed.
-              </p>
-              <ul className="icon-list good small">
-                <li>
-                  <Icon name="check" size={13} /> Works from the real numbers
-                </li>
-                <li>
-                  <Icon name="check" size={13} /> Gave the AI the context, then fixed its sums
-                </li>
-              </ul>
-              <ul className="icon-list warn small">
-                <li>
-                  <Icon name="x" size={13} /> Ranked a minor flaw first in the critique
-                </li>
-              </ul>
-            </div>
-          </div>
-          <div className="mock-audio">
-            <Icon name="mic" size={14} />
-            <span className="tiny">Think-aloud · 4:12 · sounds like live reasoning</span>
-            <span className="wave" aria-hidden="true">
-              {Array.from({ length: 36 }, (_, i) => (
-                <i key={i} style={{ height: `${20 + Math.abs(Math.sin(i * 1.7)) * 80}%` }} />
-              ))}
+    <div className="lp-card lp-notes" aria-label="A candidate's notes and think-aloud recording" role="img">
+      <p className="lp-notes-title">My notes</p>
+      <div className="lp-notes-body">
+        <ul className="lp-checks">
+          {items.map(([label, done]) => (
+            <li key={label} className={done ? 'is-done' : ''}>
+              <span className="lp-checkbox">{done && <Icon name="check" size={11} />}</span>
+              {label}
+            </li>
+          ))}
+        </ul>
+        <div className="lp-scratch">
+          <span className="lp-line" style={{ width: '92%' }} />
+          <span className="lp-line" style={{ width: '78%' }} />
+          <span className="lp-line" style={{ width: '64%' }} />
+          <div className="lp-scratch-box">
+            <span className="lp-line" style={{ width: '86%' }} />
+            <span className="lp-line" style={{ width: '70%' }} />
+            <span className="lp-line-row">
+              <span className="lp-line" style={{ width: '46%' }} />
+              <span className="lp-caret" />
             </span>
-          </div>
-          <div className="scorecard mock-scorecard">
-            {chips.map(([title, score, flag]) => (
-              <div key={title} className="score-chip">
-                <span className="score-chip-q">{title.split(' ')[0]}</span>
-                <span className="score-chip-value">
-                  <span className={`score ${Number(score) >= 3 ? 'score-good' : 'score-mid'}`}>{score}</span>
-                </span>
-                <span className="score-chip-title">{title.split(' ').slice(1).join(' ')}</span>
-                {flag && <span className="score-chip-flag">{flag}</span>}
-              </div>
-            ))}
           </div>
         </div>
       </div>
+      <Player time="1:24 / 3:12" played={0.44} size="lg" />
+    </div>
+  );
+}
+
+/** Step 3: the same report, small. */
+function MiniReport() {
+  return (
+    <div className="lp-card lp-mini" aria-label="The example report, condensed" role="img">
+      <div className="lp-candidate is-compact">
+        <Avatar size="sm" />
+        <div className="lp-candidate-text">
+          <strong>Asha Rao</strong>
+          <span>Growth Marketing Manager</span>
+        </div>
+        <MatchBadge compact />
+      </div>
+      <div className="lp-tabs is-compact" aria-hidden="true">
+        {REPORT_TABS.map((name) => (
+          <span key={name} className={name === 'Reasoning' ? 'is-active' : ''}>
+            {name}
+          </span>
+        ))}
+      </div>
+      <blockquote className="lp-quote lp-quote-boxed">{EVIDENCE}</blockquote>
+      <RubricBox compact />
     </div>
   );
 }
