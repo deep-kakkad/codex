@@ -5,19 +5,16 @@ import { enterDemo, exitDemo, useDemo } from './mode';
 import { type TourId, endTour, startTour, useTour } from './tour';
 import { TOURS } from './tourSteps';
 
-/** Leaves the demo, reloads who is signed in for real, then goes to `to`. */
+/**
+ * Leaves the demo for `to`. A full page load drops every trace of the sample
+ * workspace at once, and the app starts again with whoever is really signed in.
+ */
 export function useLeaveDemo() {
-  const { refresh } = useAuth();
-  const navigate = useNavigate();
-  return useCallback(
-    async (to: string) => {
-      endTour();
-      exitDemo();
-      await refresh();
-      navigate(to);
-    },
-    [refresh, navigate],
-  );
+  return useCallback(async (to: string) => {
+    endTour();
+    exitDemo();
+    window.location.assign(to);
+  }, []);
 }
 
 /** /demo/recruiter and /demo/candidate: open a fresh demo and start that side's guided tour. */
