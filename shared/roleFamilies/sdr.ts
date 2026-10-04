@@ -10,6 +10,7 @@ const SELLERS = [
     hireRole: 'accounts payable executives',
     competitor: 'PayFlow Pro',
     industry: 'Manufacturing',
+    market: 'manufacturing companies',
     pain: 'invoices processed by hand',
   },
   {
@@ -19,6 +20,7 @@ const SELLERS = [
     hireRole: 'shift supervisors',
     competitor: 'RosterHub',
     industry: 'Retail chains',
+    market: 'retail chains',
     pain: 'rosters built in spreadsheets',
   },
   {
@@ -28,6 +30,7 @@ const SELLERS = [
     hireRole: 'recruiters',
     competitor: 'TalentDesk',
     industry: 'IT services',
+    market: 'IT services companies',
     pain: 'CVs tracked over email and spreadsheets',
   },
   {
@@ -37,6 +40,7 @@ const SELLERS = [
     hireRole: 'fleet coordinators',
     competitor: 'TrackMate',
     industry: 'Logistics',
+    market: 'logistics companies',
     pain: 'trip costs reconciled by hand',
   },
 ] as const;
@@ -176,7 +180,7 @@ export const sdr: RoleFamily = {
       },
       officp: {
         emp: rng.int(35, 50) * 10,
-        industry: 'State government department',
+        industry: 'Government',
         contact: buyer,
         signal: 'Downloaded your buyer’s guide',
       },
@@ -228,7 +232,7 @@ export const sdr: RoleFamily = {
     return [
       {
         type: 'p',
-        text: `You're an SDR at **${s(v, 'company')}**, which sells ${s(v, 'product')} to ${s(v, 'industry').toLowerCase()} companies with **50 to 500 employees**. Your buyer is usually the ${s(v, 'buyerTitle')}. Typical deal: ${ctx.fmt.money(n(v, 'dealSize'))} a year.`,
+        text: `You're an SDR at **${s(v, 'company')}**, which sells ${s(v, 'product')} to ${s(v, 'market')} with **50 to 500 employees**. Your buyer is usually the ${s(v, 'buyerTitle')}. Typical deal: ${ctx.fmt.money(n(v, 'dealSize'))} a year.`,
       },
       {
         type: 'p',
