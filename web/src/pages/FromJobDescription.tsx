@@ -4,6 +4,7 @@ import type { GenerationView } from '../../../shared/api';
 import { api, errorMessage } from '../api';
 import { Icon } from '../components/Icon';
 import { ErrorNote } from '../components/ui';
+import { useDemo } from '../demo/mode';
 import { useApi } from '../hooks';
 
 const POLL_MS = 4000;
@@ -24,6 +25,7 @@ export function FromJobDescription() {
   const [now, setNow] = useState(() => Date.now());
   const [retryError, setRetryError] = useState<string | null>(null);
   const working = gen?.status === 'pending' || gen?.status === 'running';
+  const demo = useDemo();
 
   useEffect(() => {
     if (!working) return;
@@ -87,11 +89,18 @@ export function FromJobDescription() {
                 </li>
               ))}
             </ol>
-            <p className="small muted">
-              This usually takes 3 to 6 minutes ({Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} so
-              far). You can leave this page: it keeps going, and the finished scenario appears in your{' '}
-              <Link to="/app/library">role library</Link>.
-            </p>
+            {demo ? (
+              <p className="small muted">
+                In the demo, AI doesn't run: in a few seconds you'll get the closest ready-made scenario instead. A real
+                build takes 3 to 6 minutes and is written for your role, from your job description.
+              </p>
+            ) : (
+              <p className="small muted">
+                This usually takes 3 to 6 minutes ({Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} so
+                far). You can leave this page: it keeps going, and the finished scenario appears in your{' '}
+                <Link to="/app/library">role library</Link>.
+              </p>
+            )}
           </>
         )}
       </section>

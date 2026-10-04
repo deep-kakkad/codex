@@ -78,7 +78,7 @@ export function parsePeople(input: string): { people: { name: string; email: str
     const name = line
       .replace(match[0], ' ')
       .split(/[,;\t]/)
-      .map((part) => part.replace(/^["'\s<]+|["'\s>]+$/g, '').trim())
+      .map((part) => part.replace(/^["'\s<>]+|["'\s<>]+$/g, '').trim())
       .filter(Boolean)
       .join(' ')
       .trim();

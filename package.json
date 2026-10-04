@@ -14,6 +14,7 @@
     "seed": "node --disable-warning=ExperimentalWarning --import tsx server/seed.ts",
     "migrate": "node --disable-warning=ExperimentalWarning --import tsx server/migrate.ts",
     "admin": "node --disable-warning=ExperimentalWarning --import tsx server/admin.ts",
+    "demo-data": "node --disable-warning=ExperimentalWarning --import tsx server/demoData.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",

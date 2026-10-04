@@ -24,6 +24,8 @@ Demo logins (password `demo-password`):
 
 The seed leaves two candidates submitted; with the key set, the server reviews them with AI when it starts. Or skip the seed and sign up at `/signup` as a recruiter or a candidate.
 
+Visitors can also try the product without an account at `/demo/recruiter` and `/demo/candidate`. That demo is static: it runs in the browser on sample data in `web/src/demo` (its AI reviews, integrity checks, interview kits and emails were written in advance), never calls the API and saves nothing.
+
 ## What's in it
 
 **Recruiters**

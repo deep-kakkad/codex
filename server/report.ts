@@ -4,19 +4,16 @@ import type {
   CandidateListItem,
   CandidateReport,
   ReportStage,
-  RoleFamilySummary,
   StatusCounts,
   VerificationRecord,
 } from '../shared/api';
-import { totalTimeSec } from '../shared/roleFamilies';
-import { choicesFrom, scaledTimeLimit, stageOutline } from '../shared/render';
+import { choicesFrom, scaledTimeLimit } from '../shared/render';
 import { describeSignals, hasNotableSignals } from '../shared/signals';
 import type {
   CandidateStageView,
   CandidateStatus,
   Decision,
   Delivery,
-  RoleFamily,
   ScratchSnapshot,
   StageSignals,
 } from '../shared/types';
@@ -31,19 +28,7 @@ import { benchmarkFor, isStarred, notesFor, siblingsFor, starredIds } from './re
 import { type AssessmentRow, type CandidateRow, type DB, all, one, type ResponseRow, type VerificationRow } from './db';
 import { notFound } from './http';
 
-export function familySummary(family: RoleFamily): RoleFamilySummary {
-  return {
-    id: family.id,
-    name: family.name,
-    roles: family.roles,
-    summary: family.summary,
-    totalMinutes: Math.round(totalTimeSec(family) / 60),
-    stages: stageOutline(family),
-    ...(family.generated ? { generated: true } : {}),
-    ...(family.catalog ? { catalog: family.catalog } : {}),
-    ...(family.fixedCurrency ? { fixedCurrency: family.fixedCurrency } : {}),
-  };
-}
+export { familySummary } from '../shared/library';
 
 export async function loadAssessment(db: DB, user: SessionUser, id: string): Promise<AssessmentRow> {
   const assessment = await one<AssessmentRow>(

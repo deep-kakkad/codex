@@ -2,6 +2,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Icon, type IconName } from '../components/Icon';
 import { Logo } from '../components/Logo';
+import { useLeaveDemo } from '../demo/DemoBanner';
+import { useDemo } from '../demo/mode';
 
 const PROBLEMS: { title: string; body: string }[] = [
   {
@@ -93,9 +95,41 @@ function Mark({ value }: { value: Cell }) {
   return <span className="partial">{value}</span>;
 }
 
+/** Start free, or open the dashboard when signed in. In the demo, starting free leaves the demo first. */
+function PrimaryAction({
+  primary,
+  demo,
+  arrow,
+}: {
+  primary: { to: string; label: string };
+  demo: boolean;
+  arrow?: boolean;
+}) {
+  const leaveDemo = useLeaveDemo();
+  const content = (
+    <>
+      {primary.label}
+      {arrow && <Icon name="arrow" />}
+    </>
+  );
+  if (demo) {
+    return (
+      <button type="button" className="btn btn-primary btn-lg" onClick={() => void leaveDemo('/signup')}>
+        {content}
+      </button>
+    );
+  }
+  return (
+    <Link to={primary.to} className="btn btn-primary btn-lg">
+      {content}
+    </Link>
+  );
+}
+
 export function Landing() {
   const { user, candidate } = useAuth();
-  const primary = user ? { to: '/app', label: 'Open dashboard' } : { to: '/signup', label: 'Start free' };
+  const demo = useDemo();
+  const primary = user && !demo ? { to: '/app', label: 'Open dashboard' } : { to: '/signup', label: 'Start free' };
   return (
     <div className="landing">
       <header className="landing-nav">
@@ -138,17 +172,15 @@ export function Landing() {
             reasoning in their own voice. No bot interviewer, no webcam.
           </p>
           <div className="hero-actions">
-            <Link to={primary.to} className="btn btn-primary btn-lg">
-              {primary.label}
-              <Icon name="arrow" />
+            <PrimaryAction primary={primary} demo={demo} arrow />
+            <Link to="/demo/recruiter" className="btn btn-secondary btn-lg">
+              Try as a recruiter
             </Link>
-            {!user && (
-              <Link to="/login?demo=1" className="btn btn-secondary btn-lg">
-                Try the live demo
-              </Link>
-            )}
+            <Link to="/demo/candidate" className="btn btn-ghost btn-lg">
+              Try as a candidate
+            </Link>
           </div>
-          <p className="tiny subtle">The demo login is filled in for you.</p>
+          <p className="tiny subtle">The demo runs in your browser with sample data. No sign-up, nothing is sent.</p>
         </div>
         <HeroReport />
       </section>
@@ -242,14 +274,10 @@ export function Landing() {
         <h2>See what your next hire actually knows.</h2>
         <p className="muted">Set up an assessment in five minutes and send your first link today.</p>
         <div className="hero-actions center-actions">
-          <Link to={primary.to} className="btn btn-primary btn-lg">
-            {primary.label}
+          <PrimaryAction primary={primary} demo={demo} />
+          <Link to="/demo/recruiter" className="btn btn-secondary btn-lg">
+            Try the demo
           </Link>
-          {!user && (
-            <Link to="/login?demo=1" className="btn btn-secondary btn-lg">
-              Try the live demo
-            </Link>
-          )}
         </div>
       </section>
 

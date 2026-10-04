@@ -8,6 +8,7 @@ import { AuthPage } from './pages/AuthPage';
 import { CandidateHome } from './pages/CandidateHome';
 import { CandidateReportPage } from './pages/CandidateReport';
 import { CandidateReportPageV1 } from './pages/CandidateReportV1';
+import { DemoBanner, DemoStart } from './demo/DemoBanner';
 import { ComparePage } from './pages/ComparePage';
 import { Dashboard } from './pages/Dashboard';
 import { Landing } from './pages/Landing';
@@ -35,8 +36,12 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
+        <DemoBanner />
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/demo" element={<DemoStart side="recruiter" />} />
+          <Route path="/demo/recruiter" element={<DemoStart side="recruiter" />} />
+          <Route path="/demo/candidate" element={<DemoStart side="candidate" />} />
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/signup" element={<AuthPage mode="signup" />} />
           <Route path="/c/:token" element={<TakeAssessment />} />

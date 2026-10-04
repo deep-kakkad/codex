@@ -10,6 +10,7 @@ import { Logo } from '../components/Logo';
 import { Collapsible, ErrorNote, KindBadge } from '../components/ui';
 import { ThinkAloudPanel, useThinkAloud } from '../components/ThinkAloud';
 import { VoiceRecorder, voiceSupported } from '../components/VoiceRecorder';
+import { DEMO_SAMPLE_CANDIDATE, useDemo } from '../demo/mode';
 import { formatClock, formatMinutes, useCountdown, useLatest } from '../hooks';
 
 const AUTOSAVE_MS = 4000;
@@ -138,6 +139,7 @@ function Intro({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { assessment, candidate } = session;
+  const demo = useDemo();
   const aiAllowed = assessment.outline.some((s) => s.kind === 'ai_allowed');
   const thinkAloudCount = assessment.outline.filter((s) => s.thinkAloud).length;
 
@@ -159,6 +161,13 @@ function Intro({
         {assessment.orgName} has invited you to a practical assessment for <strong>{assessment.title}</strong>. It's
         built around a realistic situation from the job, not trivia.
       </p>
+      {demo && (
+        <p className="callout callout-info">
+          You're trying the candidate side as {firstName(candidate.name)}, a sample candidate. This demo is a short
+          version: {assessment.outline.length} questions at half the usual time. Answer as much or as little as you
+          like; your answers and recordings stay in this browser.
+        </p>
+      )}
 
       <section className="card">
         <h2>How it works</h2>
@@ -822,6 +831,7 @@ function StageScreen({
 
 function Done({ session }: { session: CandidateSession }) {
   const { candidate } = useAuth();
+  const demo = useDemo();
   const accountQuery = new URLSearchParams({
     as: 'candidate',
     email: session.candidate.email,
@@ -839,7 +849,19 @@ function Done({ session }: { session: CandidateSession }) {
         next steps. If they'd like to go further, they'll set up a short call about your own answers. Please have a
         photo ID ready for it.
       </p>
-      {candidate ? (
+      {demo ? (
+        <div className="card account-offer">
+          <h2>Now see the other side</h2>
+          <p className="muted">
+            This is where a candidate's part ends. The hiring team gets an AI review of the answers, with quotes, scores
+            and questions for a short call. Your demo answers stay in this browser and aren't reviewed, so here's a
+            finished sample candidate instead.
+          </p>
+          <Link to={`/app/candidates/${DEMO_SAMPLE_CANDIDATE}`} className="btn btn-primary">
+            See what the hiring team sees
+          </Link>
+        </div>
+      ) : candidate ? (
         <p className="muted">
           You can close this page, or <Link to="/candidate">see all your assessments</Link>.
         </p>

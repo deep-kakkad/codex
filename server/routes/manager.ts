@@ -1,16 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
-import type {
-  BulkInviteResult,
-  CandidateListItem,
-  GenerationView,
-  PreviewStage,
-  RoleFamilyPreview,
-  TeamMember,
-} from '../../shared/api';
+import type { BulkInviteResult, CandidateListItem, GenerationView, TeamMember } from '../../shared/api';
+import { buildPreview } from '../../shared/library';
 import { PLAN_OFFERS } from '../../shared/plans';
 import type { Currency } from '../../shared/types';
-import { buildContext, generateVariant, randomSeed } from '../../shared/variants';
+import { generateVariant, randomSeed } from '../../shared/variants';
 import type { AppDeps } from '../app';
 import { audioParts } from '../candidateFlow';
 import { type SessionUser, createUser, currentUser, randomToken, requireManager, requireUser } from '../auth';
@@ -80,40 +74,7 @@ export function managerRoutes(deps: AppDeps) {
     const currency: Currency = family.fixedCurrency ?? (req.query.currency === 'USD' ? 'USD' : 'INR');
     const requestedSeed = Number(req.query.seed);
     const seed = Number.isInteger(requestedSeed) && requestedSeed >= 0 ? requestedSeed : randomSeed();
-    const variant = generateVariant(family, seed, currency);
-    const baseCtx = buildContext(variant, currency);
-
-    const stages: PreviewStage[] = family.stages.map((stage) => {
-      const source = stage.dependsOn ? family.stages.find((s) => s.id === stage.dependsOn) : undefined;
-      const options = source?.choices?.length ? source.choices : [null];
-      return {
-        id: stage.id,
-        kind: stage.kind,
-        title: stage.title,
-        timeLimitSec: stage.timeLimitSec,
-        scored: stage.scored,
-        choices: stage.choices,
-        variants: options.map((choice) => {
-          const ctx = choice ? buildContext(variant, currency, { [source!.id]: choice.id }) : baseCtx;
-          return {
-            label: choice ? `If they chose "${choice.label}"` : null,
-            prompt: stage.prompt(ctx),
-            reviewerGuide: stage.reviewerGuide(ctx),
-          };
-        }),
-        material: stage.material?.(baseCtx) ?? [],
-        rubric: stage.rubric,
-      };
-    });
-
-    const preview: RoleFamilyPreview = {
-      family: familySummary(family),
-      seed,
-      currency,
-      brief: family.brief(baseCtx),
-      stages,
-    };
-    res.json(preview);
+    res.json(buildPreview(family, seed, currency));
   });
 
   // AI-generated scenarios ------------------------------------------------

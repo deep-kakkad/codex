@@ -1,0 +1,4244 @@
+{
+  "me": {
+    "id": "8ea61c88-40ad-45b8-93da-d3f2755e38fb",
+    "name": "Maya Iyer",
+    "email": "maya@democo.example",
+    "role": "manager",
+    "orgName": "Demo Co"
+  },
+  "team": [
+    {
+      "id": "8ea61c88-40ad-45b8-93da-d3f2755e38fb",
+      "name": "Maya Iyer",
+      "email": "maya@democo.example",
+      "role": "manager",
+      "createdAt": 1790587480865
+    }
+  ],
+  "assessments": [
+    {
+      "id": "1bb5444c-13a0-431e-947f-21fedc5669e2",
+      "title": "Customer Support Team Lead",
+      "roleFamilyId": "customer-support-lead",
+      "roleFamilyName": "Customer Support Leadership",
+      "currency": "INR",
+      "createdAt": 1790846681828,
+      "candidateCount": 1,
+      "counts": { "invited": 1, "in_progress": 0, "submitted": 0, "reviewed": 0, "decided": 0 }
+    },
+    {
+      "id": "72abe972-402f-4f90-bafa-7efc59f8cd46",
+      "title": "Growth Marketing Manager",
+      "roleFamilyId": "performance-marketing",
+      "roleFamilyName": "Performance Marketing",
+      "currency": "INR",
+      "createdAt": 1790587480865,
+      "candidateCount": 4,
+      "counts": { "invited": 1, "in_progress": 1, "submitted": 0, "reviewed": 2, "decided": 0 }
+    }
+  ],
+  "details": {
+    "1bb5444c-13a0-431e-947f-21fedc5669e2": {
+      "assessment": {
+        "id": "1bb5444c-13a0-431e-947f-21fedc5669e2",
+        "title": "Customer Support Team Lead",
+        "roleFamilyId": "customer-support-lead",
+        "roleFamilyName": "Customer Support Leadership",
+        "currency": "INR",
+        "createdAt": 1790846681828,
+        "candidateCount": 1,
+        "counts": { "invited": 1, "in_progress": 0, "submitted": 0, "reviewed": 0, "decided": 0 }
+      },
+      "family": {
+        "id": "customer-support-lead",
+        "name": "Customer Support Leadership",
+        "roles": ["Customer Support Team Lead", "Support Operations Manager", "CX Lead"],
+        "summary": "The morning after a payment outage: a backlog capacity alone cannot clear, a tempting shortcut, and a draft reply with a serious security mistake in it.",
+        "totalMinutes": 38,
+        "stages": [
+          {
+            "id": "warmup",
+            "kind": "warmup",
+            "title": "Warm-up",
+            "summary": "A 45-second spontaneous answer. Not scored; gives a voice sample to compare with later recordings.",
+            "timeLimitSec": 120,
+            "scored": false,
+            "thinkAloud": false,
+            "dependsOn": null
+          },
+          {
+            "id": "first-30-minutes",
+            "kind": "scenario",
+            "title": "The first 30 minutes",
+            "summary": "Read the outage dashboard and say what to do first. Think aloud: shows whether they go after demand or just add effort.",
+            "timeLimitSec": 300,
+            "scored": true,
+            "thinkAloud": true,
+            "dependsOn": null
+          },
+          {
+            "id": "one-lever",
+            "kind": "decision",
+            "title": "One lever",
+            "summary": "Commit to one lever (proactive message, overtime, bulk-close, borrowed staff) and estimate the end-of-day backlog. Think aloud.",
+            "timeLimitSec": 360,
+            "scored": true,
+            "thinkAloud": true,
+            "dependsOn": null
+          },
+          {
+            "id": "midday",
+            "kind": "branch",
+            "title": "Midday",
+            "summary": "The situation changes based on their lever. Tests whether they adapt and own the downside.",
+            "timeLimitSec": 300,
+            "scored": true,
+            "thinkAloud": false,
+            "dependsOn": "one-lever"
+          },
+          {
+            "id": "draft-reply",
+            "kind": "critique",
+            "title": "Review a new agent's reply",
+            "summary": "Critique a draft reply with a planted security mistake (asking for an OTP) and a false refund promise. Think aloud.",
+            "timeLimitSec": 420,
+            "scored": true,
+            "thinkAloud": true,
+            "dependsOn": null
+          },
+          {
+            "id": "agent-macro",
+            "kind": "ai_allowed",
+            "title": "Agent guidance (AI allowed)",
+            "summary": "Write agent guidance with any AI tool and paste the conversation. Shows how they work with AI, not just whether they use it.",
+            "timeLimitSec": 540,
+            "scored": true,
+            "thinkAloud": false,
+            "dependsOn": null
+          },
+          {
+            "id": "real-escalation",
+            "kind": "past_work",
+            "title": "A real escalation",
+            "summary": "A real situation from their career that got worse before it got better. Checks specificity and ownership.",
+            "timeLimitSec": 240,
+            "scored": true,
+            "thinkAloud": false,
+            "dependsOn": null
+          }
+        ],
+        "catalog": {
+          "function": "Customer support",
+          "seniority": ["Manager"],
+          "industries": ["Consumer apps", "Fintech"],
+          "skills": ["Prioritisation", "Leadership", "Customer empathy"],
+          "keywords": ["CX", "support lead", "customer service", "team lead", "contact centre"]
+        }
+      },
+      "candidates": [
+        {
+          "id": "d1f172c2-ba8e-46c7-bbb4-ef02a7d7223c",
+          "name": "Farah Siddiqui",
+          "email": "farah.s@example.com",
+          "token": "demo-d1f172c2",
+          "status": "invited",
+          "timeMultiplier": 1,
+          "createdAt": 1790846681828,
+          "startedAt": null,
+          "submittedAt": null,
+          "aiScore": null,
+          "aiStatus": null,
+          "aiRecommendation": null,
+          "adjustedScore": null,
+          "notableSignals": 0,
+          "verification": null,
+          "decision": null,
+          "starred": false
+        }
+      ]
+    },
+    "72abe972-402f-4f90-bafa-7efc59f8cd46": {
+      "assessment": {
+        "id": "72abe972-402f-4f90-bafa-7efc59f8cd46",
+        "title": "Growth Marketing Manager",
+        "roleFamilyId": "performance-marketing",
+        "roleFamilyName": "Performance Marketing",
+        "currency": "INR",
+        "createdAt": 1790587480865,
+        "candidateCount": 4,
+        "counts": { "invited": 1, "in_progress": 1, "submitted": 0, "reviewed": 2, "decided": 0 }
+      },
+      "family": {
+        "id": "performance-marketing",
+        "name": "Performance Marketing",
+        "roles": ["Performance Marketing Manager", "Growth Marketer", "Paid Media Lead"],
+        "summary": "A D2C brand with a budget cut, over-claiming ad dashboards and an agency plan with flaws that only show up if you do the unit economics.",
+        "totalMinutes": 38,
+        "stages": [
+          {
+            "id": "warmup",
+            "kind": "warmup",
+            "title": "Warm-up",
+            "summary": "A 45-second spontaneous answer. Not scored; gives a voice sample to compare with later recordings.",
+            "timeLimitSec": 120,
+            "scored": false,
+            "thinkAloud": false,
+            "dependsOn": null
+          },
+          {
+            "id": "first-read",
+            "kind": "scenario",
+            "title": "First read",
+            "summary": "Read the channel table and say what worries them most. Think aloud: shows whether they spot over-attribution and unit economics.",
+            "timeLimitSec": 300,
+            "scored": true,
+            "thinkAloud": true,
+            "dependsOn": null
+          },
+          {
+            "id": "budget-cut",
+            "kind": "decision",
+            "title": "The budget cut",
+            "summary": "Commit to where a budget cut comes from and estimate the impact on orders. Think aloud.",
+            "timeLimitSec": 360,
+            "scored": true,
+            "thinkAloud": true,
+            "dependsOn": null
+          },
+          {
+            "id": "two-weeks-later",
+            "kind": "branch",
+            "title": "Two weeks later",
+            "summary": "The situation changes based on their cut. Tests whether they update on new data and explain why it happened.",
+            "timeLimitSec": 300,
+            "scored": true,
+            "thinkAloud": false,
+            "dependsOn": "budget-cut"
+          },
+          {
+            "id": "agency-plan",
+            "kind": "critique",
+            "title": "Critique the agency's plan",
+            "summary": "Critique an agency plan with planted flaws, including a target ROAS below break-even. Think aloud.",
+            "timeLimitSec": 420,
+            "scored": true,
+            "thinkAloud": true,
+            "dependsOn": null
+          },
+          {
+            "id": "founder-update",
+            "kind": "ai_allowed",
+            "title": "Founder update (AI allowed)",
+            "summary": "Write a founder update with any AI tool and paste the conversation. Shows how they work with AI, not just whether they use it.",
+            "timeLimitSec": 540,
+            "scored": true,
+            "thinkAloud": false,
+            "dependsOn": null
+          },
+          {
+            "id": "real-decision",
+            "kind": "past_work",
+            "title": "A real decision",
+            "summary": "A real budget or channel decision from their career that didn't go to plan. Checks specificity and ownership.",
+            "timeLimitSec": 240,
+            "scored": true,
+            "thinkAloud": false,
+            "dependsOn": null
+          }
+        ],
+        "catalog": {
+          "function": "Marketing",
+          "seniority": ["Mid", "Senior"],
+          "industries": ["D2C & e-commerce", "Consumer apps"],
+          "skills": ["Numbers", "Analysis", "Judgement"],
+          "keywords": ["paid media", "growth marketing", "performance", "Meta ads", "Google ads", "acquisition"]
+        }
+      },
+      "candidates": [
+        {
+          "id": "17183102-cc2c-4c5a-aa4e-3d86df4a6dc1",
+          "name": "Neha Kulkarni",
+          "email": "neha.k@example.com",
+          "token": "demo-17183102",
+          "status": "in_progress",
+          "timeMultiplier": 1,
+          "createdAt": 1790587480865,
+          "startedAt": 1790846201828,
+          "submittedAt": null,
+          "aiScore": null,
+          "aiStatus": null,
+          "aiRecommendation": null,
+          "adjustedScore": null,
+          "notableSignals": 0,
+          "verification": null,
+          "decision": null,
+          "starred": false
+        },
+        {
+          "id": "2adb54d8-9f89-40b2-bc30-4cec38ac7198",
+          "name": "Vikram Shah",
+          "email": "vikram.shah@example.com",
+          "token": "demo-2adb54d8",
+          "status": "reviewed",
+          "timeMultiplier": 1,
+          "createdAt": 1790587480865,
+          "startedAt": 1790591080865,
+          "submittedAt": 1790592580865,
+          "aiScore": 1.3,
+          "aiStatus": "done",
+          "aiRecommendation": "reject",
+          "adjustedScore": null,
+          "notableSignals": 1,
+          "verification": null,
+          "decision": null,
+          "starred": false
+        },
+        {
+          "id": "4150cad8-1529-4cdf-afc2-0098bea73ebc",
+          "name": "Arjun Nair",
+          "email": "arjun.nair@example.com",
+          "token": "demo-4150cad8",
+          "status": "invited",
+          "timeMultiplier": 1,
+          "createdAt": 1790587480865,
+          "startedAt": null,
+          "submittedAt": null,
+          "aiScore": null,
+          "aiStatus": null,
+          "aiRecommendation": null,
+          "adjustedScore": null,
+          "notableSignals": 0,
+          "verification": null,
+          "decision": null,
+          "starred": false
+        },
+        {
+          "id": "890e6891-eeaa-485c-8031-3e4cb1b79767",
+          "name": "Asha Rao",
+          "email": "asha.rao@example.com",
+          "token": "demo-890e6891",
+          "status": "reviewed",
+          "timeMultiplier": 1,
+          "createdAt": 1790587480865,
+          "startedAt": 1790666380865,
+          "submittedAt": 1790668600865,
+          "aiScore": 3.4,
+          "aiStatus": "done",
+          "aiRecommendation": "advance",
+          "adjustedScore": null,
+          "notableSignals": 0,
+          "verification": null,
+          "decision": null,
+          "starred": true
+        }
+      ]
+    }
+  },
+  "funnels": {
+    "1bb5444c-13a0-431e-947f-21fedc5669e2": {
+      "invited": 1,
+      "started": 0,
+      "finished": 0,
+      "stalledBeforeFirst": 0,
+      "stalledAfterHours": 24,
+      "stages": [
+        {
+          "id": "warmup",
+          "title": "Warm-up",
+          "kind": "warmup",
+          "reached": 0,
+          "submitted": 0,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 120,
+          "medianTimeSec": null
+        },
+        {
+          "id": "first-30-minutes",
+          "title": "The first 30 minutes",
+          "kind": "scenario",
+          "reached": 0,
+          "submitted": 0,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 300,
+          "medianTimeSec": null
+        },
+        {
+          "id": "one-lever",
+          "title": "One lever",
+          "kind": "decision",
+          "reached": 0,
+          "submitted": 0,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 360,
+          "medianTimeSec": null
+        },
+        {
+          "id": "midday",
+          "title": "Midday",
+          "kind": "branch",
+          "reached": 0,
+          "submitted": 0,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 300,
+          "medianTimeSec": null
+        },
+        {
+          "id": "draft-reply",
+          "title": "Review a new agent's reply",
+          "kind": "critique",
+          "reached": 0,
+          "submitted": 0,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 420,
+          "medianTimeSec": null
+        },
+        {
+          "id": "agent-macro",
+          "title": "Agent guidance (AI allowed)",
+          "kind": "ai_allowed",
+          "reached": 0,
+          "submitted": 0,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 540,
+          "medianTimeSec": null
+        },
+        {
+          "id": "real-escalation",
+          "title": "A real escalation",
+          "kind": "past_work",
+          "reached": 0,
+          "submitted": 0,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 240,
+          "medianTimeSec": null
+        }
+      ]
+    },
+    "72abe972-402f-4f90-bafa-7efc59f8cd46": {
+      "invited": 4,
+      "started": 3,
+      "finished": 2,
+      "stalledBeforeFirst": 0,
+      "stalledAfterHours": 24,
+      "stages": [
+        {
+          "id": "warmup",
+          "title": "Warm-up",
+          "kind": "warmup",
+          "reached": 3,
+          "submitted": 3,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 120,
+          "medianTimeSec": 60
+        },
+        {
+          "id": "first-read",
+          "title": "First read",
+          "kind": "scenario",
+          "reached": 3,
+          "submitted": 3,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 300,
+          "medianTimeSec": 240
+        },
+        {
+          "id": "budget-cut",
+          "title": "The budget cut",
+          "kind": "decision",
+          "reached": 3,
+          "submitted": 2,
+          "timedOut": 0,
+          "stalledHere": 1,
+          "timeLimitSec": 360,
+          "medianTimeSec": 240
+        },
+        {
+          "id": "two-weeks-later",
+          "title": "Two weeks later",
+          "kind": "branch",
+          "reached": 2,
+          "submitted": 2,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 300,
+          "medianTimeSec": 210
+        },
+        {
+          "id": "agency-plan",
+          "title": "Critique the agency's plan",
+          "kind": "critique",
+          "reached": 2,
+          "submitted": 2,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 420,
+          "medianTimeSec": 240
+        },
+        {
+          "id": "founder-update",
+          "title": "Founder update (AI allowed)",
+          "kind": "ai_allowed",
+          "reached": 2,
+          "submitted": 2,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 540,
+          "medianTimeSec": 330
+        },
+        {
+          "id": "real-decision",
+          "title": "A real decision",
+          "kind": "past_work",
+          "reached": 2,
+          "submitted": 2,
+          "timedOut": 0,
+          "stalledHere": 0,
+          "timeLimitSec": 240,
+          "medianTimeSec": 150
+        }
+      ]
+    }
+  },
+  "reports": {
+    "d1f172c2-ba8e-46c7-bbb4-ef02a7d7223c": {
+      "candidate": {
+        "id": "d1f172c2-ba8e-46c7-bbb4-ef02a7d7223c",
+        "name": "Farah Siddiqui",
+        "email": "farah.s@example.com",
+        "token": "demo-d1f172c2",
+        "idName": null,
+        "status": "invited",
+        "timeMultiplier": 1,
+        "createdAt": 1790846681828,
+        "startedAt": null,
+        "submittedAt": null,
+        "decision": null
+      },
+      "assessment": {
+        "id": "1bb5444c-13a0-431e-947f-21fedc5669e2",
+        "title": "Customer Support Team Lead",
+        "currency": "INR"
+      },
+      "family": { "id": "customer-support-lead", "name": "Customer Support Leadership", "generated": false },
+      "brief": [
+        {
+          "type": "p",
+          "text": "You lead the customer support team at **PaySetu**, a bill-payments and recharge app. It is 9:30 am on Tuesday."
+        },
+        {
+          "type": "p",
+          "text": "Yesterday, from 8:05 pm for about two and a half hours, a payment gateway fault meant **5,000 customers were charged but their payment failed**. Refunds were triggered automatically and reach customers within 7 business days (company policy)."
+        },
+        {
+          "type": "table",
+          "caption": "Support dashboard at 9:30 am",
+          "columns": ["Metric", "Now", "Normal"],
+          "rows": [
+            ["Open tickets (backlog)", "1,460", "160"],
+            ["Inbound tickets forecast for today", "1,460", "810"],
+            ["First response time: chat", "14 min", "under 2 min"],
+            ["First response time: email", "28 h", "under 8 h"],
+            ["CSAT (last 24 h)", "69%", "87%"],
+            ["New tickets tagged \"Money debited, order failed\"", "60%", "~3%"],
+            ["Open tickets from customers with more than one open ticket", "37%", "~8%"]
+          ]
+        },
+        { "type": "h", "text": "Your team" },
+        {
+          "type": "list",
+          "items": [
+            "20 agents on today's shift, covering chat and email.",
+            "Each agent resolves about 45 tickets a day.",
+            "Two senior agents handle escalations. You report to the Head of Operations."
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "The company and numbers are fictional, and every candidate gets a slightly different version. A calculator is fine."
+        }
+      ],
+      "stages": [
+        {
+          "id": "warmup",
+          "index": 0,
+          "kind": "warmup",
+          "title": "Warm-up",
+          "scored": false,
+          "thinkAloud": false,
+          "timeLimitSec": 120,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Not scored. On the verification call, listen for the same voice and ask a related question to check it is the same person."
+            }
+          ],
+          "rubric": [],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "first-30-minutes",
+          "index": 1,
+          "kind": "scenario",
+          "title": "The first 30 minutes",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 300,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Capacity today is about 900 tickets (20 \u00d7 45) against 1,460 inbound plus 1,460 already open. More effort alone cannot catch up."
+            },
+            { "type": "p", "text": "Strong answers go after demand:" },
+            {
+              "type": "list",
+              "items": [
+                "60% of new tickets are one issue with a known answer, so a proactive status message and a macro remove most of it.",
+                "37% of open tickets come from customers chasing an existing ticket, so merging duplicates shrinks the backlog immediately.",
+                "They also triage risk: double debits, large amounts, legal or social-media threats."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Weak answers: \"motivate the team\", \"hire more\", generic empathy with no numbers."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "numbers",
+              "label": "Works from the dashboard",
+              "weight": 2,
+              "anchors": [
+                "No numbers used.",
+                "Quotes numbers without drawing a conclusion.",
+                "Uses numbers to show capacity cannot keep up, or to size the main issue.",
+                "Combines several numbers into a plan (e.g. capacity gap plus duplicate share)."
+              ]
+            },
+            {
+              "id": "demand",
+              "label": "Reduces demand, not just adds effort",
+              "weight": 2,
+              "anchors": [
+                "Only works harder or faster.",
+                "Mentions communication but not as the main lever.",
+                "Proactive communication or de-duplication is the main lever.",
+                "Both, sequenced, with a sense of how much volume each removes."
+              ]
+            },
+            {
+              "id": "triage",
+              "label": "Risk triage",
+              "weight": 1,
+              "anchors": [
+                "Treats every ticket the same.",
+                "Mentions priority vaguely.",
+                "Names specific high-risk ticket types to handle first.",
+                "Sets up a clear routing rule for them with an owner."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "one-lever",
+          "index": 2,
+          "kind": "decision",
+          "title": "One lever",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 360,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "The proactive message is usually the strongest lever because it removes repeat contacts at the source, but any option can score well with sound reasoning. Look for an end-of-day estimate with a method, and awareness of each lever's downside: bulk-closing risks reopens and anger; overtime adds limited capacity and burns people out; borrowed staff give wrong information."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "reasoning",
+              "label": "Sound reasoning for the choice",
+              "weight": 2,
+              "anchors": [
+                "No clear reasoning.",
+                "Plausible but generic reasoning.",
+                "Reasoning tied to this dashboard.",
+                "Reasoning weighs the alternatives and their downsides."
+              ]
+            },
+            {
+              "id": "estimate",
+              "label": "End-of-day estimate",
+              "weight": 1,
+              "anchors": [
+                "No estimate.",
+                "A number with no method.",
+                "A number with a clear method.",
+                "A range with assumptions and what would change it."
+              ]
+            },
+            {
+              "id": "downside",
+              "label": "Owns the downside",
+              "weight": 1,
+              "anchors": [
+                "Downside ignored.",
+                "Generic downside.",
+                "Specific downside of the chosen lever.",
+                "Specific downside plus how they will catch it early."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "midday",
+          "index": 3,
+          "kind": "branch",
+          "title": "Midday",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 300,
+          "shown": null,
+          "reviewerGuide": [
+            { "type": "p", "text": "They chose **Send a proactive message to every affected customer**." },
+            {
+              "type": "p",
+              "text": "Two problems at once: a customer-harm issue (double charges need investigation and escalation to payments) and a process issue (Compliance). Strong answers separate them, escalate the double charges with a list of affected customers, send a correction if needed, and repair the relationship with Compliance with a pre-approved template for next time, without becoming defensive."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "adapt",
+              "label": "Adapts to the new situation",
+              "weight": 2,
+              "anchors": [
+                "Ignores or dismisses the new problem.",
+                "Acknowledges it, with a thin response.",
+                "Addresses the new problem directly and changes course where needed.",
+                "Addresses it, fixes the root cause and prevents a repeat."
+              ]
+            },
+            {
+              "id": "people",
+              "label": "Handles people and stakeholders",
+              "weight": 1,
+              "anchors": [
+                "Defensive or blames others.",
+                "Informs stakeholders late or vaguely.",
+                "Communicates clearly with customers, team and management.",
+                "Clear communication plus owning the mistake where relevant."
+              ]
+            },
+            {
+              "id": "action",
+              "label": "Concrete next steps",
+              "weight": 1,
+              "anchors": [
+                "No action.",
+                "Vague actions.",
+                "Specific actions in a sensible order.",
+                "Specific actions with owners, timing and a success check."
+              ]
+            }
+          ],
+          "dependsOn": "one-lever",
+          "response": null
+        },
+        {
+          "id": "draft-reply",
+          "index": 4,
+          "kind": "critique",
+          "title": "Review a new agent's reply",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 420,
+          "shown": null,
+          "reviewerGuide": [
+            { "type": "p", "text": "Planted problems:" },
+            {
+              "type": "list",
+              "items": [
+                "**Asks for a full card number and OTP.** A security failure that trains customers to fall for fraud, and the customer paid by UPI anyway. Missing this should score 1 on \"catches the critical flaws\".",
+                "**Promises 24 hours against a 7-business-day policy.** It guarantees a fourth contact and an angrier customer.",
+                "**Ignores the facts that would calm them.** The refund is already initiated (reference 552754686994), and this is their third contact."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Also: blaming the partner, the generic opener, and no escalation path for the complaint threat. A good rewrite gives the reference number and an honest date, and acknowledges the repeat contacts."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "critical",
+              "label": "Catches the critical flaws",
+              "weight": 2,
+              "anchors": [
+                "Misses the card number and OTP request.",
+                "Catches the OTP request only.",
+                "Catches the OTP request and the false 24-hour promise.",
+                "Catches both, plus the unused refund reference and repeat contacts."
+              ]
+            },
+            {
+              "id": "severity",
+              "label": "Orders by severity",
+              "weight": 1,
+              "anchors": [
+                "No ordering, or tone issues ranked above security.",
+                "Ordering present but unexplained.",
+                "Sensible ordering with reasons.",
+                "Ordering explained by harm to the customer and the business."
+              ]
+            },
+            {
+              "id": "rewrite",
+              "label": "Quality of the rewrite",
+              "weight": 1,
+              "anchors": [
+                "No rewrite, or it repeats the problems.",
+                "Polite but generic.",
+                "Specific: gives the reference and an honest timeline.",
+                "Specific, human, acknowledges the repeat contacts and offers a clear next step."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "agent-macro",
+          "index": 5,
+          "kind": "ai_allowed",
+          "title": "Agent guidance (AI allowed)",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 540,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Check the facts: refund in 7 business days, quote the bank reference, never ask for an OTP or card details. Check for escalation rules (double debit, repeat contacts, legal or social threats)."
+            },
+            {
+              "type": "p",
+              "text": "AI drafts commonly promise faster refunds or pad the text with \"we apologise for any inconvenience\". Did the candidate catch that?"
+            }
+          ],
+          "rubric": [
+            {
+              "id": "judgment",
+              "label": "Judgment with AI",
+              "weight": 2,
+              "anchors": [
+                "Pasted output unchanged, errors kept.",
+                "Light edits; did not give the AI the real policy.",
+                "Gave the AI the context and fixed its mistakes.",
+                "Used AI deliberately and rejected weak suggestions with reasons."
+              ]
+            },
+            {
+              "id": "accuracy",
+              "label": "Policy accuracy",
+              "weight": 1,
+              "anchors": [
+                "Wrong timeline or unsafe instructions.",
+                "Mostly right, with gaps.",
+                "Accurate timeline, reference and security rules.",
+                "Accurate, with clear escalation triggers."
+              ]
+            },
+            {
+              "id": "usable",
+              "label": "Usable by agents today",
+              "weight": 1,
+              "anchors": [
+                "Long or vague.",
+                "Usable with effort.",
+                "Clear and scannable.",
+                "Could be pinned for the team as is."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "real-escalation",
+          "index": 6,
+          "kind": "past_work",
+          "title": "A real escalation",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 240,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Async answers here are easy to fabricate. Score specificity now, then verify on the call: rich detail that stays consistent under \"why?\" follow-ups is the signal."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "specificity",
+              "label": "Specificity",
+              "weight": 1,
+              "anchors": [
+                "Hypothetical or generic.",
+                "A real situation, few specifics.",
+                "Concrete numbers, timeline and their own role.",
+                "Rich detail: what they saw, options considered and what happened next."
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership and learning",
+              "weight": 1,
+              "anchors": [
+                "Blames others or circumstances.",
+                "Takes some ownership; lesson is generic.",
+                "Clear ownership with a specific lesson.",
+                "Clear ownership, and shows how the lesson changed what they do now."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        }
+      ],
+      "aiReview": null,
+      "overrides": [],
+      "adjusted": null,
+      "verification": {
+        "script": {
+          "opening": [
+            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
+          ],
+          "identity": [
+            "Ask the candidate to hold a government photo ID up to the camera. The name should match \"Farah Siddiqui\", which they entered before starting.",
+            "They skipped the warm-up. Ask one spontaneous question about it."
+          ],
+          "probes": [],
+          "closing": [
+            "Ask what they would want to know about the role or team.",
+            "Record the outcome below straight after the call, while it is fresh."
+          ]
+        },
+        "record": null
+      },
+      "starred": false,
+      "notes": [],
+      "benchmark": null,
+      "siblings": { "index": null, "total": 0, "prev": null, "next": null },
+      "integrity": {
+        "verdict": "clean",
+        "headline": "Nothing suggests anyone or anything else did the thinking.",
+        "items": [],
+        "aiChecked": false,
+        "checkedAt": null
+      },
+      "interviewKit": null,
+      "decisionEmail": null
+    },
+    "17183102-cc2c-4c5a-aa4e-3d86df4a6dc1": {
+      "candidate": {
+        "id": "17183102-cc2c-4c5a-aa4e-3d86df4a6dc1",
+        "name": "Neha Kulkarni",
+        "email": "neha.k@example.com",
+        "token": "demo-17183102",
+        "idName": "Neha Kulkarni",
+        "status": "in_progress",
+        "timeMultiplier": 1,
+        "createdAt": 1790587480865,
+        "startedAt": 1790846201828,
+        "submittedAt": null,
+        "decision": null
+      },
+      "assessment": {
+        "id": "72abe972-402f-4f90-bafa-7efc59f8cd46",
+        "title": "Growth Marketing Manager",
+        "currency": "INR"
+      },
+      "family": { "id": "performance-marketing", "name": "Performance Marketing", "generated": false },
+      "brief": [
+        {
+          "type": "p",
+          "text": "You've just joined **Brewhaus Beans** as its first in-house performance marketer. Brewhaus Beans is a D2C coffee brand selling specialty coffee subscriptions online. The founder runs the business day to day, and an agency, BlueKite Digital, runs paid media."
+        },
+        {
+          "type": "table",
+          "caption": "Last month, as reported by each ad platform",
+          "columns": ["Channel", "Spend", "Orders (platform-reported)", "CPA", "ROAS"],
+          "rows": [
+            ["Meta \u2013 prospecting", "\u20b912,48,000", "1,762", "\u20b9708", "2.1x"],
+            ["Meta \u2013 retargeting", "\u20b92,08,000", "881", "\u20b9236", "6.3x"],
+            ["Google Search (brand + generic)", "\u20b97,02,000", "1,622", "\u20b9433", "3.5x"],
+            ["Influencers (tracked by discount code)", "\u20b94,42,000", "330", "\u20b91,339", "1.1x"],
+            ["**Total (sum of dashboards)**", "**\u20b926,00,000**", "**4,595**", "**\u20b9566**", "**2.6x**"]
+          ]
+        },
+        { "type": "h", "text": "Same month, from the store backend" },
+        {
+          "type": "list",
+          "items": [
+            "Orders: **3,304**",
+            "Average order value: **\u20b91,499**",
+            "Gross margin after product, shipping and payment costs: **50%**",
+            "About 19% of customers order again within 90 days."
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "The company and numbers are fictional, and every candidate gets a slightly different version. A calculator is fine."
+        }
+      ],
+      "stages": [
+        {
+          "id": "warmup",
+          "index": 0,
+          "kind": "warmup",
+          "title": "Warm-up",
+          "scored": false,
+          "thinkAloud": false,
+          "timeLimitSec": 120,
+          "shown": {
+            "id": "warmup",
+            "index": 0,
+            "kind": "warmup",
+            "title": "Warm-up",
+            "timeLimitSec": 120,
+            "voiceMaxSec": 45,
+            "preferVoice": true,
+            "thinkAloud": false,
+            "prompt": [
+              { "type": "p", "text": "What is one marketing metric you think people rely on too much, and why?" },
+              { "type": "p", "text": "Keep it under 45 seconds. This one is not scored; it just gets you talking." }
+            ],
+            "material": [],
+            "lookingFor": []
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Not scored. On the verification call, listen for the same voice and ask a related question to check it is the same person."
+            }
+          ],
+          "rubric": [],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790846261828,
+            "deadlineAt": 1790846381828,
+            "submittedAt": 1790846321828,
+            "closedReason": "submitted",
+            "timeUsedSec": 60,
+            "overtimeSec": 0,
+            "text": "Swiggy's push notifications. They're written for the exact moment you're hungry and they're funny without trying too hard, so I actually read them.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "first-read",
+          "index": 1,
+          "kind": "scenario",
+          "title": "First read",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 300,
+          "shown": {
+            "id": "first-read",
+            "index": 1,
+            "kind": "scenario",
+            "title": "First read",
+            "timeLimitSec": 300,
+            "voiceMaxSec": 120,
+            "preferVoice": true,
+            "thinkAloud": true,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "It's your first morning at Brewhaus Beans. Looking at last month's numbers, **what worries you most, and what is the first number you would check before changing anything?**"
+              },
+              { "type": "p", "text": "Refer to specific figures. One sharp point beats a list of ten." }
+            ],
+            "material": [],
+            "lookingFor": ["Works from the actual numbers", "Measurement scepticism", "Prioritisation"]
+          },
+          "reviewerGuide": [
+            { "type": "p", "text": "Strong answers notice at least one of these:" },
+            {
+              "type": "list",
+              "items": [
+                "**Over-attribution.** Dashboards claim 4,595 orders, but the store recorded 3,304, so platforms over-claim by about 39%. Channel ROAS can't be taken at face value.",
+                "**Unit economics.** Blended CPA is \u20b9787 against a first-order break-even CPA of \u20b9750 (AOV \u00d7 margin). The business is losing money on first orders, and repeat purchase (19%) has to carry the rest.",
+                "**Retargeting and brand search look too good.** 6.3x reported ROAS on retargeting mostly reflects people who were already going to buy."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Weak answers give generic advice (\"refresh creatives\", \"optimise targeting\") without touching the numbers, or take platform ROAS literally and pour budget into retargeting."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "numbers",
+              "label": "Works from the actual numbers",
+              "weight": 2,
+              "anchors": [
+                "No specific figures; generic advice.",
+                "Quotes figures but does not connect them.",
+                "Connects two or more figures into a conclusion (e.g. CPA vs break-even).",
+                "Spots a non-obvious relationship, such as over-attribution, and quantifies it."
+              ]
+            },
+            {
+              "id": "skepticism",
+              "label": "Measurement scepticism",
+              "weight": 1,
+              "anchors": [
+                "Takes platform ROAS at face value.",
+                "Mentions attribution vaguely.",
+                "Says which channel numbers are least trustworthy and why.",
+                "Proposes a concrete check sized to this business (holdout, geo split, post-purchase survey, code/UTM audit)."
+              ]
+            },
+            {
+              "id": "priority",
+              "label": "Prioritisation",
+              "weight": 1,
+              "anchors": [
+                "A list of everything.",
+                "Several priorities, unclear order.",
+                "One clear priority with a reason.",
+                "Clear priority plus what would change their mind."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790846381828,
+            "deadlineAt": 1790846681828,
+            "submittedAt": 1790846621828,
+            "closedReason": "submitted",
+            "timeUsedSec": 240,
+            "overtimeSec": 0,
+            "text": "Biggest worry: the dashboards claim 4,595 orders but the store only saw 3,304, so about 39% of the credit is double-counted. That makes the 6.3x on retargeting close to meaningless.\n\nFirst number I'd check: blended CPA (\u20b9787) against what a first order is actually worth after margin (\u20b91,499 \u00d7 50% = \u20b9750). If blended CPA is above that we lose money on every first order, and the whole plan depends on the 19% who come back.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "budget-cut",
+          "index": 2,
+          "kind": "decision",
+          "title": "The budget cut",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 360,
+          "shown": {
+            "id": "budget-cut",
+            "index": 2,
+            "kind": "decision",
+            "title": "The budget cut",
+            "timeLimitSec": 360,
+            "voiceMaxSec": 150,
+            "preferVoice": true,
+            "thinkAloud": true,
+            "choices": [
+              { "id": "meta", "label": "Meta prospecting" },
+              { "id": "search", "label": "Google Search" },
+              { "id": "influencers", "label": "Influencers" },
+              { "id": "even", "label": "Spread the cut evenly across channels" }
+            ],
+            "prompt": [
+              {
+                "type": "p",
+                "text": "The founder has cut next month's paid media budget by **20%**, to **\u20b920,80,000**, and wants orders to stay roughly flat. Retargeting is small; leave it out of this decision."
+              },
+              { "type": "p", "text": "**Where does most of the cut come from?** Pick one, then explain:" },
+              {
+                "type": "list",
+                "items": [
+                  "why this channel,",
+                  "what you expect to happen to store orders next month (give a number and how you got it),",
+                  "the risk you are accepting, and the early warning you would watch."
+                ]
+              }
+            ],
+            "material": [],
+            "lookingFor": ["Commits and reasons from unit economics", "Quantified expectation", "Risk and monitoring"]
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "There is no single right answer. Good answers commit, estimate the order impact from marginal (not average) CPA, recognise that cutting prospecting starves retargeting and brand search later, and name an early-warning metric."
+            },
+            {
+              "type": "p",
+              "text": "\"Spread evenly\" can be fine if it comes with a stated test plan; it is weak when it avoids the decision."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "tradeoff",
+              "label": "Commits and reasons from unit economics",
+              "weight": 2,
+              "anchors": [
+                "No clear choice, or reasoning is generic.",
+                "Makes a choice with a plausible but unquantified reason.",
+                "Reasons from CPA, margin or attribution quality specific to this scenario.",
+                "Reasons about marginal returns and second-order effects between channels."
+              ]
+            },
+            {
+              "id": "estimate",
+              "label": "Quantified expectation",
+              "weight": 1,
+              "anchors": [
+                "No estimate.",
+                "A number with no logic behind it.",
+                "A number with a clear, if simple, method.",
+                "A range with assumptions stated and a sense of confidence."
+              ]
+            },
+            {
+              "id": "risk",
+              "label": "Risk and monitoring",
+              "weight": 1,
+              "anchors": [
+                "Risk not mentioned.",
+                "Generic risk (\"orders may drop\").",
+                "Specific risk tied to the channel chosen.",
+                "Specific risk plus a metric, threshold and timing for reacting."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790846681828,
+            "deadlineAt": 1790847041828,
+            "submittedAt": null,
+            "closedReason": null,
+            "timeUsedSec": null,
+            "overtimeSec": 0,
+            "text": null,
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": null,
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "two-weeks-later",
+          "index": 3,
+          "kind": "branch",
+          "title": "Two weeks later",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 300,
+          "shown": null,
+          "reviewerGuide": [
+            { "type": "p", "text": "They chose **Spread the cut evenly across channels** in the previous question." },
+            {
+              "type": "p",
+              "text": "Tests whether they can admit the weakness and adapt. Strong: explains why even cuts hurt (campaigns fall below learning thresholds, fixed creative and agency costs), consolidates into the best marginal channels, and sets a clear test. Weak: defensive, or swings to an unreasoned all-in bet."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "update",
+              "label": "Updates on new information",
+              "weight": 2,
+              "anchors": [
+                "Ignores or dismisses the new data.",
+                "Acknowledges it but keeps the plan unchanged without a reason.",
+                "Separates what the data shows from what it only suggests, and adjusts.",
+                "Adjusts in proportion to the evidence and says what would trigger a bigger change."
+              ]
+            },
+            {
+              "id": "mechanism",
+              "label": "Explains the mechanism",
+              "weight": 1,
+              "anchors": [
+                "No explanation of why it happened.",
+                "A plausible but generic explanation.",
+                "A correct mechanism specific to the channel.",
+                "A correct mechanism plus how to prove it."
+              ]
+            },
+            {
+              "id": "action",
+              "label": "Concrete next step this week",
+              "weight": 1,
+              "anchors": [
+                "No action.",
+                "Vague action (\"monitor closely\").",
+                "A specific action with an owner or timing.",
+                "A specific action, the expected result and how the founder will know."
+              ]
+            }
+          ],
+          "dependsOn": "budget-cut",
+          "response": null
+        },
+        {
+          "id": "agency-plan",
+          "index": 4,
+          "kind": "critique",
+          "title": "Critique the agency's plan",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 420,
+          "shown": null,
+          "reviewerGuide": [
+            { "type": "p", "text": "Planted problems, roughly in order of how much they reveal:" },
+            {
+              "type": "list",
+              "items": [
+                "**#2 Target ROAS is below break-even.** At 50% margin, first-order break-even ROAS is 2.00x, so a 1.7x target loses money on every attributed order, and more once you allow for platform over-claiming. The strongest expertise signal: generic AI critiques miss it unless given the margin.",
+                "**#3 Summing platform ROAS double-counts.** Dashboards over-claim by about 39% against store orders. Judge on blended CPA or MER against store orders.",
+                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 40% (20% \u00f7 50%), and the goal is flat volume, not growth.",
+                "**#1 Awareness spend won't pay back next month**, while the budget is being cut and orders must hold."
+              ]
+            },
+            { "type": "p", "text": "#4 is reasonable. Ranking it as a top-three problem is a negative signal." }
+          ],
+          "rubric": [
+            {
+              "id": "flaws",
+              "label": "Finds the context-bound flaws",
+              "weight": 2,
+              "anchors": [
+                "Misses #2, #3 and #5.",
+                "Finds one of them without the numbers.",
+                "Finds two with supporting numbers.",
+                "Finds #2 with the break-even maths plus at least one more."
+              ]
+            },
+            {
+              "id": "ranking",
+              "label": "Ranks by impact",
+              "weight": 1,
+              "anchors": [
+                "No ranking, or ranks #4 highly.",
+                "Ranking present but unexplained.",
+                "Sensible ranking with reasons.",
+                "Ranking tied explicitly to next month's goal and the budget cut."
+              ]
+            },
+            {
+              "id": "fixes",
+              "label": "Concrete alternatives",
+              "weight": 1,
+              "anchors": [
+                "Criticism only.",
+                "Vague alternatives.",
+                "A specific alternative for each problem.",
+                "Specific alternatives with numbers (e.g. a target ROAS above break-even)."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "founder-update",
+          "index": 5,
+          "kind": "ai_allowed",
+          "title": "Founder update (AI allowed)",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 540,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Read the transcript first. Did they give the AI the real numbers and constraints? Did they catch wrong numbers or generic filler? Is the final message short, specific and written for a founder?"
+            },
+            {
+              "type": "p",
+              "text": "A polished message whose numbers do not match Brewhaus Beans's scenario (budget \u20b920,80,000, 3,304 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "judgment",
+              "label": "Judgment with AI",
+              "weight": 2,
+              "anchors": [
+                "Pasted output unchanged, errors kept.",
+                "Light edits; did not give the AI the real context.",
+                "Gave the AI the context and fixed its mistakes.",
+                "Used AI deliberately (drafting, critique) and rejected weak suggestions with reasons."
+              ]
+            },
+            {
+              "id": "accuracy",
+              "label": "Accurate to the scenario",
+              "weight": 1,
+              "anchors": [
+                "Numbers wrong or invented.",
+                "Mostly generic; few scenario numbers.",
+                "Scenario numbers used correctly.",
+                "Numbers correct and consistent with their earlier answers."
+              ]
+            },
+            {
+              "id": "communication",
+              "label": "Founder-ready communication",
+              "weight": 1,
+              "anchors": [
+                "Long, vague or jargon-heavy.",
+                "Understandable but unfocused.",
+                "Clear plan and risk in plain language.",
+                "Could be sent as is; leads with the decision and the ask."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "real-decision",
+          "index": 6,
+          "kind": "past_work",
+          "title": "A real decision",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 240,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Async answers here are easy to fabricate. Score specificity now, then verify on the call: rich detail that stays consistent under \"why?\" follow-ups is the signal. Stories that stay vague under follow-up questions are a warning sign."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "specificity",
+              "label": "Specificity",
+              "weight": 1,
+              "anchors": [
+                "Hypothetical or generic.",
+                "A real situation, few specifics.",
+                "Concrete metrics, timeline and their own role.",
+                "Rich detail: what they saw, alternatives considered and what happened next."
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership and learning",
+              "weight": 1,
+              "anchors": [
+                "Blames others or circumstances.",
+                "Takes some ownership; lesson is generic.",
+                "Clear ownership with a specific lesson.",
+                "Clear ownership, and shows how the lesson changed later decisions."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        }
+      ],
+      "aiReview": null,
+      "overrides": [],
+      "adjusted": null,
+      "verification": {
+        "script": {
+          "opening": [
+            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
+          ],
+          "identity": [
+            "Ask the candidate to hold a government photo ID up to the camera. The name should match \"Neha Kulkarni\", which they entered before starting.",
+            "Their warm-up answer: \"Swiggy's push notifications. They're written for the exact moment you're hungry and they're funny without trying too hard, so I actually read them.\" Ask one spontaneous question about it."
+          ],
+          "probes": [
+            {
+              "stageId": "first-read",
+              "stageTitle": "First read",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "Biggest worry: the dashboards claim 4,595 orders but the store only saw 3,304, so about 39% of the credit is double-counted. That makes the 6.3x on retargeting close to meaningless. First number I'd check: blended CPA\u2026",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "Suppose the first number you wanted to check came back clean. What would you look at next, and why?",
+                "The dashboards add up to 4,595 orders but the store recorded 3,304. Where do the extra 1,291 come from?"
+              ]
+            },
+            {
+              "stageId": "budget-cut",
+              "stageTitle": "The budget cut",
+              "priority": false,
+              "reasons": [],
+              "answer": { "excerpt": "", "hasText": false, "hasVoice": false, "timedOut": false },
+              "questions": [
+                "You cut the channel you chose. What was your second choice, and what would have made you pick it?",
+                "What number in week one would tell you that you got this wrong?"
+              ]
+            }
+          ],
+          "closing": [
+            "Ask what they would want to know about the role or team.",
+            "Record the outcome below straight after the call, while it is fresh."
+          ]
+        },
+        "record": null
+      },
+      "starred": false,
+      "notes": [],
+      "benchmark": null,
+      "siblings": { "index": null, "total": 2, "prev": null, "next": null },
+      "integrity": {
+        "verdict": "clean",
+        "headline": "Nothing suggests anyone or anything else did the thinking.",
+        "items": [],
+        "aiChecked": false,
+        "checkedAt": null
+      },
+      "interviewKit": null,
+      "decisionEmail": null
+    },
+    "2adb54d8-9f89-40b2-bc30-4cec38ac7198": {
+      "candidate": {
+        "id": "2adb54d8-9f89-40b2-bc30-4cec38ac7198",
+        "name": "Vikram Shah",
+        "email": "vikram.shah@example.com",
+        "token": "demo-2adb54d8",
+        "idName": "Vikram Shah",
+        "status": "reviewed",
+        "timeMultiplier": 1,
+        "createdAt": 1790587480865,
+        "startedAt": 1790591080865,
+        "submittedAt": 1790592580865,
+        "decision": null
+      },
+      "assessment": {
+        "id": "72abe972-402f-4f90-bafa-7efc59f8cd46",
+        "title": "Growth Marketing Manager",
+        "currency": "INR"
+      },
+      "family": { "id": "performance-marketing", "name": "Performance Marketing", "generated": false },
+      "brief": [
+        {
+          "type": "p",
+          "text": "You've just joined **Loom Lane** as its first in-house performance marketer. Loom Lane is a D2C apparel brand selling handloom cotton kurtas online. The founder runs the business day to day, and an agency, Growthline Media, runs paid media."
+        },
+        {
+          "type": "table",
+          "caption": "Last month, as reported by each ad platform",
+          "columns": ["Channel", "Spend", "Orders (platform-reported)", "CPA", "ROAS"],
+          "rows": [
+            ["Meta \u2013 prospecting", "\u20b98,10,000", "1,211", "\u20b9669", "2.2x"],
+            ["Meta \u2013 retargeting", "\u20b91,35,000", "429", "\u20b9315", "4.8x"],
+            ["Google Search (brand + generic)", "\u20b93,00,000", "693", "\u20b9433", "3.5x"],
+            ["Influencers (tracked by discount code)", "\u20b92,55,000", "154", "\u20b91,656", "0.9x"],
+            ["**Total (sum of dashboards)**", "**\u20b915,00,000**", "**2,487**", "**\u20b9603**", "**2.5x**"]
+          ]
+        },
+        { "type": "h", "text": "Same month, from the store backend" },
+        {
+          "type": "list",
+          "items": [
+            "Orders: **1,906**",
+            "Average order value: **\u20b91,499**",
+            "Gross margin after product, shipping and payment costs: **50%**",
+            "About 28% of customers order again within 90 days."
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "The company and numbers are fictional, and every candidate gets a slightly different version. A calculator is fine."
+        }
+      ],
+      "stages": [
+        {
+          "id": "warmup",
+          "index": 0,
+          "kind": "warmup",
+          "title": "Warm-up",
+          "scored": false,
+          "thinkAloud": false,
+          "timeLimitSec": 120,
+          "shown": {
+            "id": "warmup",
+            "index": 0,
+            "kind": "warmup",
+            "title": "Warm-up",
+            "timeLimitSec": 120,
+            "voiceMaxSec": 45,
+            "preferVoice": true,
+            "thinkAloud": false,
+            "prompt": [
+              { "type": "p", "text": "What is the best ad you have seen this month, and where did you see it?" },
+              { "type": "p", "text": "Keep it under 45 seconds. This one is not scored; it just gets you talking." }
+            ],
+            "material": [],
+            "lookingFor": []
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Not scored. On the verification call, listen for the same voice and ask a related question to check it is the same person."
+            }
+          ],
+          "rubric": [],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790591140865,
+            "deadlineAt": 1790591260865,
+            "submittedAt": 1790591200865,
+            "closedReason": "submitted",
+            "timeUsedSec": 60,
+            "overtimeSec": 0,
+            "text": "I like Nike ads because they are inspiring and emotional.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "first-read",
+          "index": 1,
+          "kind": "scenario",
+          "title": "First read",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 300,
+          "shown": {
+            "id": "first-read",
+            "index": 1,
+            "kind": "scenario",
+            "title": "First read",
+            "timeLimitSec": 300,
+            "voiceMaxSec": 120,
+            "preferVoice": true,
+            "thinkAloud": true,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "It's your first morning at Loom Lane. Looking at last month's numbers, **what worries you most, and what is the first number you would check before changing anything?**"
+              },
+              { "type": "p", "text": "Refer to specific figures. One sharp point beats a list of ten." }
+            ],
+            "material": [],
+            "lookingFor": ["Works from the actual numbers", "Measurement scepticism", "Prioritisation"]
+          },
+          "reviewerGuide": [
+            { "type": "p", "text": "Strong answers notice at least one of these:" },
+            {
+              "type": "list",
+              "items": [
+                "**Over-attribution.** Dashboards claim 2,487 orders, but the store recorded 1,906, so platforms over-claim by about 30%. Channel ROAS can't be taken at face value.",
+                "**Unit economics.** Blended CPA is \u20b9787 against a first-order break-even CPA of \u20b9750 (AOV \u00d7 margin). The business is losing money on first orders, and repeat purchase (28%) has to carry the rest.",
+                "**Retargeting and brand search look too good.** 4.8x reported ROAS on retargeting mostly reflects people who were already going to buy."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Weak answers give generic advice (\"refresh creatives\", \"optimise targeting\") without touching the numbers, or take platform ROAS literally and pour budget into retargeting."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "numbers",
+              "label": "Works from the actual numbers",
+              "weight": 2,
+              "anchors": [
+                "No specific figures; generic advice.",
+                "Quotes figures but does not connect them.",
+                "Connects two or more figures into a conclusion (e.g. CPA vs break-even).",
+                "Spots a non-obvious relationship, such as over-attribution, and quantifies it."
+              ]
+            },
+            {
+              "id": "skepticism",
+              "label": "Measurement scepticism",
+              "weight": 1,
+              "anchors": [
+                "Takes platform ROAS at face value.",
+                "Mentions attribution vaguely.",
+                "Says which channel numbers are least trustworthy and why.",
+                "Proposes a concrete check sized to this business (holdout, geo split, post-purchase survey, code/UTM audit)."
+              ]
+            },
+            {
+              "id": "priority",
+              "label": "Prioritisation",
+              "weight": 1,
+              "anchors": [
+                "A list of everything.",
+                "Several priorities, unclear order.",
+                "One clear priority with a reason.",
+                "Clear priority plus what would change their mind."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790591260865,
+            "deadlineAt": 1790591560865,
+            "submittedAt": 1790591440865,
+            "closedReason": "submitted",
+            "timeUsedSec": 180,
+            "overtimeSec": 0,
+            "text": "I would focus on improving creatives and optimising targeting to bring the CPA down. We should also look at the funnel and conversion rate on the website. Retargeting is performing really well so we should put more budget there.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "budget-cut",
+          "index": 2,
+          "kind": "decision",
+          "title": "The budget cut",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 360,
+          "shown": {
+            "id": "budget-cut",
+            "index": 2,
+            "kind": "decision",
+            "title": "The budget cut",
+            "timeLimitSec": 360,
+            "voiceMaxSec": 150,
+            "preferVoice": true,
+            "thinkAloud": true,
+            "choices": [
+              { "id": "meta", "label": "Meta prospecting" },
+              { "id": "search", "label": "Google Search" },
+              { "id": "influencers", "label": "Influencers" },
+              { "id": "even", "label": "Spread the cut evenly across channels" }
+            ],
+            "prompt": [
+              {
+                "type": "p",
+                "text": "The founder has cut next month's paid media budget by **20%**, to **\u20b912,00,000**, and wants orders to stay roughly flat. Retargeting is small; leave it out of this decision."
+              },
+              { "type": "p", "text": "**Where does most of the cut come from?** Pick one, then explain:" },
+              {
+                "type": "list",
+                "items": [
+                  "why this channel,",
+                  "what you expect to happen to store orders next month (give a number and how you got it),",
+                  "the risk you are accepting, and the early warning you would watch."
+                ]
+              }
+            ],
+            "material": [],
+            "lookingFor": ["Commits and reasons from unit economics", "Quantified expectation", "Risk and monitoring"]
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "There is no single right answer. Good answers commit, estimate the order impact from marginal (not average) CPA, recognise that cutting prospecting starves retargeting and brand search later, and name an early-warning metric."
+            },
+            {
+              "type": "p",
+              "text": "\"Spread evenly\" can be fine if it comes with a stated test plan; it is weak when it avoids the decision."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "tradeoff",
+              "label": "Commits and reasons from unit economics",
+              "weight": 2,
+              "anchors": [
+                "No clear choice, or reasoning is generic.",
+                "Makes a choice with a plausible but unquantified reason.",
+                "Reasons from CPA, margin or attribution quality specific to this scenario.",
+                "Reasons about marginal returns and second-order effects between channels."
+              ]
+            },
+            {
+              "id": "estimate",
+              "label": "Quantified expectation",
+              "weight": 1,
+              "anchors": [
+                "No estimate.",
+                "A number with no logic behind it.",
+                "A number with a clear, if simple, method.",
+                "A range with assumptions stated and a sense of confidence."
+              ]
+            },
+            {
+              "id": "risk",
+              "label": "Risk and monitoring",
+              "weight": 1,
+              "anchors": [
+                "Risk not mentioned.",
+                "Generic risk (\"orders may drop\").",
+                "Specific risk tied to the channel chosen.",
+                "Specific risk plus a metric, threshold and timing for reacting."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790591500865,
+            "deadlineAt": 1790591860865,
+            "submittedAt": 1790591680865,
+            "closedReason": "submitted",
+            "timeUsedSec": 180,
+            "overtimeSec": 0,
+            "text": "Spreading the cut evenly is the safest option because it reduces risk and keeps all channels running. Orders should drop a bit but we can optimise to make up for it.",
+            "choiceId": "even",
+            "choiceLabel": "Spread the cut evenly across channels",
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "two-weeks-later",
+          "index": 3,
+          "kind": "branch",
+          "title": "Two weeks later",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 300,
+          "shown": {
+            "id": "two-weeks-later",
+            "index": 3,
+            "kind": "branch",
+            "title": "Two weeks later",
+            "timeLimitSec": 300,
+            "voiceMaxSec": 120,
+            "preferVoice": true,
+            "thinkAloud": false,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "Two weeks in, every channel is down roughly in proportion and store orders are down 29%, worse than the 20% cut would suggest."
+              },
+              {
+                "type": "p",
+                "text": "The founder says: **\"You didn't make a decision, you made a spreadsheet.\"** What do you change now?"
+              }
+            ],
+            "material": [],
+            "lookingFor": ["Updates on new information", "Explains the mechanism", "Concrete next step this week"]
+          },
+          "reviewerGuide": [
+            { "type": "p", "text": "They chose **Spread the cut evenly across channels** in the previous question." },
+            {
+              "type": "p",
+              "text": "Tests whether they can admit the weakness and adapt. Strong: explains why even cuts hurt (campaigns fall below learning thresholds, fixed creative and agency costs), consolidates into the best marginal channels, and sets a clear test. Weak: defensive, or swings to an unreasoned all-in bet."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "update",
+              "label": "Updates on new information",
+              "weight": 2,
+              "anchors": [
+                "Ignores or dismisses the new data.",
+                "Acknowledges it but keeps the plan unchanged without a reason.",
+                "Separates what the data shows from what it only suggests, and adjusts.",
+                "Adjusts in proportion to the evidence and says what would trigger a bigger change."
+              ]
+            },
+            {
+              "id": "mechanism",
+              "label": "Explains the mechanism",
+              "weight": 1,
+              "anchors": [
+                "No explanation of why it happened.",
+                "A plausible but generic explanation.",
+                "A correct mechanism specific to the channel.",
+                "A correct mechanism plus how to prove it."
+              ]
+            },
+            {
+              "id": "action",
+              "label": "Concrete next step this week",
+              "weight": 1,
+              "anchors": [
+                "No action.",
+                "Vague action (\"monitor closely\").",
+                "A specific action with an owner or timing.",
+                "A specific action, the expected result and how the founder will know."
+              ]
+            }
+          ],
+          "dependsOn": "budget-cut",
+          "response": {
+            "revealedAt": 1790591740865,
+            "deadlineAt": 1790592040865,
+            "submittedAt": 1790591920865,
+            "closedReason": "submitted",
+            "timeUsedSec": 180,
+            "overtimeSec": 0,
+            "text": "I would explain to the founder that data takes time and we should wait another two weeks before making any big changes. Meanwhile we can test new creatives.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "agency-plan",
+          "index": 4,
+          "kind": "critique",
+          "title": "Critique the agency's plan",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 420,
+          "shown": {
+            "id": "agency-plan",
+            "index": 4,
+            "kind": "critique",
+            "title": "Critique the agency's plan",
+            "timeLimitSec": 420,
+            "voiceMaxSec": 180,
+            "preferVoice": false,
+            "thinkAloud": true,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "Growthline Media has sent their plan for next month (budget \u20b912,00,000). **Pick the three problems that matter most for Loom Lane right now, in order.** For each, say why it is a problem using the numbers, and what you would do instead."
+              },
+              { "type": "p", "text": "You do not need to comment on every item." }
+            ],
+            "material": [
+              { "type": "h", "text": "Growthline Media: plan for next month" },
+              {
+                "type": "list",
+                "ordered": true,
+                "items": [
+                  "Move 35% of the budget into a YouTube brand-awareness campaign to build the funnel for Q4.",
+                  "Set Meta campaigns to a target ROAS of 1.5x, comfortably above the category benchmark.",
+                  "Report success as the sum of platform-reported ROAS across channels, as in the current dashboard.",
+                  "Refresh ad creatives every two weeks and test three new hooks per week.",
+                  "Run a 20% sitewide discount in week one to protect volume."
+                ]
+              }
+            ],
+            "lookingFor": ["Finds the context-bound flaws", "Ranks by impact", "Concrete alternatives"]
+          },
+          "reviewerGuide": [
+            { "type": "p", "text": "Planted problems, roughly in order of how much they reveal:" },
+            {
+              "type": "list",
+              "items": [
+                "**#2 Target ROAS is below break-even.** At 50% margin, first-order break-even ROAS is 2.00x, so a 1.5x target loses money on every attributed order, and more once you allow for platform over-claiming. The strongest expertise signal: generic AI critiques miss it unless given the margin.",
+                "**#3 Summing platform ROAS double-counts.** Dashboards over-claim by about 30% against store orders. Judge on blended CPA or MER against store orders.",
+                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 40% (20% \u00f7 50%), and the goal is flat volume, not growth.",
+                "**#1 Awareness spend won't pay back next month**, while the budget is being cut and orders must hold."
+              ]
+            },
+            { "type": "p", "text": "#4 is reasonable. Ranking it as a top-three problem is a negative signal." }
+          ],
+          "rubric": [
+            {
+              "id": "flaws",
+              "label": "Finds the context-bound flaws",
+              "weight": 2,
+              "anchors": [
+                "Misses #2, #3 and #5.",
+                "Finds one of them without the numbers.",
+                "Finds two with supporting numbers.",
+                "Finds #2 with the break-even maths plus at least one more."
+              ]
+            },
+            {
+              "id": "ranking",
+              "label": "Ranks by impact",
+              "weight": 1,
+              "anchors": [
+                "No ranking, or ranks #4 highly.",
+                "Ranking present but unexplained.",
+                "Sensible ranking with reasons.",
+                "Ranking tied explicitly to next month's goal and the budget cut."
+              ]
+            },
+            {
+              "id": "fixes",
+              "label": "Concrete alternatives",
+              "weight": 1,
+              "anchors": [
+                "Criticism only.",
+                "Vague alternatives.",
+                "A specific alternative for each problem.",
+                "Specific alternatives with numbers (e.g. a target ROAS above break-even)."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790591980865,
+            "deadlineAt": 1790592400865,
+            "submittedAt": 1790592100865,
+            "closedReason": "submitted",
+            "timeUsedSec": 120,
+            "overtimeSec": 0,
+            "text": "1. YouTube is expensive and hard to measure, so it may not deliver immediate ROI for Loom Lane.\n2. Refreshing creatives every two weeks may be too frequent and can reduce learning for the algorithm.\n3. The discount could affect brand perception in the long run.\n\nOverall the plan needs clearer KPIs, a proper measurement framework and alignment with business goals.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 2,
+              "hiddenMs": 95000,
+              "pasteCount": 1,
+              "pasteChars": 412,
+              "largestPaste": 412,
+              "keystrokes": 14
+            },
+            "signalNotes": [
+              { "level": "notable", "text": "Left the tab 2 times (1m 35s away)" },
+              { "level": "notable", "text": "Pasted 1 time, 412 characters (~100% of the typed answer)" }
+            ]
+          }
+        },
+        {
+          "id": "founder-update",
+          "index": 5,
+          "kind": "ai_allowed",
+          "title": "Founder update (AI allowed)",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 540,
+          "shown": {
+            "id": "founder-update",
+            "index": 5,
+            "kind": "ai_allowed",
+            "title": "Founder update (AI allowed)",
+            "timeLimitSec": 540,
+            "voiceMaxSec": 0,
+            "preferVoice": false,
+            "thinkAloud": false,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "Use any AI tool you like for this one. We are assessing how you use it, not whether you do."
+              },
+              {
+                "type": "p",
+                "text": "Write the WhatsApp message (about 150 words) you would send Loom Lane's founder summarising your plan for next month and the one risk they should know about."
+              },
+              {
+                "type": "list",
+                "ordered": true,
+                "items": [
+                  "Paste your final message.",
+                  "Paste your full AI conversation, or write \"none\".",
+                  "In 2\u20133 lines, say what you kept, changed or rejected from the AI and why."
+                ]
+              }
+            ],
+            "material": [],
+            "lookingFor": ["Judgment with AI", "Accurate to the scenario", "Founder-ready communication"]
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Read the transcript first. Did they give the AI the real numbers and constraints? Did they catch wrong numbers or generic filler? Is the final message short, specific and written for a founder?"
+            },
+            {
+              "type": "p",
+              "text": "A polished message whose numbers do not match Loom Lane's scenario (budget \u20b912,00,000, 1,906 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "judgment",
+              "label": "Judgment with AI",
+              "weight": 2,
+              "anchors": [
+                "Pasted output unchanged, errors kept.",
+                "Light edits; did not give the AI the real context.",
+                "Gave the AI the context and fixed its mistakes.",
+                "Used AI deliberately (drafting, critique) and rejected weak suggestions with reasons."
+              ]
+            },
+            {
+              "id": "accuracy",
+              "label": "Accurate to the scenario",
+              "weight": 1,
+              "anchors": [
+                "Numbers wrong or invented.",
+                "Mostly generic; few scenario numbers.",
+                "Scenario numbers used correctly.",
+                "Numbers correct and consistent with their earlier answers."
+              ]
+            },
+            {
+              "id": "communication",
+              "label": "Founder-ready communication",
+              "weight": 1,
+              "anchors": [
+                "Long, vague or jargon-heavy.",
+                "Understandable but unfocused.",
+                "Clear plan and risk in plain language.",
+                "Could be sent as is; leads with the decision and the ask."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790592160865,
+            "deadlineAt": 1790592700865,
+            "submittedAt": 1790592400865,
+            "closedReason": "submitted",
+            "timeUsedSec": 240,
+            "overtimeSec": 0,
+            "text": "Hi, next month we will optimise our marketing mix to drive efficient growth while reducing CAC. We will focus on high-performing channels and continuously test and learn. The main risk is market volatility.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": "none",
+            "reflection": "Wrote it myself.",
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "real-decision",
+          "index": 6,
+          "kind": "past_work",
+          "title": "A real decision",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 240,
+          "shown": {
+            "id": "real-decision",
+            "index": 6,
+            "kind": "past_work",
+            "title": "A real decision",
+            "timeLimitSec": 240,
+            "voiceMaxSec": 150,
+            "preferVoice": true,
+            "thinkAloud": false,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "**Tell us about a real budget or channel decision you made that did not go to plan.** What were you looking at, what did you decide, what happened, and what would you do differently?"
+              },
+              { "type": "p", "text": "Specifics such as numbers and timelines matter more than polish." }
+            ],
+            "material": [],
+            "lookingFor": ["Specificity", "Ownership and learning"]
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Async answers here are easy to fabricate. Score specificity now, then verify on the call: rich detail that stays consistent under \"why?\" follow-ups is the signal. Stories that stay vague under follow-up questions are a warning sign."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "specificity",
+              "label": "Specificity",
+              "weight": 1,
+              "anchors": [
+                "Hypothetical or generic.",
+                "A real situation, few specifics.",
+                "Concrete metrics, timeline and their own role.",
+                "Rich detail: what they saw, alternatives considered and what happened next."
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership and learning",
+              "weight": 1,
+              "anchors": [
+                "Blames others or circumstances.",
+                "Takes some ownership; lesson is generic.",
+                "Clear ownership with a specific lesson.",
+                "Clear ownership, and shows how the lesson changed later decisions."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790592460865,
+            "deadlineAt": 1790592700865,
+            "submittedAt": 1790592580865,
+            "closedReason": "submitted",
+            "timeUsedSec": 120,
+            "overtimeSec": 0,
+            "text": "In my last role we had a campaign that did not perform well, so we analysed the data and optimised it, and results improved. I learned that it is important to be data driven.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        }
+      ],
+      "aiReview": {
+        "status": "done",
+        "attempts": 2,
+        "error": null,
+        "updatedAt": 1790964635580,
+        "result": {
+          "stages": [
+            { "stageId": "warmup", "criteria": {}, "summary": "", "transcript": null, "delivery": null },
+            {
+              "stageId": "first-read",
+              "criteria": {
+                "numbers": {
+                  "score": 1,
+                  "evidence": "I would focus on improving creatives and optimising targeting to bring the CPA down.",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "skepticism": {
+                  "score": 2,
+                  "evidence": "We should also look at the funnel and conversion rate on the website.",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "priority": {
+                  "score": 1,
+                  "evidence": "Retargeting is performing really well so we should put more budget there.",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                }
+              },
+              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "budget-cut",
+              "criteria": {
+                "tradeoff": {
+                  "score": 1,
+                  "evidence": "Spreading the cut evenly is the safest option because it reduces risk and keeps",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "estimate": {
+                  "score": 2,
+                  "evidence": "Orders should drop a bit but we can optimise to make up for it.",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "risk": {
+                  "score": 1,
+                  "evidence": "Spreading the cut evenly is the safest option because it reduces risk and keeps",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                }
+              },
+              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "two-weeks-later",
+              "criteria": {
+                "update": {
+                  "score": 1,
+                  "evidence": "I would explain to the founder that data takes time and we should wait",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "mechanism": {
+                  "score": 2,
+                  "evidence": "Meanwhile we can test new creatives.",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "action": {
+                  "score": 1,
+                  "evidence": "I would explain to the founder that data takes time and we should wait",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                }
+              },
+              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "agency-plan",
+              "criteria": {
+                "flaws": {
+                  "score": 1,
+                  "evidence": "YouTube is expensive and hard to measure, so it may not deliver immediate ROI",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "ranking": {
+                  "score": 2,
+                  "evidence": "Refreshing creatives every two weeks may be too frequent and can reduce learning for",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "fixes": {
+                  "score": 1,
+                  "evidence": "The discount could affect brand perception in the long run.",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                }
+              },
+              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "founder-update",
+              "criteria": {
+                "judgment": {
+                  "score": 1,
+                  "evidence": "Hi, next month we will optimise our marketing mix to drive efficient growth while",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "accuracy": {
+                  "score": 2,
+                  "evidence": "We will focus on high-performing channels and continuously test and learn.",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "communication": {
+                  "score": 1,
+                  "evidence": "The main risk is market volatility.",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                }
+              },
+              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "real-decision",
+              "criteria": {
+                "specificity": {
+                  "score": 1,
+                  "evidence": "In my last role we had a campaign that did not perform well, so",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                },
+                "ownership": {
+                  "score": 2,
+                  "evidence": "I learned that it is important to be data driven.",
+                  "rationale": "Restates the dashboard claim without checking it against the store data."
+                }
+              },
+              "summary": "Generic optimisation advice that does not use the scenario numbers.",
+              "transcript": null,
+              "delivery": null
+            }
+          ],
+          "overall": 1.3,
+          "byStage": {
+            "first-read": 1.3,
+            "budget-cut": 1.3,
+            "two-weeks-later": 1.3,
+            "agency-plan": 1.3,
+            "founder-update": 1.3,
+            "real-decision": 1.5
+          },
+          "recommendation": "reject",
+          "headline": "Generic answers that trust the dashboards; the AI-allowed answer stands apart.",
+          "summary": "Rarely used the scenario numbers and recommended moving budget into retargeting, which the data shows is over-credited. The founder update was far more polished than the rest and the AI conversation was not provided.",
+          "strengths": ["Clear, structured writing"],
+          "concerns": [
+            "Trusted the dashboard numbers",
+            "Founder update reads like unedited AI output",
+            "Past-work story lacked any specifics"
+          ],
+          "withAndWithoutAi": "The AI-allowed answer was noticeably more polished than the rest, and the AI conversation was not provided.",
+          "probes": ["Which number told you retargeting was working?"],
+          "models": { "review": "google/gemini-3.8-flash", "audio": "google/gemini-3.8-flash" }
+        }
+      },
+      "overrides": [],
+      "adjusted": null,
+      "verification": {
+        "script": {
+          "opening": [
+            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
+          ],
+          "identity": [
+            "Ask the candidate to hold a government photo ID up to the camera. The name should match \"Vikram Shah\", which they entered before starting.",
+            "Their warm-up answer: \"I like Nike ads because they are inspiring and emotional.\" Ask one spontaneous question about it."
+          ],
+          "probes": [
+            {
+              "stageId": "agency-plan",
+              "stageTitle": "Critique the agency's plan",
+              "priority": true,
+              "reasons": ["Integrity signals on this answer: ask them to rebuild the reasoning live."],
+              "answer": {
+                "excerpt": "1. YouTube is expensive and hard to measure, so it may not deliver immediate ROI for Loom Lane. 2. Refreshing creatives every two weeks may be too frequent and can reduce learning for the algorithm. 3. The discount\u2026",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "Recompute the break-even ROAS for Loom Lane out loud. (Answer: 2.00x.)",
+                "Which item on the agency list did you think was actually fine, and why?"
+              ]
+            },
+            {
+              "stageId": "real-decision",
+              "stageTitle": "A real decision",
+              "priority": true,
+              "reasons": ["Past-work stories are easy to fabricate asynchronously: dig into specifics."],
+              "answer": {
+                "excerpt": "In my last role we had a campaign that did not perform well, so we analysed the data and optimised it, and results improved. I learned that it is important to be data driven.",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "What exact metric were you watching, and what number made you act?",
+                "Who disagreed with you at the time, and what did they argue?"
+              ]
+            },
+            {
+              "stageId": "first-read",
+              "stageTitle": "First read",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "I would focus on improving creatives and optimising targeting to bring the CPA down. We should also look at the funnel and conversion rate on the website. Retargeting is performing really well so we should put more\u2026",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "Suppose the first number you wanted to check came back clean. What would you look at next, and why?",
+                "The dashboards add up to 2,487 orders but the store recorded 1,906. Where do the extra 581 come from?"
+              ]
+            },
+            {
+              "stageId": "budget-cut",
+              "stageTitle": "The budget cut",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "Spreading the cut evenly is the safest option because it reduces risk and keeps all channels running. Orders should drop a bit but we can optimise to make up for it.",
+                "choiceId": "even",
+                "choiceLabel": "Spread the cut evenly across channels",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "You cut Spread the cut evenly across channels. What was your second choice, and what would have made you pick it?",
+                "What number in week one would tell you that you got this wrong?"
+              ]
+            },
+            {
+              "stageId": "two-weeks-later",
+              "stageTitle": "Two weeks later",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "I would explain to the founder that data takes time and we should wait another two weeks before making any big changes. Meanwhile we can test new creatives.",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "If the founder pushed back on what you told them, what data would you bring to the next meeting?",
+                "What would you have done differently in your original decision, knowing this now?"
+              ]
+            },
+            {
+              "stageId": "founder-update",
+              "stageTitle": "Founder update (AI allowed)",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "Hi, next month we will optimise our marketing mix to drive efficient growth while reducing CAC. We will focus on high-performing channels and continuously test and learn. The main risk is market volatility.",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "What did the AI get wrong in its first attempt?",
+                "Which sentence did you rewrite most, and why?"
+              ]
+            }
+          ],
+          "closing": [
+            "Ask what they would want to know about the role or team.",
+            "Record the outcome below straight after the call, while it is fresh."
+          ]
+        },
+        "record": null
+      },
+      "starred": false,
+      "notes": [],
+      "benchmark": {
+        "rank": 2,
+        "of": 2,
+        "overallAverage": 2.35,
+        "byStage": {
+          "first-read": 2.4,
+          "budget-cut": 2.4,
+          "two-weeks-later": 2.4,
+          "agency-plan": 2.15,
+          "founder-update": 2.4,
+          "real-decision": 2.5
+        }
+      },
+      "siblings": {
+        "index": 1,
+        "total": 2,
+        "prev": null,
+        "next": { "id": "890e6891-eeaa-485c-8031-3e4cb1b79767", "name": "Asha Rao" }
+      },
+      "integrity": {
+        "verdict": "question",
+        "headline": "2 things worth a question on the call.",
+        "items": [
+          {
+            "stageId": "agency-plan",
+            "stageTitle": "Critique the agency's plan",
+            "level": "notable",
+            "source": "signals",
+            "text": "Left the tab 2 times (1m 35s away)"
+          },
+          {
+            "stageId": "agency-plan",
+            "stageTitle": "Critique the agency's plan",
+            "level": "notable",
+            "source": "signals",
+            "text": "Pasted 1 time, 412 characters (~100% of the typed answer)"
+          }
+        ],
+        "aiChecked": true,
+        "checkedAt": 1791139977366
+      },
+      "interviewKit": {
+        "questions": [
+          {
+            "stageId": "first-read",
+            "question": "In your initial assessment, you noted that retargeting was performing really well and suggested shifting more budget there. When you look at Loom Lane's backend store data versus ad platform dashboards, how did you verify whether those retargeting conversions were actually incremental?",
+            "why": "Tests whether the candidate blindly trusts dashboard attribution or understands incrementality and over-credited retargeting.",
+            "listenFor": "Clear distinction between platform-reported attribution (e.g., Meta/Google view-through or last-click) and incremental revenue; recognition that retargeting often claims credit for customers who would have purchased anyway.",
+            "redFlags": "Doubling down on platform ROAS or CPA figures without mentioning incrementality, holdout tests, or comparing platform numbers to Shopify/store backend orders."
+          },
+          {
+            "stageId": "budget-cut",
+            "question": "When cutting the budget, you chose to spread the reduction evenly across all channels to reduce risk. Walk me through what happens to top-of-funnel prospecting versus retargeting if you cut them equally\u2014how does that impact blended CAC and new customer acquisition over the following weeks?",
+            "why": "Evaluates analytical rigor and understanding of channel tradeoffs, which were missing in their evenly spread budget cut answer.",
+            "listenFor": "Recognition that cutting prospecting starves the funnel, which eventually collapses retargeting volume; an explanation of why equal percentage cuts across channels with different roles is inefficient.",
+            "redFlags": "Insisting an even split is 'safe' without acknowledging that top-of-funnel cuts reduce future retargeting audiences and choke off new customer growth."
+          },
+          {
+            "stageId": "agency-plan",
+            "question": "In your critique of the agency plan, you pointed out that refreshing creatives every two weeks might reset algorithmic learning. Based on Loom Lane's specific conversion volume and daily spend, how many conversions does the ad set need per week to exit the learning phase, and would a two-week refresh cycle actually break that?",
+            "why": "Checks whether their pasted answer on algorithmic learning reflects genuine hands-on platform knowledge or copied theory.",
+            "listenFor": "Specific benchmark numbers (e.g., Meta's ~50 optimization events per ad set per week) applied directly to Loom Lane's budget and target CPA to see if the threshold is met.",
+            "redFlags": "Vague buzzwords about 'algorithms taking time' without knowing the standard ~50 conversion threshold or failing to do basic math with Loom Lane's daily budget."
+          },
+          {
+            "stageId": "founder-update",
+            "question": "In your update to the founder, you stated that the main risk facing the business next month is 'market volatility.' What specific external or category factors were you referring to for Loom Lane, and what operational contingency did you have in mind?",
+            "why": "Probes whether the candidate's polished founder update was AI-generated filler or grounded in the actual business context.",
+            "listenFor": "Concrete factors relevant to ecommerce/DTC (e.g., seasonal demand shifts, inventory constraints, rising platform CPMs, competitor promotional pressure) and actionable mitigation steps.",
+            "redFlags": "Broad macroeconomic clich\u00e9s (e.g., 'the economy', 'inflation', 'consumer sentiment') with no specific connection to Loom Lane's performance metrics or marketing levers."
+          },
+          {
+            "stageId": "real-decision",
+            "question": "In your past work answer, you mentioned turning around an underperforming campaign by analysing the data. Can you give me the exact numbers from that campaign: what was the channel, what was the baseline metric, what specific change did you make, and what did the metric shift to?",
+            "why": "Verifies whether the candidate has genuine performance marketing experience after providing an entirely generic past-work answer.",
+            "listenFor": "Specific details: channel name, initial CPA/ROAS/spend, the diagnosis (e.g., creative fatigue, audience saturation, high CPMs), specific tactical adjustments made, and concrete outcome metrics.",
+            "redFlags": "Inability to name real baseline numbers, channels, or specific hypotheses; staying at the surface level with phrases like 'we tested new audiences and creatives and ROAS got better'."
+          }
+        ],
+        "createdAt": 1791139993071
+      },
+      "decisionEmail": null
+    },
+    "4150cad8-1529-4cdf-afc2-0098bea73ebc": {
+      "candidate": {
+        "id": "4150cad8-1529-4cdf-afc2-0098bea73ebc",
+        "name": "Arjun Nair",
+        "email": "arjun.nair@example.com",
+        "token": "demo-4150cad8",
+        "idName": null,
+        "status": "invited",
+        "timeMultiplier": 1,
+        "createdAt": 1790587480865,
+        "startedAt": null,
+        "submittedAt": null,
+        "decision": null
+      },
+      "assessment": {
+        "id": "72abe972-402f-4f90-bafa-7efc59f8cd46",
+        "title": "Growth Marketing Manager",
+        "currency": "INR"
+      },
+      "family": { "id": "performance-marketing", "name": "Performance Marketing", "generated": false },
+      "brief": [
+        {
+          "type": "p",
+          "text": "You've just joined **Kesar & Clay** as its first in-house performance marketer. Kesar & Clay is a D2C home d\u00e9cor brand selling hand-painted ceramic planters online. The founder runs the business day to day, and an agency, BlueKite Digital, runs paid media."
+        },
+        {
+          "type": "table",
+          "caption": "Last month, as reported by each ad platform",
+          "columns": ["Channel", "Spend", "Orders (platform-reported)", "CPA", "ROAS"],
+          "rows": [
+            ["Meta \u2013 prospecting", "\u20b910,00,000", "1,625", "\u20b9615", "2.9x"],
+            ["Meta \u2013 retargeting", "\u20b91,80,000", "794", "\u20b9227", "7.9x"],
+            ["Google Search (brand + generic)", "\u20b95,40,000", "1,390", "\u20b9388", "4.6x"],
+            ["Influencers (tracked by discount code)", "\u20b92,80,000", "254", "\u20b91,102", "1.6x"],
+            ["**Total (sum of dashboards)**", "**\u20b920,00,000**", "**4,063**", "**\u20b9492**", "**3.7x**"]
+          ]
+        },
+        { "type": "h", "text": "Same month, from the store backend" },
+        {
+          "type": "list",
+          "items": [
+            "Orders: **3,088**",
+            "Average order value: **\u20b91,799**",
+            "Gross margin after product, shipping and payment costs: **45%**",
+            "About 24% of customers order again within 90 days."
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "The company and numbers are fictional, and every candidate gets a slightly different version. A calculator is fine."
+        }
+      ],
+      "stages": [
+        {
+          "id": "warmup",
+          "index": 0,
+          "kind": "warmup",
+          "title": "Warm-up",
+          "scored": false,
+          "thinkAloud": false,
+          "timeLimitSec": 120,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Not scored. On the verification call, listen for the same voice and ask a related question to check it is the same person."
+            }
+          ],
+          "rubric": [],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "first-read",
+          "index": 1,
+          "kind": "scenario",
+          "title": "First read",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 300,
+          "shown": null,
+          "reviewerGuide": [
+            { "type": "p", "text": "Strong answers notice at least one of these:" },
+            {
+              "type": "list",
+              "items": [
+                "**Over-attribution.** Dashboards claim 4,063 orders, but the store recorded 3,088, so platforms over-claim by about 32%. Channel ROAS can't be taken at face value.",
+                "**Unit economics.** Blended CPA is \u20b9648 against a first-order break-even CPA of \u20b9810 (AOV \u00d7 margin). The business is only just profitable on first orders, and repeat purchase (24%) has to carry the rest.",
+                "**Retargeting and brand search look too good.** 7.9x reported ROAS on retargeting mostly reflects people who were already going to buy."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Weak answers give generic advice (\"refresh creatives\", \"optimise targeting\") without touching the numbers, or take platform ROAS literally and pour budget into retargeting."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "numbers",
+              "label": "Works from the actual numbers",
+              "weight": 2,
+              "anchors": [
+                "No specific figures; generic advice.",
+                "Quotes figures but does not connect them.",
+                "Connects two or more figures into a conclusion (e.g. CPA vs break-even).",
+                "Spots a non-obvious relationship, such as over-attribution, and quantifies it."
+              ]
+            },
+            {
+              "id": "skepticism",
+              "label": "Measurement scepticism",
+              "weight": 1,
+              "anchors": [
+                "Takes platform ROAS at face value.",
+                "Mentions attribution vaguely.",
+                "Says which channel numbers are least trustworthy and why.",
+                "Proposes a concrete check sized to this business (holdout, geo split, post-purchase survey, code/UTM audit)."
+              ]
+            },
+            {
+              "id": "priority",
+              "label": "Prioritisation",
+              "weight": 1,
+              "anchors": [
+                "A list of everything.",
+                "Several priorities, unclear order.",
+                "One clear priority with a reason.",
+                "Clear priority plus what would change their mind."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "budget-cut",
+          "index": 2,
+          "kind": "decision",
+          "title": "The budget cut",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 360,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "There is no single right answer. Good answers commit, estimate the order impact from marginal (not average) CPA, recognise that cutting prospecting starves retargeting and brand search later, and name an early-warning metric."
+            },
+            {
+              "type": "p",
+              "text": "\"Spread evenly\" can be fine if it comes with a stated test plan; it is weak when it avoids the decision."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "tradeoff",
+              "label": "Commits and reasons from unit economics",
+              "weight": 2,
+              "anchors": [
+                "No clear choice, or reasoning is generic.",
+                "Makes a choice with a plausible but unquantified reason.",
+                "Reasons from CPA, margin or attribution quality specific to this scenario.",
+                "Reasons about marginal returns and second-order effects between channels."
+              ]
+            },
+            {
+              "id": "estimate",
+              "label": "Quantified expectation",
+              "weight": 1,
+              "anchors": [
+                "No estimate.",
+                "A number with no logic behind it.",
+                "A number with a clear, if simple, method.",
+                "A range with assumptions stated and a sense of confidence."
+              ]
+            },
+            {
+              "id": "risk",
+              "label": "Risk and monitoring",
+              "weight": 1,
+              "anchors": [
+                "Risk not mentioned.",
+                "Generic risk (\"orders may drop\").",
+                "Specific risk tied to the channel chosen.",
+                "Specific risk plus a metric, threshold and timing for reacting."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "two-weeks-later",
+          "index": 3,
+          "kind": "branch",
+          "title": "Two weeks later",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 300,
+          "shown": null,
+          "reviewerGuide": [
+            { "type": "p", "text": "They chose **Spread the cut evenly across channels** in the previous question." },
+            {
+              "type": "p",
+              "text": "Tests whether they can admit the weakness and adapt. Strong: explains why even cuts hurt (campaigns fall below learning thresholds, fixed creative and agency costs), consolidates into the best marginal channels, and sets a clear test. Weak: defensive, or swings to an unreasoned all-in bet."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "update",
+              "label": "Updates on new information",
+              "weight": 2,
+              "anchors": [
+                "Ignores or dismisses the new data.",
+                "Acknowledges it but keeps the plan unchanged without a reason.",
+                "Separates what the data shows from what it only suggests, and adjusts.",
+                "Adjusts in proportion to the evidence and says what would trigger a bigger change."
+              ]
+            },
+            {
+              "id": "mechanism",
+              "label": "Explains the mechanism",
+              "weight": 1,
+              "anchors": [
+                "No explanation of why it happened.",
+                "A plausible but generic explanation.",
+                "A correct mechanism specific to the channel.",
+                "A correct mechanism plus how to prove it."
+              ]
+            },
+            {
+              "id": "action",
+              "label": "Concrete next step this week",
+              "weight": 1,
+              "anchors": [
+                "No action.",
+                "Vague action (\"monitor closely\").",
+                "A specific action with an owner or timing.",
+                "A specific action, the expected result and how the founder will know."
+              ]
+            }
+          ],
+          "dependsOn": "budget-cut",
+          "response": null
+        },
+        {
+          "id": "agency-plan",
+          "index": 4,
+          "kind": "critique",
+          "title": "Critique the agency's plan",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 420,
+          "shown": null,
+          "reviewerGuide": [
+            { "type": "p", "text": "Planted problems, roughly in order of how much they reveal:" },
+            {
+              "type": "list",
+              "items": [
+                "**#2 Target ROAS is below break-even.** At 45% margin, first-order break-even ROAS is 2.22x, so a 1.8x target loses money on every attributed order, and more once you allow for platform over-claiming. The strongest expertise signal: generic AI critiques miss it unless given the margin.",
+                "**#3 Summing platform ROAS double-counts.** Dashboards over-claim by about 32% against store orders. Judge on blended CPA or MER against store orders.",
+                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 44% (20% \u00f7 45%), and the goal is flat volume, not growth.",
+                "**#1 Awareness spend won't pay back next month**, while the budget is being cut and orders must hold."
+              ]
+            },
+            { "type": "p", "text": "#4 is reasonable. Ranking it as a top-three problem is a negative signal." }
+          ],
+          "rubric": [
+            {
+              "id": "flaws",
+              "label": "Finds the context-bound flaws",
+              "weight": 2,
+              "anchors": [
+                "Misses #2, #3 and #5.",
+                "Finds one of them without the numbers.",
+                "Finds two with supporting numbers.",
+                "Finds #2 with the break-even maths plus at least one more."
+              ]
+            },
+            {
+              "id": "ranking",
+              "label": "Ranks by impact",
+              "weight": 1,
+              "anchors": [
+                "No ranking, or ranks #4 highly.",
+                "Ranking present but unexplained.",
+                "Sensible ranking with reasons.",
+                "Ranking tied explicitly to next month's goal and the budget cut."
+              ]
+            },
+            {
+              "id": "fixes",
+              "label": "Concrete alternatives",
+              "weight": 1,
+              "anchors": [
+                "Criticism only.",
+                "Vague alternatives.",
+                "A specific alternative for each problem.",
+                "Specific alternatives with numbers (e.g. a target ROAS above break-even)."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "founder-update",
+          "index": 5,
+          "kind": "ai_allowed",
+          "title": "Founder update (AI allowed)",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 540,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Read the transcript first. Did they give the AI the real numbers and constraints? Did they catch wrong numbers or generic filler? Is the final message short, specific and written for a founder?"
+            },
+            {
+              "type": "p",
+              "text": "A polished message whose numbers do not match Kesar & Clay's scenario (budget \u20b915,00,000, 3,088 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "judgment",
+              "label": "Judgment with AI",
+              "weight": 2,
+              "anchors": [
+                "Pasted output unchanged, errors kept.",
+                "Light edits; did not give the AI the real context.",
+                "Gave the AI the context and fixed its mistakes.",
+                "Used AI deliberately (drafting, critique) and rejected weak suggestions with reasons."
+              ]
+            },
+            {
+              "id": "accuracy",
+              "label": "Accurate to the scenario",
+              "weight": 1,
+              "anchors": [
+                "Numbers wrong or invented.",
+                "Mostly generic; few scenario numbers.",
+                "Scenario numbers used correctly.",
+                "Numbers correct and consistent with their earlier answers."
+              ]
+            },
+            {
+              "id": "communication",
+              "label": "Founder-ready communication",
+              "weight": 1,
+              "anchors": [
+                "Long, vague or jargon-heavy.",
+                "Understandable but unfocused.",
+                "Clear plan and risk in plain language.",
+                "Could be sent as is; leads with the decision and the ask."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        },
+        {
+          "id": "real-decision",
+          "index": 6,
+          "kind": "past_work",
+          "title": "A real decision",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 240,
+          "shown": null,
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Async answers here are easy to fabricate. Score specificity now, then verify on the call: rich detail that stays consistent under \"why?\" follow-ups is the signal. Stories that stay vague under follow-up questions are a warning sign."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "specificity",
+              "label": "Specificity",
+              "weight": 1,
+              "anchors": [
+                "Hypothetical or generic.",
+                "A real situation, few specifics.",
+                "Concrete metrics, timeline and their own role.",
+                "Rich detail: what they saw, alternatives considered and what happened next."
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership and learning",
+              "weight": 1,
+              "anchors": [
+                "Blames others or circumstances.",
+                "Takes some ownership; lesson is generic.",
+                "Clear ownership with a specific lesson.",
+                "Clear ownership, and shows how the lesson changed later decisions."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": null
+        }
+      ],
+      "aiReview": null,
+      "overrides": [],
+      "adjusted": null,
+      "verification": {
+        "script": {
+          "opening": [
+            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
+          ],
+          "identity": [
+            "Ask the candidate to hold a government photo ID up to the camera. The name should match \"Arjun Nair\", which they entered before starting.",
+            "They skipped the warm-up. Ask one spontaneous question about it."
+          ],
+          "probes": [],
+          "closing": [
+            "Ask what they would want to know about the role or team.",
+            "Record the outcome below straight after the call, while it is fresh."
+          ]
+        },
+        "record": null
+      },
+      "starred": false,
+      "notes": [],
+      "benchmark": null,
+      "siblings": { "index": null, "total": 2, "prev": null, "next": null },
+      "integrity": {
+        "verdict": "clean",
+        "headline": "Nothing suggests anyone or anything else did the thinking.",
+        "items": [],
+        "aiChecked": false,
+        "checkedAt": null
+      },
+      "interviewKit": null,
+      "decisionEmail": null
+    },
+    "890e6891-eeaa-485c-8031-3e4cb1b79767": {
+      "candidate": {
+        "id": "890e6891-eeaa-485c-8031-3e4cb1b79767",
+        "name": "Asha Rao",
+        "email": "asha.rao@example.com",
+        "token": "demo-890e6891",
+        "idName": "Asha Rao",
+        "status": "reviewed",
+        "timeMultiplier": 1,
+        "createdAt": 1790587480865,
+        "startedAt": 1790666380865,
+        "submittedAt": 1790668600865,
+        "decision": null
+      },
+      "assessment": {
+        "id": "72abe972-402f-4f90-bafa-7efc59f8cd46",
+        "title": "Growth Marketing Manager",
+        "currency": "INR"
+      },
+      "family": { "id": "performance-marketing", "name": "Performance Marketing", "generated": false },
+      "brief": [
+        {
+          "type": "p",
+          "text": "You've just joined **Kesar & Clay** as its first in-house performance marketer. Kesar & Clay is a D2C home d\u00e9cor brand selling hand-painted ceramic planters online. The founder runs the business day to day, and an agency, BlueKite Digital, runs paid media."
+        },
+        {
+          "type": "table",
+          "caption": "Last month, as reported by each ad platform",
+          "columns": ["Channel", "Spend", "Orders (platform-reported)", "CPA", "ROAS"],
+          "rows": [
+            ["Meta \u2013 prospecting", "\u20b98,00,000", "1,268", "\u20b9631", "2.4x"],
+            ["Meta \u2013 retargeting", "\u20b91,44,000", "485", "\u20b9297", "5.0x"],
+            ["Google Search (brand + generic)", "\u20b94,32,000", "896", "\u20b9482", "3.1x"],
+            ["Influencers (tracked by discount code)", "\u20b92,24,000", "159", "\u20b91,409", "1.1x"],
+            ["**Total (sum of dashboards)**", "**\u20b916,00,000**", "**2,808**", "**\u20b9570**", "**2.6x**"]
+          ]
+        },
+        { "type": "h", "text": "Same month, from the store backend" },
+        {
+          "type": "list",
+          "items": [
+            "Orders: **2,156**",
+            "Average order value: **\u20b91,499**",
+            "Gross margin after product, shipping and payment costs: **55%**",
+            "About 29% of customers order again within 90 days."
+          ]
+        },
+        {
+          "type": "callout",
+          "text": "The company and numbers are fictional, and every candidate gets a slightly different version. A calculator is fine."
+        }
+      ],
+      "stages": [
+        {
+          "id": "warmup",
+          "index": 0,
+          "kind": "warmup",
+          "title": "Warm-up",
+          "scored": false,
+          "thinkAloud": false,
+          "timeLimitSec": 120,
+          "shown": {
+            "id": "warmup",
+            "index": 0,
+            "kind": "warmup",
+            "title": "Warm-up",
+            "timeLimitSec": 120,
+            "voiceMaxSec": 45,
+            "preferVoice": true,
+            "thinkAloud": false,
+            "prompt": [
+              { "type": "p", "text": "What is the best ad you have seen this month, and where did you see it?" },
+              { "type": "p", "text": "Keep it under 45 seconds. This one is not scored; it just gets you talking." }
+            ],
+            "material": [],
+            "lookingFor": []
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Not scored. On the verification call, listen for the same voice and ask a related question to check it is the same person."
+            }
+          ],
+          "rubric": [],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790666440865,
+            "deadlineAt": 1790666560865,
+            "submittedAt": 1790666500865,
+            "closedReason": "submitted",
+            "timeUsedSec": 60,
+            "overtimeSec": 0,
+            "text": "Swiggy's push notifications. They're written for the exact moment you're hungry and they're funny without trying too hard, so I actually read them.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "first-read",
+          "index": 1,
+          "kind": "scenario",
+          "title": "First read",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 300,
+          "shown": {
+            "id": "first-read",
+            "index": 1,
+            "kind": "scenario",
+            "title": "First read",
+            "timeLimitSec": 300,
+            "voiceMaxSec": 120,
+            "preferVoice": true,
+            "thinkAloud": true,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "It's your first morning at Kesar & Clay. Looking at last month's numbers, **what worries you most, and what is the first number you would check before changing anything?**"
+              },
+              { "type": "p", "text": "Refer to specific figures. One sharp point beats a list of ten." }
+            ],
+            "material": [],
+            "lookingFor": ["Works from the actual numbers", "Measurement scepticism", "Prioritisation"]
+          },
+          "reviewerGuide": [
+            { "type": "p", "text": "Strong answers notice at least one of these:" },
+            {
+              "type": "list",
+              "items": [
+                "**Over-attribution.** Dashboards claim 2,808 orders, but the store recorded 2,156, so platforms over-claim by about 30%. Channel ROAS can't be taken at face value.",
+                "**Unit economics.** Blended CPA is \u20b9742 against a first-order break-even CPA of \u20b9824 (AOV \u00d7 margin). The business is only just profitable on first orders, and repeat purchase (29%) has to carry the rest.",
+                "**Retargeting and brand search look too good.** 5.0x reported ROAS on retargeting mostly reflects people who were already going to buy."
+              ]
+            },
+            {
+              "type": "p",
+              "text": "Weak answers give generic advice (\"refresh creatives\", \"optimise targeting\") without touching the numbers, or take platform ROAS literally and pour budget into retargeting."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "numbers",
+              "label": "Works from the actual numbers",
+              "weight": 2,
+              "anchors": [
+                "No specific figures; generic advice.",
+                "Quotes figures but does not connect them.",
+                "Connects two or more figures into a conclusion (e.g. CPA vs break-even).",
+                "Spots a non-obvious relationship, such as over-attribution, and quantifies it."
+              ]
+            },
+            {
+              "id": "skepticism",
+              "label": "Measurement scepticism",
+              "weight": 1,
+              "anchors": [
+                "Takes platform ROAS at face value.",
+                "Mentions attribution vaguely.",
+                "Says which channel numbers are least trustworthy and why.",
+                "Proposes a concrete check sized to this business (holdout, geo split, post-purchase survey, code/UTM audit)."
+              ]
+            },
+            {
+              "id": "priority",
+              "label": "Prioritisation",
+              "weight": 1,
+              "anchors": [
+                "A list of everything.",
+                "Several priorities, unclear order.",
+                "One clear priority with a reason.",
+                "Clear priority plus what would change their mind."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790666560865,
+            "deadlineAt": 1790666860865,
+            "submittedAt": 1790666800865,
+            "closedReason": "submitted",
+            "timeUsedSec": 240,
+            "overtimeSec": 0,
+            "text": "Biggest worry: the dashboards claim 2,808 orders but the store only saw 2,156, so about 30% of the credit is double-counted. That makes the 5.0x on retargeting close to meaningless.\n\nFirst number I'd check: blended CPA (\u20b9742) against what a first order is actually worth after margin (\u20b91,499 \u00d7 55% = \u20b9824). If blended CPA is above that we lose money on every first order, and the whole plan depends on the 29% who come back.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "budget-cut",
+          "index": 2,
+          "kind": "decision",
+          "title": "The budget cut",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 360,
+          "shown": {
+            "id": "budget-cut",
+            "index": 2,
+            "kind": "decision",
+            "title": "The budget cut",
+            "timeLimitSec": 360,
+            "voiceMaxSec": 150,
+            "preferVoice": true,
+            "thinkAloud": true,
+            "choices": [
+              { "id": "meta", "label": "Meta prospecting" },
+              { "id": "search", "label": "Google Search" },
+              { "id": "influencers", "label": "Influencers" },
+              { "id": "even", "label": "Spread the cut evenly across channels" }
+            ],
+            "prompt": [
+              {
+                "type": "p",
+                "text": "The founder has cut next month's paid media budget by **25%**, to **\u20b912,00,000**, and wants orders to stay roughly flat. Retargeting is small; leave it out of this decision."
+              },
+              { "type": "p", "text": "**Where does most of the cut come from?** Pick one, then explain:" },
+              {
+                "type": "list",
+                "items": [
+                  "why this channel,",
+                  "what you expect to happen to store orders next month (give a number and how you got it),",
+                  "the risk you are accepting, and the early warning you would watch."
+                ]
+              }
+            ],
+            "material": [],
+            "lookingFor": ["Commits and reasons from unit economics", "Quantified expectation", "Risk and monitoring"]
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "There is no single right answer. Good answers commit, estimate the order impact from marginal (not average) CPA, recognise that cutting prospecting starves retargeting and brand search later, and name an early-warning metric."
+            },
+            {
+              "type": "p",
+              "text": "\"Spread evenly\" can be fine if it comes with a stated test plan; it is weak when it avoids the decision."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "tradeoff",
+              "label": "Commits and reasons from unit economics",
+              "weight": 2,
+              "anchors": [
+                "No clear choice, or reasoning is generic.",
+                "Makes a choice with a plausible but unquantified reason.",
+                "Reasons from CPA, margin or attribution quality specific to this scenario.",
+                "Reasons about marginal returns and second-order effects between channels."
+              ]
+            },
+            {
+              "id": "estimate",
+              "label": "Quantified expectation",
+              "weight": 1,
+              "anchors": [
+                "No estimate.",
+                "A number with no logic behind it.",
+                "A number with a clear, if simple, method.",
+                "A range with assumptions stated and a sense of confidence."
+              ]
+            },
+            {
+              "id": "risk",
+              "label": "Risk and monitoring",
+              "weight": 1,
+              "anchors": [
+                "Risk not mentioned.",
+                "Generic risk (\"orders may drop\").",
+                "Specific risk tied to the channel chosen.",
+                "Specific risk plus a metric, threshold and timing for reacting."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790666860865,
+            "deadlineAt": 1790667220865,
+            "submittedAt": 1790667160865,
+            "closedReason": "submitted",
+            "timeUsedSec": 300,
+            "overtimeSec": 0,
+            "text": "Most of the \u20b94,00,000 comes out of Meta prospecting. It's the biggest line and its marginal CPA is worse than its average, so I'd assume ~1.3\u00d7 blended: that's roughly 415 fewer orders, before any fixes. To claw some back I'd concentrate what's left on the top two ad sets and pause the rest.\n\nRisk: prospecting feeds retargeting and brand search two or three weeks later. Early warning: branded search impressions and retargeting audience size, checked weekly. If either drops more than 15% I'd restore part of the budget.",
+            "choiceId": "meta",
+            "choiceLabel": "Meta prospecting",
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "two-weeks-later",
+          "index": 3,
+          "kind": "branch",
+          "title": "Two weeks later",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 300,
+          "shown": {
+            "id": "two-weeks-later",
+            "index": 3,
+            "kind": "branch",
+            "title": "Two weeks later",
+            "timeLimitSec": 300,
+            "voiceMaxSec": 120,
+            "preferVoice": true,
+            "thinkAloud": false,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "Two weeks in, Meta-reported orders are down 33%, roughly as you planned. But Google Search orders are also down 17%, mostly on searches for \"Kesar & Clay\", and your retargeting audiences have shrunk by about a third."
+              },
+              {
+                "type": "p",
+                "text": "The founder asks: **\"Was cutting Meta a mistake?\"** What do you tell them, and what do you do this week?"
+              }
+            ],
+            "material": [],
+            "lookingFor": ["Updates on new information", "Explains the mechanism", "Concrete next step this week"]
+          },
+          "reviewerGuide": [
+            { "type": "p", "text": "They chose **Meta prospecting** in the previous question." },
+            {
+              "type": "p",
+              "text": "Tests whether they understand that prospecting feeds brand search and retargeting pools (the halo). Strong: explains the mechanism, proposes a partial restore or a structured test, and quantifies it. Weak: blames seasonality or defends the plan without looking at the new data."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "update",
+              "label": "Updates on new information",
+              "weight": 2,
+              "anchors": [
+                "Ignores or dismisses the new data.",
+                "Acknowledges it but keeps the plan unchanged without a reason.",
+                "Separates what the data shows from what it only suggests, and adjusts.",
+                "Adjusts in proportion to the evidence and says what would trigger a bigger change."
+              ]
+            },
+            {
+              "id": "mechanism",
+              "label": "Explains the mechanism",
+              "weight": 1,
+              "anchors": [
+                "No explanation of why it happened.",
+                "A plausible but generic explanation.",
+                "A correct mechanism specific to the channel.",
+                "A correct mechanism plus how to prove it."
+              ]
+            },
+            {
+              "id": "action",
+              "label": "Concrete next step this week",
+              "weight": 1,
+              "anchors": [
+                "No action.",
+                "Vague action (\"monitor closely\").",
+                "A specific action with an owner or timing.",
+                "A specific action, the expected result and how the founder will know."
+              ]
+            }
+          ],
+          "dependsOn": "budget-cut",
+          "response": {
+            "revealedAt": 1790667220865,
+            "deadlineAt": 1790667520865,
+            "submittedAt": 1790667460865,
+            "closedReason": "submitted",
+            "timeUsedSec": 240,
+            "overtimeSec": 0,
+            "text": "Not a mistake, but I under-weighted the halo. Brand search and retargeting were harvesting demand that prospecting created, which is exactly what the over-attribution in the first table hinted at.\n\nThis week: restore about a third of the prospecting cut, funded from the lowest-intent generic search terms, and set up a two-week geo holdout on Meta so we measure the halo properly instead of arguing about it.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "agency-plan",
+          "index": 4,
+          "kind": "critique",
+          "title": "Critique the agency's plan",
+          "scored": true,
+          "thinkAloud": true,
+          "timeLimitSec": 420,
+          "shown": {
+            "id": "agency-plan",
+            "index": 4,
+            "kind": "critique",
+            "title": "Critique the agency's plan",
+            "timeLimitSec": 420,
+            "voiceMaxSec": 180,
+            "preferVoice": false,
+            "thinkAloud": true,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "BlueKite Digital has sent their plan for next month (budget \u20b912,00,000). **Pick the three problems that matter most for Kesar & Clay right now, in order.** For each, say why it is a problem using the numbers, and what you would do instead."
+              },
+              { "type": "p", "text": "You do not need to comment on every item." }
+            ],
+            "material": [
+              { "type": "h", "text": "BlueKite Digital: plan for next month" },
+              {
+                "type": "list",
+                "ordered": true,
+                "items": [
+                  "Move 35% of the budget into a YouTube brand-awareness campaign to build the funnel for Q4.",
+                  "Set Meta campaigns to a target ROAS of 1.4x, comfortably above the category benchmark.",
+                  "Report success as the sum of platform-reported ROAS across channels, as in the current dashboard.",
+                  "Refresh ad creatives every two weeks and test three new hooks per week.",
+                  "Run a 20% sitewide discount in week one to protect volume."
+                ]
+              }
+            ],
+            "lookingFor": ["Finds the context-bound flaws", "Ranks by impact", "Concrete alternatives"]
+          },
+          "reviewerGuide": [
+            { "type": "p", "text": "Planted problems, roughly in order of how much they reveal:" },
+            {
+              "type": "list",
+              "items": [
+                "**#2 Target ROAS is below break-even.** At 55% margin, first-order break-even ROAS is 1.82x, so a 1.4x target loses money on every attributed order, and more once you allow for platform over-claiming. The strongest expertise signal: generic AI critiques miss it unless given the margin.",
+                "**#3 Summing platform ROAS double-counts.** Dashboards over-claim by about 30% against store orders. Judge on blended CPA or MER against store orders.",
+                "**#5 The discount destroys margin.** A 20% discount cuts gross profit per order by about 36% (20% \u00f7 55%), and the goal is flat volume, not growth.",
+                "**#1 Awareness spend won't pay back next month**, while the budget is being cut and orders must hold."
+              ]
+            },
+            { "type": "p", "text": "#4 is reasonable. Ranking it as a top-three problem is a negative signal." }
+          ],
+          "rubric": [
+            {
+              "id": "flaws",
+              "label": "Finds the context-bound flaws",
+              "weight": 2,
+              "anchors": [
+                "Misses #2, #3 and #5.",
+                "Finds one of them without the numbers.",
+                "Finds two with supporting numbers.",
+                "Finds #2 with the break-even maths plus at least one more."
+              ]
+            },
+            {
+              "id": "ranking",
+              "label": "Ranks by impact",
+              "weight": 1,
+              "anchors": [
+                "No ranking, or ranks #4 highly.",
+                "Ranking present but unexplained.",
+                "Sensible ranking with reasons.",
+                "Ranking tied explicitly to next month's goal and the budget cut."
+              ]
+            },
+            {
+              "id": "fixes",
+              "label": "Concrete alternatives",
+              "weight": 1,
+              "anchors": [
+                "Criticism only.",
+                "Vague alternatives.",
+                "A specific alternative for each problem.",
+                "Specific alternatives with numbers (e.g. a target ROAS above break-even)."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790667520865,
+            "deadlineAt": 1790667940865,
+            "submittedAt": 1790667880865,
+            "closedReason": "submitted",
+            "timeUsedSec": 360,
+            "overtimeSec": 0,
+            "text": "1) Target ROAS of 1.4x is below break-even. At 55% margin we need 1.82x just to break even on first orders, and platform ROAS is already inflated by ~30%. I'd set the floor around 2.4x platform-reported.\n2) Summing platform ROAS double-counts. Report blended CPA and MER against store orders every week.\n3) The 20% discount cuts gross profit per order by about 36%, for volume we only need to hold, not grow.\n\nYouTube awareness won't pay back next month either; park it for a Q4 test. The creative refresh cadence is fine.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "founder-update",
+          "index": 5,
+          "kind": "ai_allowed",
+          "title": "Founder update (AI allowed)",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 540,
+          "shown": {
+            "id": "founder-update",
+            "index": 5,
+            "kind": "ai_allowed",
+            "title": "Founder update (AI allowed)",
+            "timeLimitSec": 540,
+            "voiceMaxSec": 0,
+            "preferVoice": false,
+            "thinkAloud": false,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "Use any AI tool you like for this one. We are assessing how you use it, not whether you do."
+              },
+              {
+                "type": "p",
+                "text": "Write the WhatsApp message (about 150 words) you would send Kesar & Clay's founder summarising your plan for next month and the one risk they should know about."
+              },
+              {
+                "type": "list",
+                "ordered": true,
+                "items": [
+                  "Paste your final message.",
+                  "Paste your full AI conversation, or write \"none\".",
+                  "In 2\u20133 lines, say what you kept, changed or rejected from the AI and why."
+                ]
+              }
+            ],
+            "material": [],
+            "lookingFor": ["Judgment with AI", "Accurate to the scenario", "Founder-ready communication"]
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Read the transcript first. Did they give the AI the real numbers and constraints? Did they catch wrong numbers or generic filler? Is the final message short, specific and written for a founder?"
+            },
+            {
+              "type": "p",
+              "text": "A polished message whose numbers do not match Kesar & Clay's scenario (budget \u20b912,00,000, 2,156 orders last month) is a red flag. \"None\" for the transcript is fine if the message itself is strong."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "judgment",
+              "label": "Judgment with AI",
+              "weight": 2,
+              "anchors": [
+                "Pasted output unchanged, errors kept.",
+                "Light edits; did not give the AI the real context.",
+                "Gave the AI the context and fixed its mistakes.",
+                "Used AI deliberately (drafting, critique) and rejected weak suggestions with reasons."
+              ]
+            },
+            {
+              "id": "accuracy",
+              "label": "Accurate to the scenario",
+              "weight": 1,
+              "anchors": [
+                "Numbers wrong or invented.",
+                "Mostly generic; few scenario numbers.",
+                "Scenario numbers used correctly.",
+                "Numbers correct and consistent with their earlier answers."
+              ]
+            },
+            {
+              "id": "communication",
+              "label": "Founder-ready communication",
+              "weight": 1,
+              "anchors": [
+                "Long, vague or jargon-heavy.",
+                "Understandable but unfocused.",
+                "Clear plan and risk in plain language.",
+                "Could be sent as is; leads with the decision and the ask."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790667940865,
+            "deadlineAt": 1790668480865,
+            "submittedAt": 1790668360865,
+            "closedReason": "submitted",
+            "timeUsedSec": 420,
+            "overtimeSec": 0,
+            "text": "Hi! Plan for next month on the new budget of \u20b912,00,000:\n\u2022 Most of the cut comes from Meta prospecting; search and retargeting stay.\n\u2022 We judge everything on store orders and blended CPA, not the ad dashboards (they over-count by ~30%).\n\u2022 No sitewide discount: it would eat ~36% of profit per order.\nRisk: fewer new customers could shrink brand search in 2\u20133 weeks. I'm watching it weekly and will flag early if we need to put some budget back.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": "Me: Draft a 150 word WhatsApp update to a D2C founder. Budget cut 25% to \u20b912,00,000. Cutting Meta prospecting. Dashboards over-count orders by 30%. Margin 55%.\nAI: Hi [Founder]! Exciting times ahead! \ud83d\ude80 We're optimising our marketing mix to drive efficient growth. By reallocating budget from Meta to higher-ROAS channels we expect to maintain strong performance while reducing CAC by 20%...\nMe: Remove the hype and emojis. Don't promise a CAC reduction, we have no basis for that. Use bullets. Add the one risk: prospecting cut may shrink brand search.\nAI: Hi! Here's the plan for next month...",
+            "reflection": "Kept the bullet structure. Rejected the \"reduce CAC by 20%\" line (made up) and the hype. Added the discount point and the actual budget myself because the AI had them wrong.",
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        },
+        {
+          "id": "real-decision",
+          "index": 6,
+          "kind": "past_work",
+          "title": "A real decision",
+          "scored": true,
+          "thinkAloud": false,
+          "timeLimitSec": 240,
+          "shown": {
+            "id": "real-decision",
+            "index": 6,
+            "kind": "past_work",
+            "title": "A real decision",
+            "timeLimitSec": 240,
+            "voiceMaxSec": 150,
+            "preferVoice": true,
+            "thinkAloud": false,
+            "prompt": [
+              {
+                "type": "p",
+                "text": "**Tell us about a real budget or channel decision you made that did not go to plan.** What were you looking at, what did you decide, what happened, and what would you do differently?"
+              },
+              { "type": "p", "text": "Specifics such as numbers and timelines matter more than polish." }
+            ],
+            "material": [],
+            "lookingFor": ["Specificity", "Ownership and learning"]
+          },
+          "reviewerGuide": [
+            {
+              "type": "p",
+              "text": "Async answers here are easy to fabricate. Score specificity now, then verify on the call: rich detail that stays consistent under \"why?\" follow-ups is the signal. Stories that stay vague under follow-up questions are a warning sign."
+            }
+          ],
+          "rubric": [
+            {
+              "id": "specificity",
+              "label": "Specificity",
+              "weight": 1,
+              "anchors": [
+                "Hypothetical or generic.",
+                "A real situation, few specifics.",
+                "Concrete metrics, timeline and their own role.",
+                "Rich detail: what they saw, alternatives considered and what happened next."
+              ]
+            },
+            {
+              "id": "ownership",
+              "label": "Ownership and learning",
+              "weight": 1,
+              "anchors": [
+                "Blames others or circumstances.",
+                "Takes some ownership; lesson is generic.",
+                "Clear ownership with a specific lesson.",
+                "Clear ownership, and shows how the lesson changed later decisions."
+              ]
+            }
+          ],
+          "dependsOn": null,
+          "response": {
+            "revealedAt": 1790668420865,
+            "deadlineAt": 1790668660865,
+            "submittedAt": 1790668600865,
+            "closedReason": "submitted",
+            "timeUsedSec": 180,
+            "overtimeSec": 0,
+            "text": "At a previous job I moved 30% of our Google budget into a new YouTube campaign in October because view-through conversions looked great. Orders fell about 12% in three weeks. The view-through numbers were mostly people who would have bought anyway. I rolled it back in week four. Now I never scale a channel without a holdout or at least a post-purchase survey.",
+            "choiceId": null,
+            "choiceLabel": null,
+            "aiTranscript": null,
+            "reflection": null,
+            "audio": [],
+            "scratch": [],
+            "signals": {
+              "tabHidden": 0,
+              "hiddenMs": 0,
+              "pasteCount": 0,
+              "pasteChars": 0,
+              "largestPaste": 0,
+              "keystrokes": 0
+            },
+            "signalNotes": []
+          }
+        }
+      ],
+      "aiReview": {
+        "status": "done",
+        "attempts": 2,
+        "error": null,
+        "updatedAt": 1790964635532,
+        "result": {
+          "stages": [
+            { "stageId": "warmup", "criteria": {}, "summary": "", "transcript": null, "delivery": null },
+            {
+              "stageId": "first-read",
+              "criteria": {
+                "numbers": {
+                  "score": 4,
+                  "evidence": "Biggest worry: the dashboards claim 2,808 orders but the store only saw 2,156, so",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "skepticism": {
+                  "score": 3,
+                  "evidence": "That makes the 5.0x on retargeting close to meaningless.",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "priority": {
+                  "score": 3,
+                  "evidence": "First number I'd check: blended CPA (\u20b9742) against what a first order is actually",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                }
+              },
+              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "budget-cut",
+              "criteria": {
+                "tradeoff": {
+                  "score": 4,
+                  "evidence": "Most of the \u20b94,00,000 comes out of Meta prospecting.",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "estimate": {
+                  "score": 3,
+                  "evidence": "It's the biggest line and its marginal CPA is worse than its average, so",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "risk": {
+                  "score": 3,
+                  "evidence": "To claw some back I'd concentrate what's left on the top two ad sets",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                }
+              },
+              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "two-weeks-later",
+              "criteria": {
+                "update": {
+                  "score": 4,
+                  "evidence": "Not a mistake, but I under-weighted the halo.",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "mechanism": {
+                  "score": 3,
+                  "evidence": "Brand search and retargeting were harvesting demand that prospecting created, which is exactly what",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "action": {
+                  "score": 3,
+                  "evidence": "This week: restore about a third of the prospecting cut, funded from the lowest-intent",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                }
+              },
+              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "agency-plan",
+              "criteria": {
+                "flaws": {
+                  "score": 4,
+                  "evidence": "1) Target ROAS of 1.4x is below break-even.",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "ranking": {
+                  "score": 2,
+                  "evidence": "At 55% margin we need 1.82x just to break even on first orders, and",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "fixes": {
+                  "score": 2,
+                  "evidence": "I'd set the floor around 2.4x platform-reported.",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                }
+              },
+              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "founder-update",
+              "criteria": {
+                "judgment": {
+                  "score": 4,
+                  "evidence": "Plan for next month on the new budget of \u20b912,00,000:",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "accuracy": {
+                  "score": 3,
+                  "evidence": "\u2022 Most of the cut comes from Meta prospecting; search and retargeting stay.",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "communication": {
+                  "score": 3,
+                  "evidence": "\u2022 We judge everything on store orders and blended CPA, not the ad dashboards",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                }
+              },
+              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "transcript": null,
+              "delivery": null
+            },
+            {
+              "stageId": "real-decision",
+              "criteria": {
+                "specificity": {
+                  "score": 4,
+                  "evidence": "At a previous job I moved 30% of our Google budget into a new",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                },
+                "ownership": {
+                  "score": 3,
+                  "evidence": "Orders fell about 12% in three weeks.",
+                  "rationale": "Uses the scenario figures to reach a concrete conclusion."
+                }
+              },
+              "summary": "Used the store numbers to show the over-count and sized the decision from break-even.",
+              "transcript": null,
+              "delivery": null
+            }
+          ],
+          "overall": 3.4,
+          "byStage": {
+            "first-read": 3.5,
+            "budget-cut": 3.5,
+            "two-weeks-later": 3.5,
+            "agency-plan": 3,
+            "founder-update": 3.5,
+            "real-decision": 3.5
+          },
+          "recommendation": "advance",
+          "headline": "Reads the data sharply and adapts; one weak call in the critique.",
+          "summary": "Spotted that the ad dashboards over-count orders and rebuilt the budget from break-even ROAS. Adapted well when the situation changed, but ranked a minor flaw first in the critique and gave few specifics about her own past decision.",
+          "strengths": [
+            "Works from the real numbers, not the dashboards",
+            "Sized the budget cut from break-even, with the arithmetic shown",
+            "Gave the AI the context, then corrected its arithmetic"
+          ],
+          "concerns": [
+            "Ranked creative refresh above the below-break-even target in the critique",
+            "Past-work story light on numbers and her own role"
+          ],
+          "withAndWithoutAi": "Similar reasoning with and without AI; on the AI task she kept the structure but rewrote the numbers herself and removed an invented claim.",
+          "probes": ["Walk me through break-even again."],
+          "models": { "review": "google/gemini-3.8-flash", "audio": "google/gemini-3.8-flash" }
+        }
+      },
+      "overrides": [],
+      "adjusted": null,
+      "verification": {
+        "script": {
+          "opening": [
+            "Plan for 10\u201315 minutes. Tell the candidate you will ask follow-up questions about their own answers and that thinking out loud is welcome.",
+            "Keep the pace brisk: a real practitioner can go deeper on their own reasoning without pausing to read."
+          ],
+          "identity": [
+            "Ask the candidate to hold a government photo ID up to the camera. The name should match \"Asha Rao\", which they entered before starting.",
+            "Their warm-up answer: \"Swiggy's push notifications. They're written for the exact moment you're hungry and they're funny without trying too hard, so I actually read them.\" Ask one spontaneous question about it."
+          ],
+          "probes": [
+            {
+              "stageId": "real-decision",
+              "stageTitle": "A real decision",
+              "priority": true,
+              "reasons": ["Past-work stories are easy to fabricate asynchronously: dig into specifics."],
+              "answer": {
+                "excerpt": "At a previous job I moved 30% of our Google budget into a new YouTube campaign in October because view-through conversions looked great. Orders fell about 12% in three weeks. The view-through numbers were mostly people\u2026",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "What exact metric were you watching, and what number made you act?",
+                "Who disagreed with you at the time, and what did they argue?"
+              ]
+            },
+            {
+              "stageId": "first-read",
+              "stageTitle": "First read",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "Biggest worry: the dashboards claim 2,808 orders but the store only saw 2,156, so about 30% of the credit is double-counted. That makes the 5.0x on retargeting close to meaningless. First number I'd check: blended CPA\u2026",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "Suppose the first number you wanted to check came back clean. What would you look at next, and why?",
+                "The dashboards add up to 2,808 orders but the store recorded 2,156. Where do the extra 652 come from?"
+              ]
+            },
+            {
+              "stageId": "budget-cut",
+              "stageTitle": "The budget cut",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "Most of the \u20b94,00,000 comes out of Meta prospecting. It's the biggest line and its marginal CPA is worse than its average, so I'd assume ~1.3\u00d7 blended: that's roughly 415 fewer orders, before any fixes. To claw some\u2026",
+                "choiceId": "meta",
+                "choiceLabel": "Meta prospecting",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "You cut Meta prospecting. What was your second choice, and what would have made you pick it?",
+                "What number in week one would tell you that you got this wrong?"
+              ]
+            },
+            {
+              "stageId": "two-weeks-later",
+              "stageTitle": "Two weeks later",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "Not a mistake, but I under-weighted the halo. Brand search and retargeting were harvesting demand that prospecting created, which is exactly what the over-attribution in the first table hinted at. This week: restore\u2026",
+                "hasText": true,
+                "hasVoice": true,
+                "voiceSec": 24,
+                "timedOut": false
+              },
+              "questions": [
+                "If the founder pushed back on what you told them, what data would you bring to the next meeting?",
+                "What would you have done differently in your original decision, knowing this now?"
+              ]
+            },
+            {
+              "stageId": "agency-plan",
+              "stageTitle": "Critique the agency's plan",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "1) Target ROAS of 1.4x is below break-even. At 55% margin we need 1.82x just to break even on first orders, and platform ROAS is already inflated by ~30%. I'd set the floor around 2.4x platform-reported. 2) Summing\u2026",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "Recompute the break-even ROAS for Kesar & Clay out loud. (Answer: 1.82x.)",
+                "Which item on the agency list did you think was actually fine, and why?"
+              ]
+            },
+            {
+              "stageId": "founder-update",
+              "stageTitle": "Founder update (AI allowed)",
+              "priority": false,
+              "reasons": [],
+              "answer": {
+                "excerpt": "Hi! Plan for next month on the new budget of \u20b912,00,000: \u2022 Most of the cut comes from Meta prospecting; search and retargeting stay. \u2022 We judge everything on store orders and blended CPA, not the ad dashboards (they\u2026",
+                "hasText": true,
+                "hasVoice": false,
+                "timedOut": false
+              },
+              "questions": [
+                "What did the AI get wrong in its first attempt?",
+                "Which sentence did you rewrite most, and why?"
+              ]
+            }
+          ],
+          "closing": [
+            "Ask what they would want to know about the role or team.",
+            "Record the outcome below straight after the call, while it is fresh."
+          ]
+        },
+        "record": null
+      },
+      "starred": true,
+      "notes": [
+        {
+          "id": "a6c1a7d9-c5e4-4af3-b682-8891b63d09f4",
+          "userName": "Maya Iyer",
+          "body": "Strongest on the numbers so far. Ask about the critique ranking on the call.",
+          "lean": "advance",
+          "createdAt": 1790964660103,
+          "mine": true
+        }
+      ],
+      "benchmark": {
+        "rank": 1,
+        "of": 2,
+        "overallAverage": 2.35,
+        "byStage": {
+          "first-read": 2.4,
+          "budget-cut": 2.4,
+          "two-weeks-later": 2.4,
+          "agency-plan": 2.15,
+          "founder-update": 2.4,
+          "real-decision": 2.5
+        }
+      },
+      "siblings": {
+        "index": 2,
+        "total": 2,
+        "prev": { "id": "2adb54d8-9f89-40b2-bc30-4cec38ac7198", "name": "Vikram Shah" },
+        "next": null
+      },
+      "integrity": {
+        "verdict": "clean",
+        "headline": "Nothing suggests anyone or anything else did the thinking.",
+        "items": [],
+        "aiChecked": true,
+        "checkedAt": 1791049569247
+      },
+      "interviewKit": {
+        "questions": [
+          {
+            "stageId": "real-decision",
+            "question": "In the YouTube example you shared from your past work, what was the actual budget size you moved, who had to sign off on it, and how did you prove those view-through conversions were cannibalizing existing demand?",
+            "why": "Tests genuine ownership and analytical rigor on a past project where her written answer lacked concrete budget numbers and methodology.",
+            "listenFor": "Specific budget figures and timelines, clear personal accountability for both the hypothesis and the rollback, and a concrete method used to measure cannibalization (such as baseline organic/brand search lift flattening).",
+            "redFlags": "Vague scale descriptions like 'a sizable chunk', deflecting ownership of the decision to others, or failing to explain how view-through attribution actually inflated numbers."
+          },
+          {
+            "stageId": "agency-plan",
+            "question": "You calculated that the agency's 1.4x ROAS target is below the 1.82x break-even floor. If the agency insists that 1.4x is necessary to acquire new customers at scale, how would you structure their targets so they don't lose money while testing?",
+            "why": "Probes her low ranking and fix scores on the agency critique to see if she can turn math critique into workable commercial direction.",
+            "listenFor": "Separating new customer acquisition targets from blended MER, setting hard budget caps on sub-break-even exploration, or requiring first-order contribution margin rather than platform ROAS reporting.",
+            "redFlags": "Backing down on the unit economics, dogmatically refusing any testing, or relying on vague buzzwords like 'better alignment' without tactical targets."
+          },
+          {
+            "stageId": "two-weeks-later",
+            "question": "You recommended setting up a two-week geo holdout on Meta to measure the halo effect on brand search. Walk me through the operational setup: how would you select the test regions and measure the lift?",
+            "why": "Checks whether her recommendation of a geo holdout was an offhand buzzword or a methodology she actually knows how to execute.",
+            "listenFor": "Selecting matched markets with similar historical baselines, isolating search/direct traffic by region, and defining clear pre/post lift metrics relative to control regions.",
+            "redFlags": "Suggesting a simple platform A/B split instead of a true geographic holdout, ignoring baseline differences between regions, or inability to explain how to measure brand search impact locally."
+          },
+          {
+            "stageId": "budget-cut",
+            "question": "When cutting \u20b94,00,000 from Meta prospecting, you assumed marginal CPA would be 1.3 times the blended CPA, estimating roughly 415 lost orders. Walk me through the logic and arithmetic behind that 1.3 multiplier.",
+            "why": "Confirms whether her strongest analytical models reflect true understanding of diminishing returns or were just arbitrary estimates.",
+            "listenFor": "Clear explanation of diminishing marginal returns (the last spend is always less efficient than the first), and how trimming underperforming ad sets changes average efficiency to arrive at ~\u20b9960 marginal CPA and ~415 orders.",
+            "redFlags": "Inability to recreate the arithmetic connecting \u20b94,00,000, 1.3x CPA, and 415 orders, or stating it was merely an ungrounded guess."
+          },
+          {
+            "stageId": "founder-update",
+            "question": "When reviewing the AI draft, you caught and removed an unrealistic claim that CAC would drop by 20%. If an executive had seen that draft first and expected that result, how would you walk them back to reality?",
+            "why": "Tests stakeholder management and the ability to defend disciplined, math-based expectations against unrealistic projections.",
+            "listenFor": "Using unit economics and platform saturation to explain why immediate 20% CAC drops are unrealistic, demonstrating calm confidence, and grounding expectations in total contribution profit.",
+            "redFlags": "Overpromising to placate the executive, blaming the tool without explaining the math, or avoiding difficult performance conversations."
+          }
+        ],
+        "createdAt": 1791049606943
+      },
+      "decisionEmail": null
+    }
+  },
+  "emails": {
+    "2adb54d8-9f89-40b2-bc30-4cec38ac7198": {
+      "advance": {
+        "decision": "advance",
+        "subject": "Next steps: Growth Marketing Manager at Demo Co",
+        "body": "Hi Vikram,\n\nThank you for completing the performance marketing assessment. We really enjoyed reviewing your work\u2014in particular, your clear, structured writing made your campaign recommendations easy to follow and actionable.\n\nWe would love to invite you to the next step, which is a conversation with our team to discuss your approach and background in more detail.\n\nPlease choose a convenient slot using [link to book a time].\n\nLooking forward to speaking soon!\n\nBest,\nMaya Iyer\nDemo Co",
+        "ai": true,
+        "createdAt": 1791139998013
+      },
+      "hold": {
+        "decision": "hold",
+        "subject": "Update on your Growth Marketing Manager application at Demo Co",
+        "body": "Hi Vikram,\n\nThank you for completing the performance marketing assessment for our Growth Marketing Manager role.\n\nI wanted to let you know that your application is still actively under consideration. We really appreciated how clear and well-structured your writing was throughout the exercise.\n\nWe are currently waiting for the remaining assessments to wrap up before moving forward. You can expect to hear back from us by [date] with an update on next steps.\n\nThank you again for your time and patience.\n\nBest,\nMaya Iyer\nDemo Co",
+        "ai": true,
+        "createdAt": 1791140006737
+      },
+      "reject": {
+        "decision": "reject",
+        "subject": "Update on your Growth Marketing Manager application at Demo Co",
+        "body": "Hi Vikram,\n\nThank you for completing the performance marketing assessment. We have reviewed your submission, and we have decided not to move forward with your candidacy for the Growth Marketing Manager role.\n\nWe really appreciated how clear and well-structured your writing was throughout the exercise. For future roles, an area to develop would be taking a more critical approach to validating raw dashboard data and providing deeper, more specific examples when discussing your past campaign work.\n\nThank you again for your time and effort. We wish you the best in your job search and your next career steps.\n\nBest regards,\n\nMaya Iyer\nDemo Co",
+        "ai": true,
+        "createdAt": 1791140013132
+      }
+    },
+    "890e6891-eeaa-485c-8031-3e4cb1b79767": {
+      "advance": {
+        "decision": "advance",
+        "subject": "Next steps: Growth Marketing Manager at Demo Co",
+        "body": "Hi Asha,\n\nThank you for taking the time to complete the performance marketing assessment. We would love to move forward and invite you to the next step, a conversation with our team.\n\nWe were particularly impressed by your approach to working from the underlying data rather than taking dashboard metrics at face value. In particular, the way you sized the budget cut directly from break-even\u2014and clearly laid out your arithmetic\u2014really stood out.\n\nPlease pick a time that works best for you here: [link to book a time].\n\nLooking forward to connecting soon!\n\nBest,\nMaya Iyer\nDemo Co",
+        "ai": true,
+        "createdAt": 1791140018834
+      },
+      "hold": {
+        "decision": "hold",
+        "subject": "Update on your Growth Marketing Manager application at Demo Co",
+        "body": "Hi Asha,\n\nThank you for taking the time to complete the performance marketing assessment. We are still finishing up reviews for this round, but I wanted to let you know that your application is actively being considered.\n\nI was really impressed by how you grounded your budget recommendations in the underlying data\u2014specifically how you sized the budget cut directly from break-even targets and clearly showed your arithmetic.\n\nYou can expect to hear back from us by [date] with an update on next steps. Thanks again for your time and thoughtful work on this.\n\nBest,\nMaya Iyer\nDemo Co",
+        "ai": true,
+        "createdAt": 1791140068345
+      },
+      "reject": {
+        "decision": "reject",
+        "subject": "Update on your Growth Marketing Manager application at Demo Co",
+        "body": "Hi Asha,\n\nThank you for completing the performance marketing assessment. We have decided not to move forward with your application for the Growth Marketing Manager role.\n\nWe really appreciated your approach to the data\u2014specifically how you worked from the raw figures rather than dashboard assumptions and clearly walked through your arithmetic to size the budget cut from break-even. In terms of areas to develop, we were looking for a stronger emphasis on addressing core efficiency targets before turning to creative refreshes in your critique.\n\nThank you again for the time and thought you put into the exercise. I wish you the very best in your search.\n\nBest,\nMaya Iyer\nDemo Co",
+        "ai": true,
+        "createdAt": 1791140034095
+      }
+    }
+  }
+}

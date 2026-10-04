@@ -7,10 +7,12 @@ import type {
   InterviewKit,
   InterviewKitQuestion,
 } from '../shared/api';
-import type { Decision } from '../shared/types';
 import { type AiConfig, AiError, extractJson } from './ai/client';
 import { UsageMeter, type UsageKind, meteredAi, saveUsage } from './ai/usage';
 import { type DB, one, run } from './db';
+import { templateEmail } from '../shared/decisionEmail';
+
+export { templateEmail };
 
 /** The report without the extras built from it. */
 export type ReportCore = Omit<CandidateReport, 'integrity' | 'interviewKit' | 'decisionEmail'>;
@@ -207,7 +209,7 @@ export async function runIntegrityCheck(deps: ExtrasDeps, report: ReportCore, or
     { orgId, kind: 'integrity', refId: report.candidate.id },
     INTEGRITY_SYSTEM,
     `Role: ${report.family.name}.\n\n${answers}`,
-    2500,
+    4000,
   );
   const titles = new Map(report.stages.map((s) => [s.id, s.title]));
   const findings: IntegrityItem[] = (Array.isArray(reply.findings) ? reply.findings : [])
@@ -287,7 +289,7 @@ export async function buildInterviewKit(
     { orgId, kind: 'interview_kit', refId: report.candidate.id },
     KIT_SYSTEM,
     user,
-    3500,
+    5000,
   );
   const ids = new Set(report.stages.map((s) => s.id));
   const questions: InterviewKitQuestion[] = (Array.isArray(reply.questions) ? reply.questions : [])
@@ -326,35 +328,6 @@ Rules: warm, plain and direct; under 150 words in the body. Refer to what they a
 
 Reply with JSON only: {"subject": "...", "body": "..."}`;
 
-function firstName(name: string) {
-  return name.trim().split(/\s+/)[0] || name;
-}
-
-/** Used when AI is unavailable; the recruiter edits it anyway. */
-export function templateEmail(
-  decision: Decision,
-  info: { candidateName: string; title: string; orgName: string; senderName: string },
-): { subject: string; body: string } {
-  const hi = `Hi ${firstName(info.candidateName)},`;
-  const sign = `Best,\n${info.senderName}\n${info.orgName}`;
-  if (decision === 'advance') {
-    return {
-      subject: `Next step for the ${info.title} role`,
-      body: `${hi}\n\nThank you for working through the ${info.title} assessment. We enjoyed reading your answers and would like to talk about them with you.\n\nCould you pick a time that suits you here: [link to book a time]\n\n${sign}`,
-    };
-  }
-  if (decision === 'hold') {
-    return {
-      subject: `Your ${info.title} application`,
-      body: `${hi}\n\nThank you for completing the ${info.title} assessment. We're still hearing from other candidates, so we haven't decided yet. You'll hear from us by [date].\n\n${sign}`,
-    };
-  }
-  return {
-    subject: `Your ${info.title} application`,
-    body: `${hi}\n\nThank you for the time you put into the ${info.title} assessment. We've decided not to move forward with your application this time.\n\nWe appreciated the care in your answers, and we wish you the best with your search.\n\n${sign}`,
-  };
-}
-
 export async function draftDecisionEmail(
   deps: ExtrasDeps,
   report: ReportCore,
@@ -386,7 +359,7 @@ export async function draftDecisionEmail(
           `Where they were weaker:\n${result.concerns.map((s) => `- ${s}`).join('\n')}`,
           `The scenario they worked on: ${report.family.name}.`,
         ].join('\n\n'),
-        1200,
+        3000,
       );
       const subject = text(reply.subject, 160);
       const body = text(reply.body, 3000);

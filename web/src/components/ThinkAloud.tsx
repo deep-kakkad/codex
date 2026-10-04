@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ApiError } from '../api';
+import { isDemo } from '../demo/mode';
 import { formatClock } from '../hooks';
 import { AUDIO_BITS_PER_SECOND, pickMimeType, voiceSupported } from './VoiceRecorder';
 
@@ -53,6 +54,11 @@ export function useThinkAloud({ enabled, url, existingParts, openedAt, onClosed 
       const query = `part=${existingParts}&seq=${seq}&startMs=${Math.round(startMs)}&sec=${sec.toFixed(1)}`;
       for (let attempt = 0; attempt < RETRIES; attempt++) {
         if (closedRef.current) return;
+        // The demo keeps recordings in the browser.
+        if (isDemo()) {
+          setUploadedChunks((n) => n + 1);
+          return;
+        }
         try {
           const res = await fetch(`${url}?${query}`, {
             method: 'POST',

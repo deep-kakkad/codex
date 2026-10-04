@@ -5,10 +5,12 @@ import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Icon } from '../components/Icon';
 import { ErrorNote } from '../components/ui';
+import { useDemo } from '../demo/mode';
 import { formatDate, useApi } from '../hooks';
 
 export function PlanPage() {
   const { user } = useAuth();
+  const demo = useDemo();
   const { data: plan, setData, error } = useApi<PlanView>('/api/plan');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -94,7 +96,10 @@ export function PlanPage() {
           <Icon name="check" size={16} />
           <span>
             You asked for <strong>{PLAN_NAMES[asked.plan as PlanId] ?? asked.plan}</strong> on{' '}
-            {formatDate(asked.createdAt)}. We'll email {user?.email} within one working day to set up billing.
+            {formatDate(asked.createdAt)}.{' '}
+            {demo
+              ? "In the demo nothing is sent. Start free to set up your own account; we'll help you choose a plan."
+              : `We'll email ${user?.email} within one working day to set up billing.`}
           </span>
         </div>
       )}
