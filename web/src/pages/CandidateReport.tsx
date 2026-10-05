@@ -27,6 +27,7 @@ import {
   StatusBadge,
   candidateLink,
 } from '../components/ui';
+import { useDemo } from '../demo/mode';
 import { formatDate, useApi } from '../hooks';
 
 type Tab = 'review' | 'verification' | 'scenario';
@@ -106,7 +107,75 @@ export function CandidateReportPage() {
           <Blocks blocks={report.brief} />
         </div>
       )}
+      <CandidateData key={`data-${candidate.id}`} report={report} />
     </div>
+  );
+}
+
+/** For a candidate's request to see or delete their data. Managers only, and not in the demo. */
+function CandidateData({ report }: { report: CandidateReport }) {
+  const { user } = useAuth();
+  const demo = useDemo();
+  const navigate = useNavigate();
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  if (demo || user?.role !== 'manager') return null;
+  const { candidate } = report;
+
+  async function erase() {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.del(`/api/candidates/${candidate.id}`);
+      navigate(`/app/assessments/${report.assessment.id}`, { replace: true });
+    } catch (e) {
+      setError(errorMessage(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="rv-card rv-data no-print">
+      <div className="rv-data-head">
+        <div>
+          <h2 className="section-title">Candidate data</h2>
+          <p className="muted small">
+            For when {candidate.name} asks for a copy of their data or for it to be deleted. Recordings are deleted
+            automatically {candidate.recordingDays} days after they finish (
+            <Link to="/app/settings">change in Settings</Link>).
+          </p>
+        </div>
+        {!confirming && (
+          <div className="row-gap">
+            <a className="btn btn-secondary btn-sm" href={`/api/candidates/${candidate.id}/export`} download>
+              <Icon name="file" size={14} /> Download all their data
+            </a>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setConfirming(true)}>
+              Delete candidate
+            </button>
+          </div>
+        )}
+      </div>
+      {confirming && (
+        <div className="your-data-confirm">
+          <p>
+            <strong>Delete {candidate.name} and everything about them?</strong> Their answers, recordings, the AI
+            review, your team’s notes and the decision are deleted for good. Their review still counts towards your
+            plan.
+          </p>
+          <div className="row-gap">
+            <button type="button" className="btn btn-danger btn-sm" onClick={erase} disabled={busy}>
+              {busy ? 'Deleting…' : 'Delete for good'}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+      <ErrorNote error={error} />
+    </section>
   );
 }
 
@@ -980,7 +1049,17 @@ function QuestionDetail({
                 <p className="q-choice">{r.choiceLabel}</p>
               </AnswerPart>
             )}
-            {stage.thinkAloud ? (
+            {report.candidate.recordingsDeletedAt ? (
+              (stage.thinkAloud || ai?.transcript) && (
+                <AnswerPart label="Recording">
+                  <p className="muted small rec-deleted">
+                    <Icon name="clock" size={14} /> Deleted {formatDate(report.candidate.recordingsDeletedAt)}, at the
+                    end of your workspace’s retention period.
+                    {ai?.transcript ? ' The transcript is kept.' : ''}
+                  </p>
+                </AnswerPart>
+              )
+            ) : stage.thinkAloud ? (
               <AnswerPart
                 label="Recording"
                 aside={r.audio.length ? formatDuration(r.audio.reduce((sum, a) => sum + (a.sec ?? 0), 0)) : null}

@@ -30,17 +30,33 @@ async function orgPlan(db: DB, orgId: string): Promise<OrgPlanRow> {
   );
 }
 
-/** Reviews this workspace has started that were paid for in the given ways, optionally since a time. */
+/**
+ * Reviews this workspace has been charged for in the given ways, optionally
+ * since a time. Charges outlive the candidate, so deleting candidates' data
+ * never gives reviews back.
+ */
 async function reviewsCovered(db: DB, orgId: string, by: Coverage[], since = 0): Promise<number> {
   const row = await one<{ count: number }>(
     db,
-    `SELECT COUNT(*)::int AS count FROM ai_reviews r JOIN candidates c ON c.id = r.candidate_id
-      WHERE c.org_id = ? AND r.status <> 'locked' AND COALESCE(r.covered_by, 'plan') = ANY(?) AND r.created_at >= ?`,
+    'SELECT COUNT(*)::int AS count FROM review_charges WHERE org_id = ? AND covered_by = ANY(?) AND created_at >= ?',
     orgId,
     by,
     since,
   );
   return row?.count ?? 0;
+}
+
+/** Records what paid for a candidate's review; once per candidate. */
+export async function recordCharge(db: DB, orgId: string, candidateId: string, coverage: Coverage, now: number) {
+  await run(
+    db,
+    `INSERT INTO review_charges (candidate_id, org_id, covered_by, created_at) VALUES (?, ?, ?, ?)
+     ON CONFLICT (candidate_id) DO NOTHING`,
+    candidateId,
+    orgId,
+    coverage,
+    now,
+  );
 }
 
 export function startOfMonth(now: number) {
@@ -187,6 +203,7 @@ export async function unlockWaiting(db: DB, orgId: string, now: number) {
       coverage,
       candidate_id,
     );
+    await recordCharge(db, orgId, candidate_id, coverage, now);
     unlocked++;
   }
   return unlocked;

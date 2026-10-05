@@ -17,7 +17,8 @@ import {
 } from './db';
 import { familyFor } from './families';
 import { type FileStore, chunkKey } from './files';
-import { badRequest, conflict, notFound, optionalText } from './http';
+import { HttpError, badRequest, conflict, notFound, optionalText } from './http';
+import { deletionForToken } from './privacy';
 
 /** Accept a submission this long after the timer hits zero (slow uploads, flaky networks). */
 export const SUBMIT_GRACE_MS = 60_000;
@@ -50,16 +51,46 @@ export interface CandidateContext {
   assessment: AssessmentRow;
   family: RoleFamily;
   orgName: string;
+  /** How long the workspace keeps recordings, in days. */
+  recordingDays: number;
   variant: Variant;
 }
 
 export async function loadByToken(db: DB, token: string): Promise<CandidateContext> {
   const candidate = await one<CandidateRow>(db, 'SELECT * FROM candidates WHERE token = ?', token);
-  if (!candidate) throw notFound('This assessment link is not valid');
+  if (!candidate) {
+    const deleted = await deletionForToken(db, token);
+    if (deleted) {
+      const day = new Date(Number(deleted.created_at)).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      });
+      throw new HttpError(
+        410,
+        deleted.requested_by === 'candidate'
+          ? `You withdrew and deleted your answers to this assessment on ${day}. None of them are kept.`
+          : `The hiring team deleted your answers to this assessment on ${day}. None of them are kept.`,
+      );
+    }
+    throw notFound('This assessment link is not valid');
+  }
   const assessment = (await one<AssessmentRow>(db, 'SELECT * FROM assessments WHERE id = ?', candidate.assessment_id))!;
   const family = await familyFor(db, assessment);
-  const org = (await one<{ name: string }>(db, 'SELECT name FROM orgs WHERE id = ?', candidate.org_id))!;
-  return { candidate, assessment, family, orgName: org.name, variant: JSON.parse(candidate.variant_json) };
+  const org = (await one<{ name: string; recording_days: number }>(
+    db,
+    'SELECT name, recording_days FROM orgs WHERE id = ?',
+    candidate.org_id,
+  ))!;
+  return {
+    candidate,
+    assessment,
+    family,
+    orgName: org.name,
+    recordingDays: org.recording_days,
+    variant: JSON.parse(candidate.variant_json),
+  };
 }
 
 export function responsesFor(db: DB, candidateId: string): Promise<ResponseRow[]> {

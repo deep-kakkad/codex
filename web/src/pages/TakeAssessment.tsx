@@ -6,6 +6,7 @@ import { EMPTY_SIGNALS, STAGE_KIND_LABEL } from '../../../shared/types';
 import { ApiError, api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Blocks } from '../components/Blocks';
+import { DataDeleted, YourData } from '../components/CandidateData';
 import { Logo } from '../components/Logo';
 import { Collapsible, ErrorNote, KindBadge } from '../components/ui';
 import { ThinkAloudPanel, useThinkAloud } from '../components/ThinkAloud';
@@ -23,6 +24,10 @@ export function TakeAssessment() {
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [gate, setGate] = useState<{ invite: InvitePreview; wrongAccount: string | null } | null>(null);
+  // The candidate withdrew and deleted their answers in this visit.
+  const [deleted, setDeleted] = useState(false);
+  // The answers behind this link were deleted earlier, by the candidate or the hiring team.
+  const [gone, setGone] = useState<string | null>(null);
 
   const apply = useCallback((next: CandidateSession) => {
     setSession(next);
@@ -35,6 +40,10 @@ export function TakeAssessment() {
       apply(await api.get<CandidateSession>(base));
       setGate(null);
     } catch (e) {
+      if (e instanceof ApiError && e.status === 410) {
+        setGone(e.message);
+        return;
+      }
       // The invitation is linked to a candidate account: show who invited them and how to sign in.
       if (e instanceof ApiError && e.status === 403) {
         try {
@@ -58,6 +67,20 @@ export function TakeAssessment() {
   }, [session]);
 
   if (gate) return <SignInGate token={token ?? ''} invite={gate.invite} wrongAccount={gate.wrongAccount} />;
+
+  if (gone) {
+    return (
+      <div className="candidate-shell">
+        <main className="candidate-main narrow center">
+          <div className="done-mark" aria-hidden="true">
+            <Logo size={48} />
+          </div>
+          <h1>This assessment is closed.</h1>
+          <p className="lead">{gone}</p>
+        </main>
+      </div>
+    );
+  }
 
   if (!session) {
     return (
@@ -96,11 +119,14 @@ export function TakeAssessment() {
       </header>
 
       <ErrorNote error={error} />
-      {state.phase === 'intro' && <Intro session={session} base={base} onSession={apply} />}
-      {state.phase === 'ready' && (
+      {deleted && <DataDeleted orgName={session.assessment.orgName} />}
+      {!deleted && state.phase === 'intro' && (
+        <Intro session={session} base={base} onSession={apply} onDeleted={() => setDeleted(true)} />
+      )}
+      {!deleted && state.phase === 'ready' && (
         <Ready session={session} next={state.next} total={total} base={base} onSession={apply} />
       )}
-      {state.phase === 'stage' && (
+      {!deleted && state.phase === 'stage' && (
         <StageScreen
           key={state.stage.id}
           state={state}
@@ -112,9 +138,12 @@ export function TakeAssessment() {
           onStale={load}
         />
       )}
-      {state.phase === 'done' && <Done session={session} />}
+      {!deleted && state.phase === 'done' && <Done session={session} base={base} onDeleted={() => setDeleted(true)} />}
       <footer className="candidate-footer small muted">
         <Logo size={14} /> Assessment by Proofwork. AI reviews your answers; people at the company make every decision.
+        <Link to="/privacy" target="_blank" rel="noopener">
+          Privacy
+        </Link>
       </footer>
     </div>
   );
@@ -130,13 +159,16 @@ function Intro({
   session,
   base,
   onSession,
+  onDeleted,
 }: {
   session: CandidateSession;
   base: string;
   onSession: (s: CandidateSession) => void;
+  onDeleted: () => void;
 }) {
   const [idName, setIdName] = useState(session.candidate.name);
   const [consent, setConsent] = useState(false);
+  const [privacy, setPrivacy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { assessment, candidate } = session;
@@ -148,7 +180,7 @@ function Intro({
     event.preventDefault();
     setBusy(true);
     try {
-      onSession(await api.post<CandidateSession>(`${base}/start`, { idName, consent }));
+      onSession(await api.post<CandidateSession>(`${base}/start`, { idName, consent, privacy }));
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
@@ -275,12 +307,33 @@ function Intro({
           <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
           <span>I've read how this works, and I'll answer on my own except where AI is allowed.</span>
         </label>
+        <label className="checkbox">
+          <input type="checkbox" checked={privacy} onChange={(e) => setPrivacy(e.target.checked)} />
+          <span>
+            I agree to {assessment.orgName} and Proofwork using my answers and recordings, with help from AI, to assess
+            this application, as set out in the{' '}
+            <Link to="/privacy" target="_blank" rel="noopener">
+              privacy notice
+            </Link>
+            . Recordings are deleted {assessment.recordingDays} days after I finish, and I can withdraw and delete my
+            answers at any time from this link.
+          </span>
+        </label>
         <ErrorNote error={error} />
-        <button className="btn btn-primary btn-lg" disabled={!consent || !idName.trim() || busy}>
+        <button className="btn btn-primary btn-lg" disabled={!consent || !privacy || !idName.trim() || busy}>
           {busy ? 'Starting…' : 'Continue to the scenario'}
         </button>
         <p className="muted small">The first timer starts only when you open the first question.</p>
       </form>
+      {!demo && (
+        <YourData
+          base={base}
+          orgName={assessment.orgName}
+          recordingDays={assessment.recordingDays}
+          started={false}
+          onDeleted={onDeleted}
+        />
+      )}
     </main>
   );
 }
@@ -833,7 +886,7 @@ function StageScreen({
 
 // Done -------------------------------------------------------------------
 
-function Done({ session }: { session: CandidateSession }) {
+function Done({ session, base, onDeleted }: { session: CandidateSession; base: string; onDeleted: () => void }) {
   const { candidate } = useAuth();
   const demo = useDemo();
   const accountQuery = new URLSearchParams({
@@ -880,6 +933,15 @@ function Done({ session }: { session: CandidateSession }) {
             Create an account
           </Link>
         </div>
+      )}
+      {!demo && (
+        <YourData
+          base={base}
+          orgName={session.assessment.orgName}
+          recordingDays={session.assessment.recordingDays}
+          started
+          onDeleted={onDeleted}
+        />
       )}
     </main>
   );

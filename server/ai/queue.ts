@@ -1,6 +1,6 @@
 import type { AiReviewResult, AiReviewView } from '../../shared/api';
 import { type AiReviewRow, type DB, all, one, run } from '../db';
-import { rewardReferrer, reviewCoverage } from '../plans';
+import { recordCharge, rewardReferrer, reviewCoverage } from '../plans';
 import { type ReviewDeps, reviewCandidate } from './review';
 import { UsageMeter, meteredAi, saveUsage } from './usage';
 
@@ -46,7 +46,7 @@ async function startOrLock(db: DB, candidateId: string, now: number): Promise<bo
     );
   }
   const coverage = await reviewCoverage(db, candidate.org_id, now);
-  await run(
+  const inserted = await run(
     db,
     `INSERT INTO ai_reviews (candidate_id, status, attempts, covered_by, created_at, updated_at) VALUES (?, ?, 0, ?, ?, ?)
      ON CONFLICT (candidate_id) DO NOTHING`,
@@ -56,6 +56,7 @@ async function startOrLock(db: DB, candidateId: string, now: number): Promise<bo
     now,
     now,
   );
+  if (coverage && inserted.changes) await recordCharge(db, candidate.org_id, candidateId, coverage, now);
   // A referred workspace's first finished candidate earns the referrer its free reviews.
   await rewardReferrer(db, candidate.org_id, now);
   return coverage !== null;

@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
+import { BACKUP_DAYS } from '../shared/privacy';
 import { type DB, all } from './db';
 
 /**
@@ -8,7 +9,7 @@ import { type DB, all } from './db';
  * database provider's own restore window. Short-lived security rows
  * (sessions, sign-in challenges, throttle counters) are left out.
  */
-export const BACKUP_DAYS = 14;
+export { BACKUP_DAYS };
 const SKIP = new Set([
   'sessions',
   'candidate_sessions',

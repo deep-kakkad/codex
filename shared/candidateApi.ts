@@ -40,6 +40,8 @@ export interface CandidateSession {
     uniqueNumbers: boolean;
     totalMinutes: number;
     outline: { kind: StageKind; minutes: number; thinkAloud: boolean }[];
+    /** Recordings are deleted this many days after the candidate finishes. */
+    recordingDays: number;
   };
   /** Only sent once the candidate has started. */
   brief: Block[] | null;

@@ -27,6 +27,7 @@ import type { CandidateDraft, CandidatePhaseView, CandidateSession } from '../..
 import { templateEmail } from '../../../shared/decisionEmail';
 import { choiceKey, type DemoCandidateData } from '../../../shared/demo';
 import { adjustedScores } from '../../../shared/scoreMath';
+import { DEFAULT_RECORDING_DAYS } from '../../../shared/privacy';
 import type { CandidateStageView, Currency, Decision } from '../../../shared/types';
 import { ApiError } from '../api';
 import candidateJson from './content/candidate.json';
@@ -281,6 +282,8 @@ async function inviteReport(candidateId: string): Promise<CandidateReport> {
       startedAt: null,
       submittedAt: null,
       decision: null,
+      recordingsDeletedAt: null,
+      recordingDays: DEFAULT_RECORDING_DAYS,
     },
     assessment: { id: a.id, title: a.title, currency: a.currency },
     family: { id: family.id, name: family.name, generated: Boolean(family.generated) },
@@ -424,6 +427,7 @@ function candidateSession(): CandidateSession {
         minutes: Math.round(minutes[i] * 10) / 10,
         thinkAloud: stage.thinkAloud,
       })),
+      recordingDays: DEFAULT_RECORDING_DAYS,
     },
     brief: phase.phase === 'intro' ? null : CANDIDATE.brief,
     state: phase,
@@ -436,6 +440,7 @@ function candidateCall(method: string, rest: string[], body: Record<string, unkn
   if (method === 'GET' && !action) return candidateSession();
   if (method === 'POST' && action === 'start') {
     if (body.consent !== true) fail(400, 'Please confirm you have read how this assessment works');
+    if (body.privacy !== true) fail(400, 'Please agree to how your answers and recordings are used');
     if (demo.status === 'invited') demo.status = 'in_progress';
     return candidateSession();
   }
@@ -563,6 +568,13 @@ async function recruiterCall(
   }
 
   if (area === 'referral') return { code: 'demo1234', joined: 2, rewarded: 1, rewardEach: 10, cap: 20 };
+
+  if (area === 'privacy') {
+    if (method === 'PUT') {
+      return fail(409, 'In the demo, settings can’t be changed. Start free to choose how long recordings are kept.');
+    }
+    return { recordingDays: DEFAULT_RECORDING_DAYS, deletionsLastYear: 1, withdrawnLastYear: 1, recordingsDeleted: 0 };
+  }
 
   if (area === 'team') {
     if (method === 'POST') {

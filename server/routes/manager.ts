@@ -28,6 +28,8 @@ import {
   reportCore,
 } from '../report';
 import { planView, referralView, requestUpgrade } from '../plans';
+import { candidateExport, eraseCandidate, privacySettings } from '../privacy';
+import { RECORDING_DAY_OPTIONS } from '../../shared/privacy';
 import { audit, clientIp } from '../security';
 
 const CURRENCIES = ['INR', 'USD'] as const;
@@ -339,6 +341,30 @@ export function managerRoutes(deps: AppDeps) {
     res.type(mime ?? 'application/octet-stream').send(audio);
   });
 
+  // Everything held about one candidate, for answering their request to see it.
+  router.get('/candidates/:id/export', async (req, res) => {
+    const user = requireManager(res);
+    const candidate = await loadCandidate(db, user, req.params.id);
+    await log(req, user, 'downloaded a candidate’s data', candidate.name);
+    res.set('Content-Disposition', 'attachment; filename="proofwork-candidate.json"');
+    res.set('Cache-Control', 'no-store');
+    res.json(await candidateExport(db, candidate));
+  });
+
+  // Deletes everything about a candidate, e.g. when they ask for it.
+  router.delete('/candidates/:id', async (req, res) => {
+    const user = requireManager(res);
+    const candidate = await loadCandidate(db, user, req.params.id);
+    await eraseCandidate(
+      db,
+      deps.files,
+      candidate,
+      { kind: 'recruiter', userId: user.id, email: user.email, ip: clientIp(req) },
+      now(),
+    );
+    res.json({ ok: true, assessmentId: candidate.assessment_id });
+  });
+
   // A recruiter disagrees with one AI score: their score and why.
   router.put('/candidates/:id/overrides', async (req, res) => {
     const user = currentUser(res);
@@ -577,6 +603,23 @@ export function managerRoutes(deps: AppDeps) {
       plan === 'payg' ? undefined : billing === 'annual' ? 'billed yearly' : 'billed monthly',
     );
     res.status(201).json(await planView(db, user.orgId, now()));
+  });
+
+  // Privacy ------------------------------------------------------------------
+
+  router.get('/privacy', async (_req, res) => {
+    res.json(await privacySettings(db, currentUser(res).orgId, now()));
+  });
+
+  router.put('/privacy', async (req, res) => {
+    const user = requireManager(res);
+    const days = Number(req.body.recordingDays);
+    if (!(RECORDING_DAY_OPTIONS as readonly number[]).includes(days)) {
+      throw badRequest(`Keep recordings for ${RECORDING_DAY_OPTIONS.join(', ')} days`);
+    }
+    await run(db, 'UPDATE orgs SET recording_days = ? WHERE id = ?', days, user.orgId);
+    await log(req, user, 'set how long recordings are kept to', `${days} days`);
+    res.json(await privacySettings(db, user.orgId, now()));
   });
 
   router.get('/referral', async (_req, res) => {

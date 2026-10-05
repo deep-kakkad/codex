@@ -1,5 +1,7 @@
+import { type FormEvent, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { CandidateAssessmentItem } from '../../../shared/candidateApi';
+import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Logo } from '../components/Logo';
 import { EmptyState, ErrorNote } from '../components/ui';
@@ -62,7 +64,12 @@ export function CandidateHome() {
                 </div>
               </div>
               {a.status === 'submitted' ? (
-                <span className="badge badge-status-decided">{STATUS[a.status]}</span>
+                <div className="candidate-item-actions">
+                  <span className="badge badge-status-decided">{STATUS[a.status]}</span>
+                  <Link to={`/c/${a.token}`} className="small">
+                    Your data
+                  </Link>
+                </div>
               ) : (
                 <Link to={`/c/${a.token}`} className="btn btn-primary">
                   {a.status === 'invited' ? 'Start' : 'Continue'}
@@ -71,7 +78,70 @@ export function CandidateHome() {
             </div>
           ))
         )}
+        <DeleteAccount />
       </main>
     </div>
+  );
+}
+
+/** Deletes the candidate account. Answers stay with each assessment, where they can be deleted too. */
+function DeleteAccount() {
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post('/api/candidate/auth/delete-account', { password });
+      // A fresh start: the signed-in state is gone.
+      window.location.assign('/');
+    } catch (e) {
+      setError(errorMessage(e));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card your-data">
+      <h2>Your account</h2>
+      <p className="muted small">
+        Deleting your account removes your login and this list. Answers you gave stay with each company until you delete
+        them: open an assessment and choose “Your data”.{' '}
+        <Link to="/privacy" target="_blank" rel="noopener">
+          How we handle your data
+        </Link>
+      </p>
+      {!open ? (
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}>
+          Delete my account
+        </button>
+      ) : (
+        <form className="your-data-confirm" onSubmit={submit}>
+          <label className="field">
+            <span>Your password, to confirm</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+            />
+          </label>
+          <div className="row-gap">
+            <button className="btn btn-danger btn-sm" disabled={busy || !password}>
+              {busy ? 'Deleting…' : 'Delete my account'}
+            </button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>
+              Cancel
+            </button>
+          </div>
+          <ErrorNote error={error} />
+        </form>
+      )}
+    </section>
   );
 }

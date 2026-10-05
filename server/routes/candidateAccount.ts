@@ -15,7 +15,7 @@ import {
   setSessionCookie,
   verifyPassword,
 } from '../auth';
-import { type CandidateAccountRow, all, one } from '../db';
+import { type CandidateAccountRow, all, one, run } from '../db';
 import { HttpError, email, str } from '../http';
 
 /** Sign-up, login and the "my assessments" list for candidate accounts. */
@@ -59,6 +59,18 @@ export function candidateAccountRoutes({ db, now, secureCookies }: AppDeps) {
   router.post('/auth/logout', async (req, res) => {
     const token = readCookie(req, CANDIDATE_COOKIE);
     if (token) await destroyCandidateSession(db, token);
+    res.clearCookie(CANDIDATE_COOKIE, { path: '/' });
+    res.json({ ok: true });
+  });
+
+  // Deletes the account itself. Answers belong to each assessment and are deleted there.
+  router.post('/auth/delete-account', async (req, res) => {
+    const me = await requireCandidate(db, req, now());
+    const password = str(req.body.password, 'Password', { max: 200 });
+    const account = (await one<CandidateAccountRow>(db, 'SELECT * FROM candidate_accounts WHERE id = ?', me.id))!;
+    if (!verifyPassword(password, account.password_hash)) throw new HttpError(400, 'That password is incorrect');
+    await run(db, 'UPDATE candidates SET account_id = NULL WHERE account_id = ?', me.id);
+    await run(db, 'DELETE FROM candidate_accounts WHERE id = ?', me.id);
     res.clearCookie(CANDIDATE_COOKIE, { path: '/' });
     res.json({ ok: true });
   });

@@ -21,6 +21,9 @@ import {
 import { CANDIDATE_COOKIE, type SessionCandidate, candidateForSession, readCookie } from '../auth';
 import { run } from '../db';
 import { HttpError, badRequest, jsonBody, str } from '../http';
+import { PRIVACY_NOTICE_VERSION } from '../../shared/privacy';
+import { candidateOwnData, eraseCandidate } from '../privacy';
+import { clientIp } from '../security';
 
 function session(deps: FlowDeps, ctx: CandidateContext, state: CandidatePhase): CandidateSession {
   const minutes = ctx.family.stages.map((stage) => scaledTimeLimit(stage, ctx.candidate.time_multiplier) / 60);
@@ -44,6 +47,7 @@ function session(deps: FlowDeps, ctx: CandidateContext, state: CandidatePhase): 
         minutes: Math.round(minutes[i] * 10) / 10,
         thinkAloud: Boolean(stage.thinkAloud),
       })),
+      recordingDays: ctx.recordingDays,
     },
     brief: state.phase === 'intro' ? null : renderBrief(ctx),
     state,
@@ -104,8 +108,37 @@ export function candidateRoutes(deps: AppDeps) {
   router.post('/:token/start', json, async (req, res) => {
     const ctx = await load(req);
     if (req.body.consent !== true) throw badRequest('Please confirm you have read how this assessment works');
+    if (req.body.privacy !== true) {
+      throw badRequest(
+        'Please agree to how your answers and recordings are used, or ask the hiring team about another way to apply',
+      );
+    }
     const idName = str(req.body.idName, 'Name as it appears on your ID', { max: 120 });
+    // The record of consent: when, and to which version of the privacy notice.
+    await run(
+      deps.db,
+      'UPDATE candidates SET consent_at = ?, consent_version = ? WHERE id = ? AND consent_at IS NULL',
+      deps.now(),
+      PRIVACY_NOTICE_VERSION,
+      ctx.candidate.id,
+    );
     res.json(session(deps, ctx, await start(deps, ctx, idName)));
+  });
+
+  // The candidate's own copy of what they gave.
+  router.get('/:token/my-data', async (req, res) => {
+    const ctx = await load(req);
+    res.set('Content-Disposition', 'attachment; filename="proofwork-my-answers.json"');
+    res.set('Cache-Control', 'no-store');
+    res.json(await candidateOwnData(deps.db, ctx.candidate));
+  });
+
+  // Withdraw: the candidate deletes everything they gave, at any point.
+  router.post('/:token/erase', json, async (req, res) => {
+    const ctx = await load(req);
+    if (req.body.confirm !== true) throw badRequest('Please confirm you want to delete your answers');
+    await eraseCandidate(deps.db, deps.files, ctx.candidate, { kind: 'candidate', ip: clientIp(req) }, deps.now());
+    res.json({ ok: true });
   });
 
   router.post('/:token/next', json, async (req, res) => {

@@ -9,6 +9,7 @@ import { type DB, fromPgPool } from './db';
 import { localFileStore } from './files';
 import { SECURITY_HEADERS } from './security';
 import { localBackupStore } from './backup';
+import { deleteOldRecordings } from './privacy';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const isProduction = process.env.NODE_ENV === 'production';
@@ -44,6 +45,11 @@ const { router, reviews, generations } = createApi({
 app.use('/api', router);
 await reviews.resume();
 await generations.resume();
+// Recordings past each workspace's retention period are deleted now and every six hours.
+const sweepRecordings = () =>
+  deleteOldRecordings(db, files, Date.now()).catch((error) => console.error('Recording clean-up failed', error));
+await sweepRecordings();
+setInterval(sweepRecordings, 6 * 60 * 60 * 1000).unref();
 
 if (isProduction) {
   const webDir = path.join(root, 'dist', 'web');

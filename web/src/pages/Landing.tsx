@@ -1,8 +1,8 @@
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../auth';
 import { Icon, type IconName } from '../components/Icon';
-import { useLeaveDemo } from '../demo/DemoBanner';
+import { SiteFooter, StartFree, useLandingBody } from '../components/Site';
 import { useDemo } from '../demo/mode';
 
 // The example candidate shown in the hero and in step 3.
@@ -124,11 +124,7 @@ export function Landing() {
   const demo = useDemo();
   const signedIn = Boolean(user) && !demo;
 
-  // The landing page is paper-white edge to edge, unlike the app's tinted background.
-  useEffect(() => {
-    document.body.classList.add('is-landing');
-    return () => document.body.classList.remove('is-landing');
-  }, []);
+  useLandingBody();
 
   return (
     <div className="lp">
@@ -329,42 +325,8 @@ export function Landing() {
         </section>
       </main>
 
-      <footer className="lp-wrap lp-footer">
-        <span className="lp-wordmark lp-wordmark-sm">Proofwork</span>
-        <nav className="lp-footer-links" aria-label="Footer">
-          <Link to="/demo/recruiter">Recruiter demo</Link>
-          <Link to="/demo/candidate">Candidate walkthrough</Link>
-          <Link to="/login">Log in</Link>
-          <Link to="/signup">Start free</Link>
-        </nav>
-        <span className="lp-footer-note">Practical skills, verified by people. AI reviews; your team decides.</span>
-      </footer>
+      <SiteFooter />
     </div>
-  );
-}
-
-/** Start free. In the demo, it leaves the demo first so the sign-up page opens. */
-function StartFree({ size, invert = false }: { size: 'sm' | 'lg'; invert?: boolean }) {
-  const demo = useDemo();
-  const leaveDemo = useLeaveDemo();
-  const className = `lp-btn lp-btn-${size} ${invert ? 'lp-btn-invert' : ''}`;
-  const content = (
-    <>
-      Start free
-      {size === 'lg' && <Icon name="arrow" size={22} />}
-    </>
-  );
-  if (demo) {
-    return (
-      <button type="button" className={className} onClick={() => void leaveDemo('/signup')}>
-        {content}
-      </button>
-    );
-  }
-  return (
-    <Link to="/signup" className={className}>
-      {content}
-    </Link>
   );
 }
 

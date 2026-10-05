@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import request from 'supertest';
@@ -17,6 +17,8 @@ import { openLocalDb } from '../server/localDb';
 import { codeAt, stepAt } from '../server/totp';
 import { readFileSync } from 'node:fs';
 import { CONTENT_SECURITY_POLICY } from '../server/security';
+import { deleteOldRecordings } from '../server/privacy';
+import { PRIVACY_NOTICE_VERSION } from '../shared/privacy';
 
 /**
  * PGlite by default. Set TEST_DATABASE_URL to run against a real Postgres
@@ -34,7 +36,7 @@ async function testDb(): Promise<DB> {
     `TRUNCATE orgs, users, sessions, candidate_accounts, candidate_sessions, assessments, candidates,
        responses, audio_parts, ai_reviews, transcripts, verifications, custom_families, candidate_stars,
        review_notes, score_overrides, ai_usage, upgrade_requests, candidate_extras, demo_leads,
-       login_challenges, auth_throttle, audit_log, error_events CASCADE`,
+       login_challenges, auth_throttle, audit_log, error_events, review_charges, data_deletions CASCADE`,
   );
   return sharedPg;
 }
@@ -305,7 +307,7 @@ describe('candidate flow', () => {
     const started = (
       await as(candidate.token)
         .post(`${c(candidate.token)}/start`)
-        .send({ idName: 'Asha Rao', consent: true })
+        .send({ idName: 'Asha Rao', consent: true, privacy: true })
         .expect(200)
     ).body as CandidateSession;
     expect(started.state).toMatchObject({ phase: 'ready', next: { index: 0, kind: 'warmup' } });
@@ -354,7 +356,7 @@ describe('candidate flow', () => {
     const { candidate } = await setup();
     await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     let session: CandidateSession | undefined;
     for (const [index, stageId] of ['warmup', 'first-read', 'budget-cut'].entries()) {
       session = (
@@ -383,7 +385,7 @@ describe('candidate flow', () => {
     const { candidate } = await setup();
     await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     for (const index of [0, 1]) {
       const s = (
         await as(candidate.token)
@@ -410,7 +412,7 @@ describe('candidate flow', () => {
     const { candidate, manager } = await setup();
     await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     const warmup = (
       await as(candidate.token)
         .post(`${c(candidate.token)}/next`)
@@ -439,7 +441,7 @@ describe('candidate flow', () => {
     const { candidate, manager } = await setup();
     await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     const warmup = (
       await as(candidate.token)
         .post(`${c(candidate.token)}/next`)
@@ -464,7 +466,7 @@ describe('candidate flow', () => {
     await candidateAccount(body.candidate.token, 'ravi@example.com', 'Ravi');
     await as(body.candidate.token)
       .post(`${c(body.candidate.token)}/start`)
-      .send({ idName: 'Ravi', consent: true });
+      .send({ idName: 'Ravi', consent: true, privacy: true });
     const s = (
       await as(body.candidate.token)
         .post(`${c(body.candidate.token)}/next`)
@@ -478,7 +480,7 @@ describe('candidate flow', () => {
     const { candidate, manager } = await setup();
     await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     await as(candidate.token)
       .post(`${c(candidate.token)}/next`)
       .send({ index: 0 });
@@ -512,7 +514,7 @@ describe('candidate flow', () => {
     const { candidate, manager, assessmentId } = await setup();
     await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     const final = await completeAll(candidate.token);
     expect(final.state.phase).toBe('done');
     const detail = (await manager.get(`/api/assessments/${assessmentId}`)).body;
@@ -529,7 +531,7 @@ describe('think-aloud', () => {
     const token = ctx.candidate.token;
     await as(token)
       .post(`${c(token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     const warmup = (
       await as(token)
         .post(`${c(token)}/next`)
@@ -666,7 +668,7 @@ describe('candidate accounts', () => {
     expect(intro.assessment.uniqueNumbers).toBe(true);
     await link
       .post(`${c(token)}/start`)
-      .send({ idName: 'Ravi Kumar', consent: true })
+      .send({ idName: 'Ravi Kumar', consent: true, privacy: true })
       .expect(200);
     // A fresh browser with the same link picks up where they left off.
     const resumed = (await request(app).get(c(token)).expect(200)).body as CandidateSession;
@@ -761,7 +763,7 @@ describe('drop-off analytics', () => {
     await candidateAccount(ravi, 'ravi@example.com', 'Ravi');
     await as(ravi)
       .post(`${c(ravi)}/start`)
-      .send({ idName: 'Ravi', consent: true });
+      .send({ idName: 'Ravi', consent: true, privacy: true });
     const w = (
       await as(ravi)
         .post(`${c(ravi)}/next`)
@@ -778,7 +780,7 @@ describe('drop-off analytics', () => {
     // Asha finishes everything.
     await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     await completeAll(candidate.token);
 
     // Two days pass: Ravi's open question times out and he counts as stalled there.
@@ -836,7 +838,7 @@ describe('activity selection', () => {
     const session = (
       await as(token)
         .post(`${c(token)}/start`)
-        .send({ idName: 'Asha', consent: true })
+        .send({ idName: 'Asha', consent: true, privacy: true })
         .expect(200)
     ).body as CandidateSession;
     expect(session.assessment.outline.map((o) => o.kind)).toEqual(['decision', 'branch', 'critique']);
@@ -856,7 +858,7 @@ describe('AI review', () => {
     const ctx = await setup();
     await as(ctx.candidate.token)
       .post(`${c(ctx.candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     await completeAll(ctx.candidate.token, choices);
     return ctx;
   }
@@ -866,7 +868,7 @@ describe('AI review', () => {
     const token = ctx.candidate.token;
     await as(token)
       .post(`${c(token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     await as(token)
       .post(`${c(token)}/next`)
       .send({ index: 0 });
@@ -926,7 +928,7 @@ describe('AI review', () => {
     const token = ctx.candidate.token;
     await as(token)
       .post(`${c(token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     await as(token)
       .post(`${c(token)}/next`)
       .send({ index: 0 });
@@ -1060,7 +1062,7 @@ describe('verification', () => {
     const { candidate, manager } = await setup();
     await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     await completeAll(candidate.token, { 'budget-cut': 'search' });
 
     const report = (await manager.get(`/api/candidates/${candidate.id}`)).body;
@@ -1147,7 +1149,7 @@ describe('AI-generated scenarios', () => {
     await candidateAccount(token, 'ravi@example.com', 'Ravi');
     await as(token)
       .post(`${c(token)}/start`)
-      .send({ idName: 'Ravi', consent: true })
+      .send({ idName: 'Ravi', consent: true, privacy: true })
       .expect(200);
     const done = await completeAll(token);
     expect(done.state.phase).toBe('done');
@@ -1229,7 +1231,7 @@ describe('review page collaboration', () => {
     const ctx = await setup();
     await as(ctx.candidate.token)
       .post(`${c(ctx.candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true });
+      .send({ idName: 'Asha Rao', consent: true, privacy: true });
     await completeAll(ctx.candidate.token);
     await reviews.idle();
     ai.score = 2;
@@ -1242,7 +1244,7 @@ describe('review page collaboration', () => {
     await candidateAccount(second.token, 'vikram@example.com', 'Vikram Shah');
     await as(second.token)
       .post(`${c(second.token)}/start`)
-      .send({ idName: 'Vikram Shah', consent: true });
+      .send({ idName: 'Vikram Shah', consent: true, privacy: true });
     await completeAll(second.token);
     await reviews.idle();
     return { ...ctx, second };
@@ -1330,7 +1332,7 @@ describe('plans, costs and AI extras', () => {
   const begin = (token: string) =>
     as(token)
       .post(`${c(token)}/start`)
-      .send({ idName: 'Test Person', consent: true })
+      .send({ idName: 'Test Person', consent: true, privacy: true })
       .expect(200);
   /** An assessment with `count` candidates who all finished. */
   async function finishedPool(count: number, manager?: ReturnType<typeof request.agent>, prefix = 'p') {
@@ -1693,7 +1695,7 @@ describe('sign-in security', () => {
     const { manager, candidate } = await setup();
     await as(candidate.token)
       .post(`${c(candidate.token)}/start`)
-      .send({ idName: 'Asha Rao', consent: true })
+      .send({ idName: 'Asha Rao', consent: true, privacy: true })
       .expect(200);
     await completeAll(candidate.token);
     await manager.put(`/api/candidates/${candidate.id}/decision`).send({ decision: 'advance' }).expect(200);
@@ -1801,5 +1803,167 @@ describe('admin console', () => {
     const { body: all } = await ops.get('/api/admin/activity').expect(200);
     expect(all.events.length).toBeGreaterThan(3);
     await ops.put('/api/admin/workspaces/not-a-workspace/plan').send({ plan: 'starter' }).expect(404);
+  });
+});
+
+describe('privacy and deletion', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const start = (token: string) =>
+    as(token)
+      .post(`${c(token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true, privacy: true })
+      .expect(200);
+  const hasFiles = (candidateId: string) => existsSync(path.join(uploadDir, candidateId));
+  const count = async (sql: string, id: string) => (await db.query<{ n: number }>(sql, [id])).rows[0].n;
+
+  /** A candidate who recorded a voice note and finished, with the AI review done. */
+  async function finished() {
+    const ctx = await setup();
+    const { token } = ctx.candidate;
+    await start(token);
+    await as(token)
+      .post(`${c(token)}/next`)
+      .send({ index: 0 })
+      .expect(200);
+    await as(token)
+      .post(`${c(token)}/stages/warmup/audio?seconds=12`)
+      .set('Content-Type', 'audio/webm')
+      .send(Buffer.from('fake-audio-bytes'))
+      .expect(200);
+    await as(token)
+      .post(`${c(token)}/stages/warmup/submit`)
+      .send({})
+      .expect(200);
+    await completeAll(token);
+    await reviews.idle();
+    return ctx;
+  }
+
+  it('asks for consent to processing and records which notice was agreed to', async () => {
+    const { candidate } = await setup();
+    const { token } = candidate;
+    const intro = (await as(token).get(c(token)).expect(200)).body as CandidateSession;
+    expect(intro.assessment.recordingDays).toBe(180);
+    await as(token)
+      .post(`${c(token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true })
+      .expect(400);
+    await start(token);
+    const { rows } = await db.query<{ consent_at: number; consent_version: string }>(
+      'SELECT consent_at, consent_version FROM candidates WHERE id = $1',
+      [candidate.id],
+    );
+    expect(rows[0]).toMatchObject({ consent_at: clock, consent_version: PRIVACY_NOTICE_VERSION });
+  });
+
+  it('gives candidates a copy of what they gave, without the hiring team’s review', async () => {
+    const { candidate } = await finished();
+    const res = await as(candidate.token)
+      .get(`${c(candidate.token)}/my-data`)
+      .expect(200);
+    expect(res.headers['content-disposition']).toContain('attachment');
+    expect(res.body.you).toMatchObject({
+      name: 'Asha Rao',
+      email: 'asha@example.com',
+      consent: { privacyNotice: PRIVACY_NOTICE_VERSION },
+    });
+    expect(res.body.answers.length).toBeGreaterThan(2);
+    expect(res.body.answers[0].recordingSeconds).toBe(12);
+    expect(res.body).not.toHaveProperty('aiReview');
+    // The link is tied to her account: nobody else can download it.
+    await request(app)
+      .get(`${c(candidate.token)}/my-data`)
+      .expect(403);
+  });
+
+  it('lets a candidate withdraw: everything goes, the old link says so, and the review stays counted', async () => {
+    const { manager, candidate } = await finished();
+    const { token, id } = candidate;
+    const used = (await manager.get('/api/plan').expect(200)).body.used;
+    expect(used).toBe(1);
+    expect(hasFiles(id)).toBe(true);
+
+    await as(token)
+      .post(`${c(token)}/erase`)
+      .send({})
+      .expect(400);
+    await as(token)
+      .post(`${c(token)}/erase`)
+      .send({ confirm: true })
+      .expect(200);
+
+    expect(hasFiles(id)).toBe(false);
+    for (const table of ['candidates WHERE id', 'responses WHERE candidate_id', 'ai_reviews WHERE candidate_id']) {
+      expect(await count(`SELECT COUNT(*)::int AS n FROM ${table} = $1`, id)).toBe(0);
+    }
+    const gone = await as(token).get(c(token)).expect(410);
+    expect(gone.body.error).toMatch(/withdrew and deleted your answers/);
+    await manager.get(`/api/candidates/${id}`).expect(404);
+    // Deleting data never hands a free review back.
+    expect((await manager.get('/api/plan').expect(200)).body.used).toBe(used);
+
+    const { body: activity } = await manager.get('/api/audit').expect(200);
+    expect(JSON.stringify(activity)).not.toContain('Asha Rao');
+    expect(activity.events[0]).toMatchObject({ actor: 'A candidate', action: 'withdrew and deleted their data from' });
+    const { body: privacy } = await manager.get('/api/privacy').expect(200);
+    expect(privacy).toMatchObject({ recordingDays: 180, deletionsLastYear: 1, withdrawnLastYear: 1 });
+  });
+
+  it('lets the hiring team export or delete a candidate, only in their own workspace', async () => {
+    const { manager, candidate } = await finished();
+    const other = await signup('Other Co', 'lee@other.test');
+    await other.get(`/api/candidates/${candidate.id}/export`).expect(404);
+    await other.delete(`/api/candidates/${candidate.id}`).expect(404);
+
+    const { body: exported } = await manager.get(`/api/candidates/${candidate.id}/export`).expect(200);
+    expect(exported.candidate).toMatchObject({ name: 'Asha Rao', email: 'asha@example.com' });
+    expect(exported.aiReview).toMatchObject({ status: 'done' });
+    expect(exported.answers.length).toBeGreaterThan(2);
+
+    await manager.delete(`/api/candidates/${candidate.id}`).expect(200);
+    expect(hasFiles(candidate.id)).toBe(false);
+    const gone = await as(candidate.token).get(c(candidate.token)).expect(410);
+    expect(gone.body.error).toMatch(/hiring team deleted/);
+    const { body: activity } = await manager.get('/api/audit').expect(200);
+    expect(activity.events[0]).toMatchObject({ actor: 'maya@acme.test', action: 'deleted a candidate’s data from' });
+  });
+
+  it('deletes recordings after the workspace’s retention period and keeps the answers', async () => {
+    const { manager, candidate } = await finished();
+    await manager.put('/api/privacy').send({ recordingDays: 45 }).expect(400);
+    await manager.put('/api/privacy').send({ recordingDays: 365 }).expect(200);
+    const files = localFileStore(uploadDir);
+
+    clock += 200 * DAY;
+    expect(await deleteOldRecordings(db, files, clock)).toBe(0);
+    expect(hasFiles(candidate.id)).toBe(true);
+
+    // Two hundred days on, the session has expired.
+    await manager.post('/api/auth/login').send({ email: 'maya@acme.test', password: 'correct-horse' }).expect(200);
+    await manager.put('/api/privacy').send({ recordingDays: 180 }).expect(200);
+    expect(await deleteOldRecordings(db, files, clock)).toBe(1);
+    expect(await deleteOldRecordings(db, files, clock)).toBe(0);
+    expect(hasFiles(candidate.id)).toBe(false);
+
+    const { body: report } = await manager.get(`/api/candidates/${candidate.id}`).expect(200);
+    expect(report.candidate.recordingsDeletedAt).toBe(clock);
+    const warmup = report.stages.find((s: { id: string }) => s.id === 'warmup');
+    expect(warmup.response.audio).toEqual([]);
+    expect(report.aiReview.status).toBe('done');
+    await manager.get(`/api/candidates/${candidate.id}/audio/warmup`).expect(404);
+    expect((await manager.get('/api/privacy').expect(200)).body.recordingsDeleted).toBe(1);
+  });
+
+  it('lets candidates delete their account; their invitation link then works without it', async () => {
+    const { candidate } = await setup();
+    const agent = as(candidate.token);
+    await agent.post('/api/candidate/auth/delete-account').send({ password: 'wrong-password' }).expect(400);
+    await start(candidate.token);
+    await agent.post('/api/candidate/auth/delete-account').send({ password: 'candidate-pass' }).expect(200);
+    expect((await agent.get('/api/candidate/auth/me').expect(200)).body.candidate).toBeNull();
+    expect(await count('SELECT COUNT(*)::int AS n FROM candidate_accounts WHERE email = $1', 'asha@example.com')).toBe(
+      0,
+    );
+    await request(app).get(c(candidate.token)).expect(200);
   });
 });

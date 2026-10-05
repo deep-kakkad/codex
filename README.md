@@ -36,6 +36,14 @@ Visitors can try the product without an account. `/demo/recruiter` is a guided t
 - Unexpected server errors and browser crashes are recorded in the `error_events` table.
 - A scheduled function backs up the database to Netlify Blobs every night and keeps 14 days. `npm run admin -- backup <file>` takes a copy on demand; `npm run admin -- restore <file>` loads one into an empty, migrated database (for example a new Neon branch).
 
+## Privacy and candidates' data
+
+- Before starting, candidates agree to a plain-language privacy notice (`/privacy`); the time and the notice version are stored with them. Starting without that consent is refused.
+- From their invite link, candidates can download what they gave (their answers and transcripts) or withdraw and delete everything, at any time. Their link then says the data was deleted. Candidates with an account can delete it from their dashboard.
+- On a candidate's page, managers can download everything held about them (JSON, for access requests) or delete them. Deleting removes the answers, recordings, transcripts, AI review, notes, scores and extras; activity log entries that named them are anonymised; only an anonymous record of the deletion remains. Reviews are counted in a separate ledger (`review_charges`), so deleting candidates never gives free reviews back.
+- Recordings are deleted after each workspace's retention period (Settings: 30, 90, 180 or 365 days; 180 by default), counted from when the candidate finished. A scheduled function (`privacy-sweep`) does this nightly; the local server does it at start and every six hours. Answers, transcripts and reviews stay.
+- `/trust` lists security practices and sub-processors (from `shared/privacy.ts`, which must be kept in step with the code), and `/dpa` is a data processing agreement template. Both, and the privacy notice, are drafts that a lawyer should review; the contact address `PRIVACY_EMAIL` in `shared/privacy.ts` is a placeholder.
+
 ## Plans, referrals and the admin console
 
 - Payments aren't connected yet. A recruiter chooses a plan on the Plan page (Starter and Growth can be billed monthly or yearly, where a year costs ten months), which sends a request; someone at Proofwork sets the plan in the admin console (or with `npm run admin -- plan <email> <plan> [--annual]`).
@@ -167,7 +175,6 @@ Create `shared/roleFamilies/<name>.ts` exporting a `RoleFamily`, then register i
 - No email delivery: recruiters send the candidate link themselves. Links don't expire yet.
 - No password reset or single sign-on.
 - The local server runs AI reviews in-process; on Netlify they run in background functions. There is no dead-letter alerting yet: failed reviews show in the recruiter's view with a re-run button.
-- No data-retention or deletion tooling for candidate data and recordings yet.
 - AI review quality should be checked against expert human scores on a sample of real candidates before relying on it, and AI-assisted hiring is regulated in some places (for example NYC Local Law 144 and the EU AI Act). Candidates are told that AI reviews their answers and people decide.
 - AI-written scenarios are not varied per candidate and can't be edited yet; a recruiter can only preview, use or delete them. Their quality depends on the model and has not been checked against practitioner-written ones.
 - Integrity signals are client-reported and can be spoofed. By design they are only hints for the call.

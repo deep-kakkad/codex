@@ -608,6 +608,7 @@ input[type='checkbox'] {
   accent-color: var(--accent);
 }
 .checkbox input {
+  flex: none;
   margin-top: 0.3rem;
   width: 1rem;
   height: 1rem;
@@ -8403,5 +8404,467 @@ kbd {
   .admin-overview-grid,
   .admin-manage {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Candidates' data ---------------------------------------------------------------- */
+
+.your-data {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+.your-data h2 {
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+}
+.your-data > p {
+  margin: 0 0 0.85rem;
+}
+.your-data-confirm {
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 6%, var(--surface));
+}
+.your-data-confirm p {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+.done-mark.is-deleted {
+  display: inline-grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--good-soft);
+  color: var(--good);
+}
+.candidate-footer a {
+  color: inherit;
+}
+.candidate-item-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.rv-data {
+  margin-top: 1.25rem;
+  padding: 16px 20px;
+}
+.rv-data-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+}
+.rv-data .section-title {
+  margin: 0 0 4px;
+}
+.rv-data p {
+  margin: 0;
+  max-width: 70ch;
+}
+.rv-data .your-data-confirm {
+  margin-top: 12px;
+}
+.rec-deleted {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.privacy-row p {
+  margin: 2px 0 0;
+}
+.privacy-row .segmented {
+  margin: 0;
+}
+.privacy-saved {
+  margin: 8px 0 0;
+  color: var(--good);
+  font-weight: 600;
+}
+.privacy-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 12px;
+}
+.privacy-stats > div {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.privacy-stats dt {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+.privacy-stats dd {
+  margin: 2px 0 0;
+  font-size: 1.2rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.privacy-links {
+  margin: 0;
+}
+@media (max-width: 700px) {
+  .privacy-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Public documents: trust, privacy notice, DPA -------------------------------------------- *
+ * Same paper and ink as the landing page, set for reading. */
+
+.doc-hero {
+  padding-block: 56px 8px;
+  max-width: 1240px;
+}
+.doc-eyebrow {
+  display: block;
+  margin-bottom: 16px;
+  color: var(--lp-faint);
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.doc-title {
+  max-width: 17ch;
+  margin: 0;
+  color: var(--lp-ink);
+  font-size: clamp(2.4rem, 1.2rem + 3.6vw, 4.4rem);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+.doc-lead {
+  max-width: 62ch;
+  margin-top: 22px;
+  color: var(--lp-muted);
+  font-size: 1.15rem;
+  line-height: 1.55;
+}
+.doc-lead p {
+  margin: 0;
+}
+.doc-print {
+  margin-top: 22px;
+}
+.doc-section {
+  margin-top: 64px;
+}
+.doc-section::before {
+  content: '';
+  display: block;
+  margin-bottom: 32px;
+  border-top: 1px solid var(--lp-rule);
+}
+.doc-h2 {
+  margin: 0 0 18px;
+  color: var(--lp-ink);
+  font-size: clamp(1.7rem, 1.1rem + 1.6vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+}
+.doc-intro {
+  max-width: 62ch;
+  margin: 0 0 22px;
+  color: var(--lp-muted);
+}
+.doc-section h3 {
+  margin: 0 0 8px;
+  color: var(--lp-ink);
+  font-size: 1.08rem;
+  letter-spacing: -0.01em;
+}
+.doc-section p {
+  margin: 0;
+  color: var(--lp-muted);
+}
+.doc-section a,
+.doc a {
+  color: var(--lp-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.doc-two,
+.doc-three {
+  display: grid;
+  gap: 28px 44px;
+}
+.doc-two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.doc-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.trust-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 40px;
+}
+.trust-card {
+  padding: 26px 28px 24px;
+  border: 1px solid var(--lp-card-line);
+  border-radius: 14px;
+  background: var(--lp-paper);
+}
+.trust-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--lp-fill);
+  color: var(--lp-ink);
+}
+.trust-card h2 {
+  margin: 16px 0 12px;
+  color: var(--lp-ink);
+  font-size: 1.3rem;
+  font-weight: 750;
+  letter-spacing: -0.03em;
+}
+.trust-card ul {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.trust-card li {
+  position: relative;
+  padding-left: 18px;
+  color: var(--lp-muted);
+  font-size: 0.97rem;
+  line-height: 1.5;
+}
+.trust-card li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--lp-ink);
+}
+.doc-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--lp-card-line);
+  border-radius: 12px;
+}
+.doc-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+.doc-table th,
+.doc-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--lp-line);
+  text-align: left;
+  vertical-align: top;
+}
+.doc-table th {
+  background: var(--lp-fill);
+  color: var(--lp-faint);
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.doc-table td {
+  color: var(--lp-muted);
+}
+.doc-table td strong {
+  color: var(--lp-ink);
+}
+.doc-table tr:last-child td {
+  border-bottom: 0;
+}
+.doc-contact {
+  margin-bottom: 40px;
+}
+.doc {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 720px);
+  gap: 0 64px;
+  margin-top: 48px;
+  padding-bottom: 56px;
+}
+.doc > * {
+  grid-column: 2;
+}
+.doc-toc {
+  grid-column: 1;
+  grid-row: 1 / span 20;
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  display: grid;
+  gap: 10px;
+  padding-top: 6px;
+}
+.doc .doc-toc a {
+  color: var(--lp-muted);
+  font-size: 0.93rem;
+  text-decoration: none;
+}
+.doc .doc-toc a:hover {
+  color: var(--lp-ink);
+  text-decoration: underline;
+}
+.doc section {
+  padding-block: 8px 28px;
+  scroll-margin-top: 24px;
+}
+.doc section + section {
+  padding-top: 28px;
+  border-top: 1px solid var(--lp-line);
+}
+.doc h2 {
+  margin: 0 0 14px;
+  color: var(--lp-ink);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+}
+.doc h3 {
+  margin: 22px 0 6px;
+  color: var(--lp-ink);
+  font-size: 1.05rem;
+}
+.doc p,
+.doc li,
+.doc dd {
+  color: var(--lp-muted);
+  font-size: 1.02rem;
+  line-height: 1.65;
+}
+.doc p {
+  margin: 0 0 12px;
+}
+.doc ul {
+  display: grid;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+.doc strong,
+.doc em {
+  color: var(--lp-text);
+}
+.doc-small {
+  font-size: 0.92rem !important;
+}
+.doc-legal {
+  grid-template-columns: minmax(0, 760px);
+}
+.doc-legal > * {
+  grid-column: 1;
+}
+.doc-legal h2 {
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+.doc-blank {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--lp-fill);
+  color: var(--lp-ink);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.doc-dl {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: 10px 20px;
+  margin: 0;
+}
+.doc-dl dt {
+  color: var(--lp-ink);
+  font-weight: 650;
+}
+.doc-dl dd {
+  margin: 0;
+}
+.doc-sign {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 28px;
+}
+.doc-sign > div {
+  display: grid;
+  gap: 48px;
+  padding: 18px 20px;
+  border: 1px solid var(--lp-card-line);
+  border-radius: 12px;
+}
+.doc-sign span {
+  padding-top: 8px;
+  border-top: 1px solid var(--lp-divider);
+  color: var(--lp-faint);
+  font-size: 0.85rem;
+}
+@media (max-width: 1100px) {
+  .doc-three {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .doc-hero {
+    padding-block: 36px 0;
+  }
+  .trust-grid,
+  .doc-two,
+  .doc-sign {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .doc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .doc > *,
+  .doc-toc {
+    grid-column: 1;
+  }
+  .doc-toc {
+    position: static;
+    grid-row: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-bottom: 20px;
+  }
+  .doc-dl {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .doc-dl dd {
+    margin-bottom: 10px;
+  }
+}
+@media print {
+  .lp-nav,
+  .lp-footer,
+  .doc-print,
+  .doc-toc {
+    display: none !important;
+  }
+  .doc,
+  .doc-legal {
+    display: block;
+    margin-top: 16px;
+  }
+  .doc-hero {
+    padding-top: 0;
   }
 }

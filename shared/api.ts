@@ -273,6 +273,9 @@ export interface CandidateReport {
     startedAt: number | null;
     submittedAt: number | null;
     decision: Decision | null;
+    /** When the recordings were deleted at the end of the workspace's retention period. */
+    recordingsDeletedAt: number | null;
+    recordingDays: number;
   };
   assessment: { id: string; title: string; currency: Currency };
   family: { id: string; name: string; generated: boolean };
@@ -442,6 +445,18 @@ export interface AuditEvent {
   target: string | null;
   detail: string | null;
   createdAt: number;
+}
+
+/** A workspace's privacy settings and what has been deleted. */
+export interface PrivacySettings {
+  /** Candidates' recordings are deleted this many days after they finish. */
+  recordingDays: number;
+  /** Candidates whose data was deleted in the last year, by the team or at their request. */
+  deletionsLastYear: number;
+  /** Of those, candidates who withdrew and deleted it themselves. */
+  withdrawnLastYear: number;
+  /** Candidates whose recordings were deleted at the end of the retention period. */
+  recordingsDeleted: number;
 }
 
 // Admin console (people who run Proofwork) ------------------------------------------

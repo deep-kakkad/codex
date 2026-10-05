@@ -13,6 +13,7 @@ import { TourOverlay } from './demo/TourOverlay';
 import { ComparePage } from './pages/ComparePage';
 import { Dashboard } from './pages/Dashboard';
 import { Landing } from './pages/Landing';
+import { DpaPage, PrivacyPage, TrustPage } from './pages/Legal';
 import { NewAssessment } from './pages/NewAssessment';
 import { NotFound } from './pages/NotFound';
 import { PlanPage } from './pages/PlanPage';
@@ -49,6 +50,9 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/signup" element={<AuthPage mode="signup" />} />
           <Route path="/c/:token" element={<TakeAssessmentRoute />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/trust" element={<TrustPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/dpa" element={<DpaPage />} />
           <Route
             path="/candidate"
             element={

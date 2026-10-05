@@ -1,5 +1,7 @@
 import { type FormEvent, useState } from 'react';
-import type { AccountSecurity, AuditEvent } from '../../../shared/api';
+import { Link } from 'react-router-dom';
+import type { AccountSecurity, AuditEvent, PrivacySettings } from '../../../shared/api';
+import { RECORDING_DAY_OPTIONS } from '../../../shared/privacy';
 import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Icon } from '../components/Icon';
@@ -18,6 +20,7 @@ export function SettingsPage() {
       </div>
       <TwoFactor />
       <OtherDevices />
+      <DataPrivacy manager={user?.role === 'manager'} />
       {user?.role === 'manager' && <Activity />}
     </>
   );
@@ -285,6 +288,94 @@ function OtherDevices() {
   );
 }
 
+// Data and privacy ---------------------------------------------------------------------------
+
+function DataPrivacy({ manager }: { manager: boolean }) {
+  const { data, setData, error } = useApi<PrivacySettings>('/api/privacy');
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  async function choose(days: number) {
+    setBusy(true);
+    setSaveError(null);
+    setSaved(false);
+    try {
+      setData(await api.put<PrivacySettings>('/api/privacy', { recordingDays: days }));
+      setSaved(true);
+    } catch (e) {
+      setSaveError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="card settings-card">
+      <div className="settings-head">
+        <span className="settings-icon" aria-hidden="true">
+          <Icon name="lock" size={18} />
+        </span>
+        <div>
+          <h2 className="section-title">Data and privacy</h2>
+          <p className="muted small">
+            Candidates agree to how their answers are used before they start, and can download or delete them from their
+            link at any time. You can do the same from a candidate’s page.
+          </p>
+        </div>
+      </div>
+      <ErrorNote error={error} />
+      {data && (
+        <>
+          <div className="settings-row privacy-row">
+            <div>
+              <strong className="small">Keep candidates’ recordings for</strong>
+              <p className="small muted">
+                Then the audio is deleted; answers, transcripts and reviews stay until you delete the candidate.
+              </p>
+            </div>
+            <div className="segmented" role="radiogroup" aria-label="Keep recordings for">
+              {RECORDING_DAY_OPTIONS.map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  role="radio"
+                  aria-checked={data.recordingDays === days}
+                  className={data.recordingDays === days ? 'active' : ''}
+                  disabled={!manager || busy}
+                  onClick={() => void choose(days)}
+                >
+                  {days === 365 ? '1 year' : `${days} days`}
+                </button>
+              ))}
+            </div>
+          </div>
+          {saved && <p className="small privacy-saved">Saved. The next clean-up runs tonight.</p>}
+          <ErrorNote error={saveError} />
+          <dl className="privacy-stats">
+            <div>
+              <dt>Candidates deleted in the last year</dt>
+              <dd>{data.deletionsLastYear}</dd>
+            </div>
+            <div>
+              <dt>Of them, withdrawn by the candidate</dt>
+              <dd>{data.withdrawnLastYear}</dd>
+            </div>
+            <div>
+              <dt>Candidates whose recordings were cleaned up</dt>
+              <dd>{data.recordingsDeleted}</dd>
+            </div>
+          </dl>
+          <p className="small muted privacy-links">
+            <Link to="/trust">Security and sub-processors</Link> · <Link to="/privacy">Privacy notice</Link> ·{' '}
+            <Link to="/dpa">Data processing agreement</Link>
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
 // Activity ---------------------------------------------------------------------------------
 
 function Activity() {
@@ -298,7 +389,7 @@ function Activity() {
         <div>
           <h2 className="section-title">Activity</h2>
           <p className="muted small">
-            Sign-ins, security changes, invitations, decisions and plan requests in your workspace.
+            Sign-ins, security changes, invitations, decisions, plan requests and deleted candidates in your workspace.
           </p>
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { DEFAULT_RECORDING_DAYS } from '../shared/privacy';
 import { type ReportCore, withExtras } from './extras';
 import type {
   AssessmentSummary,
@@ -158,8 +159,13 @@ export async function reportCore(db: DB, candidate: CandidateRow, viewerId: stri
   );
 
   const stages: ReportStage[] = [];
+  // Recordings deleted at the end of the retention period: nothing to play, but they were spoken.
+  const recordingsGone = candidate.recordings_deleted_at !== null;
+  const spoken = new Map<string, { sec: number | null }[]>();
   for (const [index, stage] of family.stages.entries()) {
     const response = byStage.get(stage.id);
+    const recordings = response ? await audioFor(db, candidate.id, stage.id, response) : [];
+    spoken.set(stage.id, recordings);
     const shown = response ? (JSON.parse(response.prompt_json) as CandidateStageView) : null;
     const signals = response ? parseSignals(response.signals_json) : null;
     stages.push({
@@ -191,7 +197,7 @@ export async function reportCore(db: DB, candidate: CandidateRow, viewerId: stri
             choiceLabel: stage.choices?.find((c) => c.id === response.choice_id)?.label ?? null,
             aiTranscript: response.ai_transcript,
             reflection: response.reflection,
-            audio: await audioFor(db, candidate.id, stage.id, response),
+            audio: recordingsGone ? [] : recordings,
             scratch: parseScratch(response.scratch_json),
             signals,
             signalNotes: response.closed_reason ? describeSignals(stage.kind, signals, answerChars(response)) : [],
@@ -206,7 +212,7 @@ export async function reportCore(db: DB, candidate: CandidateRow, viewerId: stri
   const scriptResponses: ResponseForScript[] = stages.flatMap((stage) => {
     const r = byStage.get(stage.id);
     if (!r || !stage.response) return [];
-    const audio = stage.response.audio;
+    const audio = spoken.get(stage.id) ?? [];
     return [
       {
         stageId: r.stage_id,
@@ -256,6 +262,10 @@ export async function reportCore(db: DB, candidate: CandidateRow, viewerId: stri
       startedAt: candidate.started_at,
       submittedAt: candidate.submitted_at,
       decision: candidate.decision as Decision | null,
+      recordingsDeletedAt: candidate.recordings_deleted_at,
+      recordingDays:
+        (await one<{ recording_days: number }>(db, 'SELECT recording_days FROM orgs WHERE id = ?', candidate.org_id))
+          ?.recording_days ?? DEFAULT_RECORDING_DAYS,
     },
     assessment: { id: assessment.id, title: assessment.title, currency: assessment.currency },
     family: { id: family.id, name: family.name, generated: Boolean(family.generated) },

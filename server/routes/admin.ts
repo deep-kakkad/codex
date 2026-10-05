@@ -48,16 +48,15 @@ export function adminRoutes({ db, now, backups }: AppDeps) {
     const t = now();
     const month = startOfMonth(t);
     const count = async (sql: string, ...params: unknown[]) => (await one<{ n: number }>(db, sql, ...params))?.n ?? 0;
-    const reviews = await all<{ covered_by: string | null; n: number }>(
+    const reviews = await all<{ covered_by: string; n: number }>(
       db,
-      `SELECT ar.covered_by, COUNT(*)::int AS n FROM ai_reviews ar
-         JOIN candidates c ON c.id = ar.candidate_id JOIN orgs o ON o.id = c.org_id
-        WHERE ar.status <> 'locked' AND ar.created_at >= ? AND ${CUSTOMER}
-        GROUP BY ar.covered_by`,
+      `SELECT rc.covered_by, COUNT(*)::int AS n FROM review_charges rc JOIN orgs o ON o.id = rc.org_id
+        WHERE rc.created_at >= ? AND ${CUSTOMER}
+        GROUP BY rc.covered_by`,
       month,
     );
     const reviewsThisMonth = { plan: 0, bonus: 0, credit: 0, extra: 0 };
-    for (const r of reviews) reviewsThisMonth[(r.covered_by ?? 'plan') as keyof typeof reviewsThisMonth] += r.n;
+    for (const r of reviews) reviewsThisMonth[r.covered_by as keyof typeof reviewsThisMonth] += r.n;
     const paid = await all<{ plan: PlanId; billing_cycle: BillingCycle }>(
       db,
       `SELECT plan, billing_cycle FROM orgs o WHERE plan IN ('starter', 'growth') AND ${CUSTOMER}`,
@@ -147,10 +146,9 @@ export function adminRoutes({ db, now, backups }: AppDeps) {
               (SELECT COUNT(*)::int FROM users u WHERE u.org_id = o.id) AS seats,
               (SELECT COUNT(*)::int FROM assessments a WHERE a.org_id = o.id) AS assessments,
               (SELECT COUNT(*)::int FROM candidates c WHERE c.org_id = o.id) AS candidates,
-              (SELECT COUNT(*)::int FROM ai_reviews ar JOIN candidates c ON c.id = ar.candidate_id
-                WHERE c.org_id = o.id AND ar.status <> 'locked' AND ar.created_at >= ?) AS reviews_month,
-              (SELECT COUNT(*)::int FROM ai_reviews ar JOIN candidates c ON c.id = ar.candidate_id
-                WHERE c.org_id = o.id AND ar.covered_by = 'extra' AND ar.created_at >= ?) AS extras_month,
+              (SELECT COUNT(*)::int FROM review_charges rc WHERE rc.org_id = o.id AND rc.created_at >= ?) AS reviews_month,
+              (SELECT COUNT(*)::int FROM review_charges rc
+                WHERE rc.org_id = o.id AND rc.covered_by = 'extra' AND rc.created_at >= ?) AS extras_month,
               (SELECT COUNT(*)::int FROM ai_reviews ar JOIN candidates c ON c.id = ar.candidate_id
                 WHERE c.org_id = o.id AND ar.status = 'locked') AS locked,
               (SELECT COALESCE(SUM(x.cost_usd), 0) FROM ai_usage x WHERE x.org_id = o.id AND x.created_at >= ?) AS ai_cost_month,

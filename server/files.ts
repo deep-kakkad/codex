@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 /**
@@ -9,6 +9,8 @@ import path from 'node:path';
 export interface FileStore {
   put(key: string, data: Buffer): Promise<void>;
   get(key: string): Promise<Buffer | null>;
+  /** Deletes every file under `<folder>/`, e.g. all of one candidate's recordings. */
+  removeFolder(folder: string): Promise<void>;
 }
 
 function safeKey(key: string) {
@@ -30,6 +32,9 @@ export function localFileStore(dir: string): FileStore {
         return null;
       }
     },
+    async removeFolder(folder) {
+      rmSync(path.join(dir, safeKey(folder)), { recursive: true, force: true });
+    },
   };
 }
 
@@ -50,6 +55,11 @@ export function netlifyBlobStore(name = 'recordings', site?: { siteID: string; t
     async get(key) {
       const value = await (await store()).get(safeKey(key), { type: 'arrayBuffer' });
       return value ? Buffer.from(value) : null;
+    },
+    async removeFolder(folder) {
+      const blobs = await store();
+      const { blobs: found } = await blobs.list({ prefix: `${safeKey(folder)}/` });
+      for (const blob of found) await blobs.delete(blob.key);
     },
   };
 }

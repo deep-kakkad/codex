@@ -81,7 +81,11 @@ describe('static demo API', () => {
     restartCandidateDemo();
     let session = (await handle('GET', '/api/c/demo')) as CandidateSession;
     expect(session.state.phase).toBe('intro');
-    session = (await handle('POST', '/api/c/demo/start', { idName: 'Riya Sharma', consent: true })) as CandidateSession;
+    session = (await handle('POST', '/api/c/demo/start', {
+      idName: 'Riya Sharma',
+      consent: true,
+      privacy: true,
+    })) as CandidateSession;
     for (let i = 0; session.state.phase === 'ready'; i++) {
       session = (await handle('POST', '/api/c/demo/next', { index: i })) as CandidateSession;
       if (session.state.phase !== 'stage') throw new Error(`expected a stage, got ${session.state.phase}`);

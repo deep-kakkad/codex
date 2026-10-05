@@ -116,6 +116,9 @@ export interface CandidateRow {
   started_at: number | null;
   submitted_at: number | null;
   account_id: string | null;
+  consent_at: number | null;
+  consent_version: string | null;
+  recordings_deleted_at: number | null;
 }
 
 export interface ResponseRow {
