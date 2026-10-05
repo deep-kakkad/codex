@@ -86,6 +86,7 @@ export const ROBOTS = (sitemapUrl: string) =>
     'Disallow: /apply/',
     'Disallow: /candidate',
     'Disallow: /demo',
+    'Disallow: /preview',
     'Allow: /',
     '',
     `Sitemap: ${sitemapUrl}`,

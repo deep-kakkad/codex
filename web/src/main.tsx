@@ -16,6 +16,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Landing } from './pages/Landing';
 import { DpaPage, PrivacyPage, TrustPage } from './pages/Legal';
 import { RolePage, RolesPage, RoiPage, VersusPage } from './pages/Marketing';
+import { LandingPreview } from './pages/landings';
 import { NewAssessment } from './pages/NewAssessment';
 import { NotFound } from './pages/NotFound';
 import { PlanPage } from './pages/PlanPage';
@@ -60,6 +61,8 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/roles/:id" element={<RolePage />} />
           <Route path="/compare/:slug" element={<VersusPage />} />
           <Route path="/roi" element={<RoiPage />} />
+          <Route path="/preview/landing/:n" element={<LandingPreview />} />
+          <Route path="/preview/landing" element={<LandingPreview />} />
           <Route
             path="/candidate"
             element={
