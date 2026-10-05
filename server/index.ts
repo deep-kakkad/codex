@@ -61,10 +61,15 @@ if (isProduction) {
     res.set(SECURITY_HEADERS);
     next();
   });
-  app.use(express.static(webDir, { index: false, maxAge: '1h' }));
+  app.use(express.static(webDir, { index: false, redirect: false, maxAge: '1h' }));
+  // Public pages were rendered to static HTML by the build; everything else gets the app shell.
+  const shell = existsSync(path.join(webDir, 'app.html')) ? 'app.html' : 'index.html';
   app.use((req, res, next) => {
     if (req.method !== 'GET') return next();
-    res.sendFile(path.join(webDir, 'index.html'));
+    const page = req.path === '/' ? 'index.html' : path.join(req.path.replace(/\/+$/, ''), 'index.html');
+    const file = path.join(webDir, page);
+    const prerendered = file.startsWith(webDir + path.sep) && existsSync(file);
+    res.sendFile(prerendered ? file : path.join(webDir, shell));
   });
 } else {
   const { createServer } = await import('vite');

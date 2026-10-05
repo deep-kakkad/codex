@@ -44,6 +44,12 @@ Visitors can try the product without an account. `/demo/recruiter` is a guided t
 - Recordings are deleted after each workspace's retention period (Settings: 30, 90, 180 or 365 days; 180 by default), counted from when the candidate finished. A scheduled function (`privacy-sweep`) does this nightly; the local server does it at start and every six hours. Answers, transcripts and reviews stay.
 - `/trust` lists security practices and sub-processors (from `shared/privacy.ts`, which must be kept in step with the code), and `/dpa` is a data processing agreement template. Both, and the privacy notice, are drafts that a lawyer should review; the contact address `PRIVACY_EMAIL` in `shared/privacy.ts` is a placeholder.
 
+## Public site and search
+
+- The landing page, `/roles` (all 27 roles) and one page per role, four comparison pages (`/compare/testgorilla`, `/compare/hirevue`, `/compare/hackerrank`, `/compare/take-home`), the ROI calculator (`/roi`), `/trust`, `/privacy` and `/dpa` are rendered to static HTML at build time (`server/prerender.tsx`, run by `npm run build`) with their own title, description, canonical link and link-preview tags; the app takes over in the browser. Every other route gets the plain app shell (`app.html`).
+- The build also writes `sitemap.xml`, `robots.txt` (which keeps the app, admin, API and candidate links out of search) and `_redirects`, which points each public path at its file ahead of the catch-all in `netlify.toml`.
+- Role pages use the same public summaries as the demo's role library; what each question checks for stays off them. Titles, descriptions and comparison copy live in `web/src/marketing/content.ts`; the site address is `SITE_URL` there.
+
 ## Plans, referrals and the admin console
 
 - Payments aren't connected yet. A recruiter chooses a plan on the Plan page (Starter and Growth can be billed monthly or yearly, where a year costs ten months), which sends a request; someone at Proofwork sets the plan in the admin console (or with `npm run admin -- plan <email> <plan> [--annual]`).

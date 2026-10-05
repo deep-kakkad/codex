@@ -21,10 +21,12 @@
 
 # The API is a function mounted on /api/* (see netlify/functions/api.mts).
 
-# Single-page app: every other route serves index.html.
+# Single-page app: every other route serves the app shell. Public pages are
+# rendered to static HTML at build time (server/prerender.tsx), which also
+# writes dist/web/_redirects pointing each of their paths at its file.
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/app.html"
   status = 200
 
 # Security headers for every page and API response. server/security.ts holds

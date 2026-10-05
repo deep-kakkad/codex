@@ -134,7 +134,9 @@ export function Landing() {
         </Link>
         <nav className="lp-links" aria-label="Sections">
           <a href="#how">How it works</a>
+          <Link to="/roles">Roles</Link>
           <a href="#compare">Compare</a>
+          <Link to="/roi">ROI</Link>
           <a href="#faq">FAQ</a>
         </nav>
         <div className="lp-nav-actions">

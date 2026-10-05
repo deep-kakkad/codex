@@ -34,6 +34,9 @@ export const PLAN_NAMES: Record<PlanId, string> = {
 /** Reviewed candidates included each month; beyond that, each one is billed as extra. */
 export const MONTHLY_REVIEWS: Partial<Record<PlanId, number>> = { starter: 40, growth: 150 };
 
+/** Pay as you go: the price of one reviewed candidate. */
+export const PAYG_REVIEW_INR = 249;
+
 export const EXTRA_REVIEW_PRICE = '₹149';
 export const EXTRA_REVIEW_INR = 149;
 /** For showing AI costs in rupees. */

@@ -8980,3 +8980,439 @@ kbd {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Public site footer: brand on the left, three short columns of links. */
+.site-footer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 32px 64px;
+  margin-top: 24px;
+  padding-block: 44px 56px;
+}
+.site-footer-brand {
+  display: grid;
+  gap: 10px;
+  max-width: 34ch;
+}
+.site-footer-brand .lp-footer-note {
+  margin-left: 0;
+}
+.site-footer-cols {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 24px 64px;
+}
+.site-footer-cols > div {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+}
+.site-footer-cols h2 {
+  margin: 0 0 4px;
+  color: var(--lp-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.site-footer-cols a {
+  color: var(--lp-muted);
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+.site-footer-cols a:hover {
+  color: var(--lp-ink);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+@media (max-width: 900px) {
+  .site-footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .site-footer-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 28px 24px;
+  }
+}
+
+/* Marketing pages: role library, comparisons, ROI ---------------------------------------- */
+
+.doc-spacer {
+  height: 72px;
+}
+.doc-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  color: var(--lp-faint);
+  font-size: 0.88rem;
+}
+.doc-crumbs a {
+  color: var(--lp-faint);
+}
+.role-title {
+  max-width: 20ch;
+}
+.role-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.role-tile {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 20px 22px;
+  border: 1px solid var(--lp-card-line);
+  border-radius: 14px;
+  color: var(--lp-muted);
+  text-decoration: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s;
+}
+.lp a.role-tile,
+.lp a.role-tile:hover {
+  text-decoration: none;
+}
+.role-tile strong {
+  color: var(--lp-ink);
+  font-size: 1.08rem;
+  letter-spacing: -0.015em;
+}
+.role-tile span {
+  font-size: 0.92rem;
+}
+.role-tile:hover {
+  border-color: var(--lp-frame);
+  box-shadow: var(--lp-shadow);
+  transform: translateY(-1px);
+}
+.role-tile-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  color: var(--lp-faint);
+  font-size: 0.85rem !important;
+}
+.role-tile-meta svg {
+  color: var(--lp-ink);
+}
+.role-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 26px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.role-facts li {
+  padding: 8px 14px;
+  border: 1px solid var(--lp-card-line);
+  border-radius: 99px;
+  color: var(--lp-muted);
+  font-size: 0.93rem;
+}
+.role-facts li + li {
+  margin-top: 0;
+}
+.role-facts strong {
+  color: var(--lp-ink);
+}
+.role-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px 28px;
+  margin-top: 28px;
+}
+.role-actions .lp-textlink {
+  font-size: 1.05rem;
+}
+.role-steps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--lp-line);
+}
+.role-steps li {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: baseline;
+  padding: 18px 0;
+  border-bottom: 1px solid var(--lp-line);
+}
+.role-steps li + li {
+  margin-top: 0;
+}
+.role-step-num {
+  color: var(--lp-faint);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+}
+.role-steps h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 4px;
+  color: var(--lp-ink);
+  font-size: 1.12rem;
+}
+.role-steps p {
+  margin: 0;
+  color: var(--lp-muted);
+}
+.role-step-tag {
+  padding: 2px 9px;
+  border-radius: 99px;
+  background: var(--lp-fill);
+  color: var(--lp-text);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.role-step-meta {
+  color: var(--lp-faint);
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+.versus-table {
+  min-width: 640px;
+}
+.versus-table tbody th {
+  width: 22%;
+  color: var(--lp-ink);
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: 0;
+  background: transparent;
+}
+.versus-table .is-us {
+  background: var(--lp-fill);
+  color: var(--lp-text);
+}
+.versus-table thead .is-us {
+  color: var(--lp-ink);
+}
+.trust-card.is-us {
+  border-color: var(--lp-frame);
+}
+.versus-note {
+  margin-top: 22px !important;
+}
+.versus-legal {
+  margin-top: 22px !important;
+  color: var(--lp-faint) !important;
+}
+.roi {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: start;
+  margin-top: 40px;
+}
+.roi-inputs {
+  display: grid;
+  gap: 18px;
+}
+.roi-inputs h2 {
+  margin: 0;
+  color: var(--lp-ink);
+  font-size: 1.3rem;
+  letter-spacing: -0.02em;
+}
+.roi-field {
+  display: grid;
+  gap: 4px;
+}
+.roi-label {
+  color: var(--lp-ink);
+  font-weight: 600;
+}
+.roi-hint {
+  color: var(--lp-faint);
+  font-size: 0.86rem;
+}
+.roi-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 96px;
+  gap: 14px;
+  align-items: center;
+}
+.roi-control input[type='range'] {
+  width: 100%;
+  accent-color: var(--lp-ink);
+}
+.roi-control input[type='number'] {
+  min-height: 40px;
+  padding: 6px 10px;
+  border: 1px solid var(--lp-card-line);
+  border-radius: 8px;
+  background: var(--lp-paper);
+  color: var(--lp-ink);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  box-shadow: none;
+}
+.roi-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--lp-ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  cursor: pointer;
+}
+.roi-toggle[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+.roi-assumptions {
+  display: grid;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--lp-card-line);
+  border-radius: 12px;
+}
+.roi-result {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 10px;
+  padding: 30px;
+  border-radius: 18px;
+  background: var(--lp-ink);
+  color: var(--lp-paper);
+}
+.roi-eyebrow {
+  color: color-mix(in srgb, var(--lp-paper) 60%, transparent);
+  font-size: 0.8rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.roi-big {
+  margin: 0;
+  font-size: clamp(2.6rem, 1.6rem + 2.6vw, 3.8rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+.roi-sub {
+  margin: 0 0 8px;
+  color: color-mix(in srgb, var(--lp-paper) 78%, transparent);
+}
+.roi-sub strong {
+  color: var(--lp-paper);
+}
+.roi-bars {
+  display: grid;
+  gap: 10px;
+  margin: 6px 0 4px;
+}
+.roi-bar {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) 72px;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.86rem;
+}
+.roi-bar-label {
+  color: color-mix(in srgb, var(--lp-paper) 72%, transparent);
+}
+.roi-bar-track {
+  height: 12px;
+}
+.roi-bar-fill {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--lp-paper);
+}
+.roi-bar-fill.is-before {
+  background: color-mix(in srgb, var(--lp-paper) 38%, transparent);
+}
+.roi-bar-value {
+  text-align: right;
+  color: var(--lp-paper);
+}
+.roi-lines {
+  display: grid;
+  margin: 8px 0 0;
+}
+.roi-lines > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid color-mix(in srgb, var(--lp-paper) 18%, transparent);
+}
+.roi-lines dt {
+  color: color-mix(in srgb, var(--lp-paper) 72%, transparent);
+}
+.roi-lines dd {
+  margin: 0;
+  font-weight: 650;
+}
+.roi-lines .is-total dt,
+.roi-lines .is-total dd {
+  color: var(--lp-paper);
+  font-size: 1.1rem;
+  font-weight: 750;
+}
+.roi-multiple {
+  margin: 0 0 10px;
+  color: color-mix(in srgb, var(--lp-paper) 78%, transparent);
+}
+.roi-multiple strong {
+  color: var(--lp-paper);
+}
+.roi-result .lp-btn {
+  justify-self: start;
+}
+.roi-note {
+  margin-top: 22px !important;
+  color: var(--lp-faint) !important;
+}
+@media (max-width: 1100px) {
+  .role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 900px) {
+  .roi {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .roi-result {
+    position: static;
+  }
+  .role-steps li {
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+  .role-step-meta {
+    grid-column: 2;
+  }
+}
+@media (max-width: 640px) {
+  .role-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .roi-result {
+    padding: 22px;
+  }
+  .roi-bar {
+    grid-template-columns: 96px minmax(0, 1fr) 60px;
+  }
+}
