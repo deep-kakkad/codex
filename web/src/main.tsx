@@ -15,6 +15,7 @@ import { Landing } from './pages/Landing';
 import { NewAssessment } from './pages/NewAssessment';
 import { NotFound } from './pages/NotFound';
 import { PlanPage } from './pages/PlanPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { FromJobDescription } from './pages/FromJobDescription';
 import { RoleLibrary } from './pages/RoleLibrary';
 import { RolePreview } from './pages/RolePreview';
@@ -23,6 +24,9 @@ import { Team } from './pages/Team';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/newsreader/opsz.css';
 import './styles.css';
+import { reportBrowserErrors } from './errorReport';
+
+reportBrowserErrors();
 
 /** A candidate's assessment. The demo walkthrough moves between screens by query, so each one loads afresh. */
 function TakeAssessmentRoute() {
@@ -68,6 +72,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="library/:id" element={<RolePreview />} />
             <Route path="team" element={<Team />} />
             <Route path="plan" element={<PlanPage />} />
+            <Route path="settings" element={<SettingsPage />} />
             <Route path="new/from-jd/:id" element={<FromJobDescription />} />
           </Route>
           <Route path="*" element={<NotFound />} />

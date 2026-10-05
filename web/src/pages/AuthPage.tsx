@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { api, errorMessage } from '../api';
+import type { LoginResult } from '../../../shared/api';
+import { ApiError, api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Logo } from '../components/Logo';
 import { ErrorNote } from '../components/ui';
@@ -25,6 +26,9 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
     password: '',
   });
   const [error, setError] = useState<string | null>(null);
+  // Set when the password checked out and the authenticator code comes next.
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const next =
     safeNext(params.get('next')) ??
@@ -43,8 +47,15 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
     setError(null);
     const base = type === 'candidate' ? '/api/candidate/auth' : '/api/auth';
     try {
-      if (mode === 'login') {
-        await api.post(`${base}/login`, { email: form.email, password: form.password });
+      if (challenge) {
+        await api.post<LoginResult>('/api/auth/login/verify', { challenge, code });
+      } else if (mode === 'login') {
+        const result = await api.post<LoginResult>(`${base}/login`, { email: form.email, password: form.password });
+        if (result.twoFactor && result.challenge) {
+          setChallenge(result.challenge);
+          setBusy(false);
+          return;
+        }
       } else if (type === 'candidate') {
         await api.post(`${base}/signup`, { name: form.name, email: form.email, password: form.password });
       } else {
@@ -55,6 +66,8 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
     } catch (e) {
       setError(errorMessage(e));
       setBusy(false);
+      // An expired or used-up sign-in starts again from the password.
+      if (challenge && e instanceof ApiError && e.status === 401 && /expired/.test(e.message)) setChallenge(null);
     }
   }
 
@@ -70,85 +83,124 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       <Link to="/" className="brand auth-brand">
         <Logo /> Proofwork
       </Link>
-      <form className="card auth-card" onSubmit={submit}>
-        <div className="segmented full" role="tablist" aria-label="Account type">
-          {(
-            [
-              ['recruiter', "I'm hiring"],
-              ['candidate', "I'm a candidate"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={type === value}
-              className={type === value ? 'active' : ''}
-              onClick={() => setType(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-        <h1>
-          {mode === 'signup'
-            ? type === 'candidate'
-              ? 'Create your candidate account'
-              : 'Create your hiring workspace'
-            : type === 'candidate'
-              ? 'Candidate log in'
-              : 'Recruiter log in'}
-        </h1>
-        {mode === 'signup' && type === 'recruiter' && (
+      {challenge ? (
+        <form className="card auth-card" onSubmit={submit}>
+          <h1>Two-factor sign-in</h1>
+          <p className="muted small">
+            Enter the 6-digit code from your authenticator app. Lost your phone? Use one of your recovery codes instead.
+          </p>
           <label className="field">
-            <span>Company name</span>
+            <span>Code</span>
             <input
-              value={form.orgName}
-              onChange={set('orgName')}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
               required
-              maxLength={120}
-              autoComplete="organization"
+              autoFocus
+              inputMode="text"
+              autoComplete="one-time-code"
+              maxLength={40}
+              placeholder="123456"
             />
           </label>
-        )}
-        {mode === 'signup' && (
-          <label className="field">
-            <span>Your name</span>
-            <input value={form.name} onChange={set('name')} required maxLength={120} autoComplete="name" />
-          </label>
-        )}
-        <label className="field">
-          <span>{type === 'candidate' ? 'Email (the one your invitation was sent to)' : 'Work email'}</span>
-          <input type="email" value={form.email} onChange={set('email')} required autoComplete="email" />
-        </label>
-        <label className="field">
-          <span>Password</span>
-          <input
-            type="password"
-            value={form.password}
-            onChange={set('password')}
-            required
-            minLength={mode === 'signup' ? 8 : undefined}
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-          />
-          {mode === 'signup' && <small className="muted">At least 8 characters.</small>}
-        </label>
-        <ErrorNote error={error} />
-        <button className="btn btn-primary btn-block" disabled={busy}>
-          {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Log in'}
-        </button>
-        <p className="small muted center">
-          {mode === 'signup' ? (
-            <>
-              Already have an account? <Link to={switchLink('login')}>Log in</Link>
-            </>
-          ) : (
-            <>
-              New here? <Link to={switchLink('signup')}>Create an account</Link>
-            </>
+          <ErrorNote error={error} />
+          <button className="btn btn-primary btn-block" disabled={busy || !code.trim()}>
+            {busy ? 'Checking…' : 'Sign in'}
+          </button>
+          <p className="small muted center">
+            <button
+              type="button"
+              className="link-button"
+              onClick={() => {
+                setChallenge(null);
+                setCode('');
+                setError(null);
+              }}
+            >
+              Use a different account
+            </button>
+          </p>
+        </form>
+      ) : (
+        <form className="card auth-card" onSubmit={submit}>
+          <div className="segmented full" role="tablist" aria-label="Account type">
+            {(
+              [
+                ['recruiter', "I'm hiring"],
+                ['candidate', "I'm a candidate"],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                role="tab"
+                aria-selected={type === value}
+                className={type === value ? 'active' : ''}
+                onClick={() => setType(value)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <h1>
+            {mode === 'signup'
+              ? type === 'candidate'
+                ? 'Create your candidate account'
+                : 'Create your hiring workspace'
+              : type === 'candidate'
+                ? 'Candidate log in'
+                : 'Recruiter log in'}
+          </h1>
+          {mode === 'signup' && type === 'recruiter' && (
+            <label className="field">
+              <span>Company name</span>
+              <input
+                value={form.orgName}
+                onChange={set('orgName')}
+                required
+                maxLength={120}
+                autoComplete="organization"
+              />
+            </label>
           )}
-        </p>
-      </form>
+          {mode === 'signup' && (
+            <label className="field">
+              <span>Your name</span>
+              <input value={form.name} onChange={set('name')} required maxLength={120} autoComplete="name" />
+            </label>
+          )}
+          <label className="field">
+            <span>{type === 'candidate' ? 'Email (the one your invitation was sent to)' : 'Work email'}</span>
+            <input type="email" value={form.email} onChange={set('email')} required autoComplete="email" />
+          </label>
+          <label className="field">
+            <span>Password</span>
+            <input
+              type="password"
+              value={form.password}
+              onChange={set('password')}
+              required
+              minLength={mode === 'signup' ? 8 : undefined}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+            />
+            {mode === 'signup' && <small className="muted">At least 8 characters.</small>}
+          </label>
+          <ErrorNote error={error} />
+          <button className="btn btn-primary btn-block" disabled={busy}>
+            {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Log in'}
+          </button>
+          <p className="small muted center">
+            {mode === 'signup' ? (
+              <>
+                Already have an account? <Link to={switchLink('login')}>Log in</Link>
+              </>
+            ) : (
+              <>
+                New here? <Link to={switchLink('signup')}>Create an account</Link>
+              </>
+            )}
+          </p>
+        </form>
+      )}
     </div>
   );
 }

@@ -7764,3 +7764,153 @@ kbd {
     transition: none;
   }
 }
+
+/* Settings: sign-in security and activity ----------------------------------- */
+
+.badge-good {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.btn-danger {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+.nowrap {
+  white-space: nowrap;
+}
+.settings-card {
+  margin-bottom: 1rem;
+}
+.settings-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.settings-head.padded {
+  padding: 1.1rem 1.25rem 0;
+}
+.settings-head .section-title {
+  margin: 2px 0 2px;
+}
+.settings-head p {
+  margin: 0;
+  max-width: 62ch;
+}
+.settings-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.settings-icon.is-on {
+  background: var(--good-soft);
+  color: var(--good);
+}
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.settings-form {
+  display: grid;
+  gap: 4px;
+  max-width: 380px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.settings-note {
+  margin: 0;
+}
+.settings-note.padded {
+  padding: 0 1.25rem 1.1rem;
+}
+.twofa-setup {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.twofa-setup img {
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+}
+.twofa-setup .field {
+  max-width: 220px;
+}
+.twofa-steps {
+  margin: 0 0 12px;
+  padding-left: 1.2em;
+  color: var(--text);
+}
+.twofa-steps li + li {
+  margin-top: 6px;
+}
+.twofa-secret {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  user-select: all;
+}
+.recovery {
+  padding: 16px;
+  border: 1px solid var(--good);
+  border-radius: var(--radius-sm);
+  background: var(--good-soft);
+}
+.recovery-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 4px;
+  color: var(--good);
+  font-weight: 650;
+}
+.recovery-codes {
+  display: grid;
+  grid-template-columns: repeat(5, max-content);
+  gap: 6px 16px;
+  margin: 12px 0 14px;
+  padding: 0;
+  list-style: none;
+}
+.recovery-codes li + li {
+  margin: 0;
+}
+.recovery-codes code {
+  font-family: var(--mono);
+  font-size: 0.95rem;
+}
+@media (max-width: 640px) {
+  .settings-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .settings-head > :last-child:not(div) {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .twofa-setup {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .recovery-codes {
+    grid-template-columns: repeat(2, max-content);
+  }
+}

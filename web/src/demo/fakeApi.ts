@@ -10,6 +10,7 @@ import type {
   AssessmentDetail,
   AssessmentFunnel,
   AssessmentSummary,
+  AuditEvent,
   CandidateListItem,
   CandidateReport,
   DecisionEmailDraft,
@@ -480,6 +481,25 @@ function candidateCall(method: string, rest: string[], body: Record<string, unkn
   return fail(404, 'In the demo, only the demo assessment link works. Try the candidate demo from the home page.');
 }
 
+// Activity log ------------------------------------------------------------------------
+
+/** A plausible activity log, built from the sample workspace. */
+function demoActivity(s: State): AuditEvent[] {
+  const events: AuditEvent[] = [];
+  const add = (createdAt: number, action: string, target: string | null = null, detail: string | null = null) =>
+    events.push({ id: newId(), actor: s.me.email, action, target, detail, createdAt });
+  for (const a of Object.values(s.assessments)) {
+    add(a.summary.createdAt, 'created an assessment', a.summary.title);
+    for (const c of s.candidates[a.summary.id] ?? [])
+      add(c.createdAt + 60_000, 'invited a candidate', c.name, a.summary.title);
+  }
+  for (const r of Object.values(s.reports)) {
+    if (r.candidate.decision) add(Date.now() - 5 * 60_000, `decided: ${r.candidate.decision}`, r.candidate.name);
+  }
+  add(Date.now() - 30 * 60_000, 'signed in', null, 'password');
+  return events.sort((x, y) => y.createdAt - x.createdAt);
+}
+
 // Routing ------------------------------------------------------------------------------
 
 export async function handle(method: string, url: string, body: unknown = {}): Promise<unknown> {
@@ -497,6 +517,11 @@ export async function handle(method: string, url: string, body: unknown = {}): P
     return { ok: true };
   }
   if (pathname === '/api/candidate/assessments') return { assessments: [] };
+  if (pathname === '/api/auth/security') return { twoFactor: false, recoveryCodesLeft: 0 };
+  if (pathname.startsWith('/api/auth/2fa') || pathname.startsWith('/api/auth/sessions')) {
+    return fail(409, 'In the demo, sign-in settings can’t be changed. Start free to set up two-factor sign-in.');
+  }
+  if (pathname === '/api/audit') return { events: demoActivity(s) };
 
   // Candidate demo
   if (parts[0] === 'c') {

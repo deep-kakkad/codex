@@ -2,6 +2,7 @@ import { Router } from 'express';
 import type { CandidateAssessmentItem } from '../../shared/candidateApi';
 import type { CandidateStatus } from '../../shared/types';
 import type { AppDeps } from '../app';
+import { checkThrottle, clearThrottle, clientIp, limits, recordAttempt } from '../security';
 import {
   CANDIDATE_COOKIE,
   DUMMY_PASSWORD_HASH,
@@ -42,9 +43,15 @@ export function candidateAccountRoutes({ db, now, secureCookies }: AppDeps) {
   router.post('/auth/login', async (req, res) => {
     const address = email(req.body.email);
     const password = str(req.body.password, 'Password', { max: 200 });
+    const keys = limits.candidateLogin(address, clientIp(req));
+    await checkThrottle(db, keys, now());
     const account = await one<CandidateAccountRow>(db, 'SELECT * FROM candidate_accounts WHERE email = ?', address);
     const valid = verifyPassword(password, account?.password_hash ?? DUMMY_PASSWORD_HASH);
-    if (!account || !valid) throw new HttpError(401, 'Email or password is incorrect');
+    if (!account || !valid) {
+      await recordAttempt(db, keys, now());
+      throw new HttpError(401, 'Email or password is incorrect');
+    }
+    await clearThrottle(db, keys[0].key);
     setSessionCookie(res, await createCandidateSession(db, account.id, now()), secureCookies, CANDIDATE_COOKIE);
     res.json({ ok: true });
   });

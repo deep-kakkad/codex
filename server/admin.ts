@@ -5,12 +5,16 @@
 //   npm run admin -- plan <email> <plan> [credits]
 //        set the plan of the workspace that <email> belongs to; queues held reviews
 //   npm run admin -- leads [days]             work emails left at the end of the guided demo
+//   npm run admin -- backup <out-file>        save a copy of the database now (gzipped JSON)
+//   npm run admin -- restore <file>           load a backup into an EMPTY database (a new Neon branch)
 //   npm run admin -- password <email> <file>  set a recruiter's password to the contents of <file>
 //        (read from a file so the password never appears in the shell history or output)
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { gzipSync } from 'node:zlib';
 import { neon } from '@neondatabase/serverless';
 import { PLAN_NAMES, type PlanId } from '../shared/plans';
 import { hashPassword } from './auth';
+import { dumpDatabase, readBackup, restoreDatabase } from './backup';
 import { type DB, all, fromNeonHttp, one, run } from './db';
 import { openLocalDb } from './localDb';
 import { setPlan } from './plans';
@@ -111,6 +115,24 @@ if (command === 'costs') {
       `${new Date(r.created_at).toISOString().slice(0, 16).replace('T', ' ')}  ${r.source.padEnd(15)} ${r.email}`,
     );
   }
+} else if (command === 'backup') {
+  const [out] = args;
+  if (!out) {
+    console.error('Usage: backup <out-file.json.gz>');
+    process.exit(1);
+  }
+  const backup = await dumpDatabase(db, Date.now());
+  writeFileSync(out, gzipSync(JSON.stringify(backup)));
+  const rows = Object.values(backup.tables).reduce((n, t) => n + t.length, 0);
+  console.log(`Saved ${Object.keys(backup.tables).length} tables, ${rows} rows, to ${out}.`);
+} else if (command === 'restore') {
+  const [file] = args;
+  if (!file) {
+    console.error('Usage: restore <backup.json.gz>  (into an empty, migrated database)');
+    process.exit(1);
+  }
+  const rows = await restoreDatabase(db, readBackup(readFileSync(file)));
+  console.log(`Restored ${rows} rows.`);
 } else if (command === 'password') {
   const [address, file] = args;
   if (!address || !file) {
@@ -133,7 +155,7 @@ if (command === 'costs') {
   console.log(`Changed the password for ${address} and signed out its other sessions.`);
 } else {
   console.error(
-    'Commands: costs [days] | requests | plan <email> <plan> [credits] | leads [days] | password <email> <file>',
+    'Commands: costs [days] | requests | plan <email> <plan> [credits] | leads [days] | password <email> <file> | backup <file> | restore <file>',
   );
   process.exit(1);
 }

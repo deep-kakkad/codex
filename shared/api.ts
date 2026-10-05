@@ -402,3 +402,26 @@ export interface TeamMember {
   role: 'manager' | 'reviewer';
   createdAt: number;
 }
+
+/** What signing in returns: a session, or a request for the authenticator code first. */
+export interface LoginResult {
+  ok: true;
+  twoFactor?: boolean;
+  /** Sent back with the code to finish signing in. */
+  challenge?: string;
+}
+
+export interface AccountSecurity {
+  twoFactor: boolean;
+  recoveryCodesLeft: number;
+}
+
+/** One line of a workspace's activity log. */
+export interface AuditEvent {
+  id: string;
+  actor: string;
+  action: string;
+  target: string | null;
+  detail: string | null;
+  createdAt: number;
+}

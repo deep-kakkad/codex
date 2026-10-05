@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Router } from 'express';
+import { type Request, Router } from 'express';
 import type { BulkInviteResult, CandidateListItem, GenerationView, TeamMember } from '../../shared/api';
 import { buildPreview } from '../../shared/library';
 import { PLAN_OFFERS } from '../../shared/plans';
@@ -26,6 +26,7 @@ import {
   reportCore,
 } from '../report';
 import { planView, requestUpgrade } from '../plans';
+import { audit, clientIp } from '../security';
 
 const CURRENCIES = ['INR', 'USD'] as const;
 const TIME_MULTIPLIERS = [1, 1.25, 1.5, 2];
@@ -59,6 +60,14 @@ export function managerRoutes(deps: AppDeps) {
   const { db, now } = deps;
   const router = Router();
   router.use(requireUser(db, now));
+
+  /** One line in the workspace's activity log. */
+  const log = (req: Request, user: SessionUser, action: string, target?: string | null, detail?: string | null) =>
+    audit(
+      db,
+      { orgId: user.orgId, userId: user.id, actor: user.email, action, target, detail, ip: clientIp(req) },
+      now(),
+    );
 
   // Role library ----------------------------------------------------------
 
@@ -184,6 +193,7 @@ export function managerRoutes(deps: AppDeps) {
       now(),
       JSON.stringify(stageIds),
     );
+    await log(req, user, 'created an assessment', title);
     res.status(201).json({ id });
   });
 
@@ -243,6 +253,7 @@ export function managerRoutes(deps: AppDeps) {
     const address = email(req.body.email, 'Candidate email');
     const multiplier = timeMultiplier(req.body.timeMultiplier);
     const id = await addCandidate(assessment, family, { name, email: address, multiplier });
+    await log(req, user, 'invited a candidate', name, assessment.title);
     const created = (await candidateList(db, assessment, user.id)).find((c) => c.id === id);
     res.status(201).json({ candidate: created });
   });
@@ -289,6 +300,9 @@ export function managerRoutes(deps: AppDeps) {
       created: ids.map((id) => byId.get(id)).filter((c): c is CandidateListItem => Boolean(c)),
       skipped,
     };
+    if (result.created.length) {
+      await log(req, user, 'invited candidates', `${result.created.length} people`, assessment.title);
+    }
     res.status(201).json(result);
   });
 
@@ -433,6 +447,12 @@ export function managerRoutes(deps: AppDeps) {
       const decision = oneOf(req.body.decision, 'Decision', ['advance', 'hold', 'reject'] as const);
       await run(db, "UPDATE candidates SET decision = ?, status = 'decided' WHERE id = ?", decision, candidate.id);
     }
+    await log(
+      req,
+      user,
+      req.body.decision == null ? 'cleared a decision' : `decided: ${req.body.decision}`,
+      candidate.name,
+    );
     res.json(await candidateReport(db, await loadCandidate(db, user, candidate.id), user.id));
   });
 
@@ -545,6 +565,7 @@ export function managerRoutes(deps: AppDeps) {
     );
     const note = optionalText(req.body.note, 'Note', 2000) ?? '';
     await requestUpgrade(db, { orgId: user.orgId, userId: user.id, plan, note, now: now() });
+    await log(req, user, 'asked to change plan', plan);
     res.status(201).json(await planView(db, user.orgId, now()));
   });
 
@@ -583,6 +604,7 @@ export function managerRoutes(deps: AppDeps) {
       },
       now(),
     );
+    await log(req, user, 'added a teammate', email(req.body.email));
     res.status(201).json({ id });
   });
 

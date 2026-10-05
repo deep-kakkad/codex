@@ -10,6 +10,15 @@ import { authRoutes } from './routes/auth';
 import { candidateRoutes } from './routes/candidate';
 import { candidateAccountRoutes } from './routes/candidateAccount';
 import { leadRoutes } from './routes/leads';
+import { auditRoutes, clientErrorRoutes } from './routes/security';
+import { SECURITY_HEADERS, recordError } from './security';
+
+// API responses are JSON or audio, never pages; these are the headers that still matter for them.
+const API_HEADERS = {
+  'X-Content-Type-Options': SECURITY_HEADERS['X-Content-Type-Options'],
+  'X-Frame-Options': SECURITY_HEADERS['X-Frame-Options'],
+  'Referrer-Policy': SECURITY_HEADERS['Referrer-Policy'],
+};
 import { managerRoutes } from './routes/manager';
 
 export interface AppOptions {
@@ -55,17 +64,34 @@ export function createApi(options: AppOptions) {
   const router = express.Router();
   router.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store');
+    res.set(API_HEADERS);
     next();
   });
   router.use('/auth', jsonBody('32kb'), authRoutes(deps));
   router.use('/candidate', jsonBody('32kb'), candidateAccountRoutes(deps));
   router.use('/c', candidateRoutes(deps));
   router.use('/leads', jsonBody('4kb'), leadRoutes(deps));
+  router.use('/client-errors', jsonBody('16kb'), clientErrorRoutes(deps));
+  router.use('/audit', auditRoutes(deps));
   router.use(jsonBody('256kb'), managerRoutes(deps));
   router.use(() => {
     throw notFound('Unknown API route');
   });
-  router.use(errorHandler);
+  router.use(
+    errorHandler((error, req) => {
+      const e = error instanceof Error ? error : new Error(String(error));
+      void recordError(
+        options.db,
+        {
+          source: 'server',
+          message: e.message || 'Unknown error',
+          detail: e.stack ?? null,
+          path: `${req.method} ${req.originalUrl}`,
+        },
+        now(),
+      ).catch(() => undefined);
+    }),
+  );
   return { router, reviews, generations };
 }
 

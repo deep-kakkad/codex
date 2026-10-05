@@ -7,6 +7,7 @@ import { createApi } from './app';
 import { seedDemo } from './demo';
 import { type DB, fromPgPool } from './db';
 import { localFileStore } from './files';
+import { SECURITY_HEADERS } from './security';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const isProduction = process.env.NODE_ENV === 'production';
@@ -47,6 +48,11 @@ if (isProduction) {
   if (!existsSync(path.join(webDir, 'index.html'))) {
     throw new Error('Web client not built. Run `npm run build` first.');
   }
+  // The same headers Netlify sends (netlify.toml), so a local production run behaves alike.
+  app.use((_req, res, next) => {
+    res.set(SECURITY_HEADERS);
+    next();
+  });
   app.use(express.static(webDir, { index: false, maxAge: '1h' }));
   app.use((req, res, next) => {
     if (req.method !== 'GET') return next();

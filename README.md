@@ -26,6 +26,16 @@ The seed leaves two candidates submitted; with the key set, the server reviews t
 
 Visitors can try the product without an account. `/demo/recruiter` is a guided tour of the recruiter side (create an assessment, invite, read an AI review, compare, decide and email) and `/demo/candidate` walks through what a candidate sees; afterwards they can explore the sample workspace freely. The demo is static: it runs in the browser on sample data in `web/src/demo` (its AI reviews, integrity checks, interview kits and emails were written in advance) and saves nothing. Its one server call is the optional "leave your work email" form at the end; `npm run admin -- leads` lists those emails. Role content for the demo is generated with `npm run demo-data`, which leaves answer keys out for every role without sample candidates.
 
+## Security
+
+- Passwords are hashed with scrypt; sessions are random tokens stored only as hashes, in HttpOnly, SameSite=Lax cookies.
+- Recruiters can turn on two-factor sign-in (any authenticator app) with ten one-time recovery codes, and sign out other devices, under Settings.
+- Repeated wrong passwords are slowed down per email address and per IP address (stored in the database, so it holds across serverless instances); sign-ups, the demo contact form and error reports are rate-limited too.
+- Every page is served with a strict Content Security Policy and the usual security headers (`netlify.toml`, mirrored in `server/security.ts`).
+- Each workspace has an activity log (Settings): sign-ins, security changes, invitations, decisions and plan requests.
+- Unexpected server errors and browser crashes are recorded in the `error_events` table.
+- A scheduled function backs up the database to Netlify Blobs every night and keeps 14 days. `npm run admin -- backup <file>` takes a copy on demand; `npm run admin -- restore <file>` loads one into an empty, migrated database (for example a new Neon branch).
+
 ## What's in it
 
 **Recruiters**

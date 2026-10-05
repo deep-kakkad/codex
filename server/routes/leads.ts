@@ -3,24 +3,20 @@ import { Router } from 'express';
 import { LEAD_SOURCES } from '../../shared/demo';
 import type { AppDeps } from '../app';
 import { run } from '../db';
-import { HttpError, email, oneOf } from '../http';
-
-const WINDOW_MS = 10 * 60 * 1000;
-const PER_WINDOW = 5;
+import { email, oneOf } from '../http';
+import { checkThrottle, clientIp, limits, recordAttempt } from '../security';
 
 /**
  * The guided demo's "talk to us" form: the one call the static demo makes.
- * No account needed, so each address is limited to a few sends per window.
+ * No account needed, so each address is limited to a few sends in ten minutes.
  */
 export function leadRoutes({ db, now }: AppDeps) {
   const router = Router();
-  const recent = new Map<string, number[]>();
 
   router.post('/', async (req, res) => {
-    const key = req.ip ?? 'unknown';
-    const times = (recent.get(key) ?? []).filter((t) => now() - t < WINDOW_MS);
-    if (times.length >= PER_WINDOW) throw new HttpError(429, 'Too many requests. Please try again in a few minutes.');
-    recent.set(key, [...times, now()]);
+    const keys = limits.leads(clientIp(req));
+    await checkThrottle(db, keys, now());
+    await recordAttempt(db, keys, now());
 
     const address = email(req.body.email, 'Work email');
     const source = oneOf(req.body.source, 'Source', LEAD_SOURCES);

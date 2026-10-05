@@ -37,7 +37,7 @@ export function randomToken(bytes = 24): string {
   return randomBytes(bytes).toString('base64url');
 }
 
-const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
+export const sha256 = (value: string) => createHash('sha256').update(value).digest('hex');
 
 export async function createSession(db: DB, userId: string, now: number): Promise<string> {
   const token = randomToken(32);

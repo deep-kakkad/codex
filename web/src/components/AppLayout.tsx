@@ -84,6 +84,10 @@ export function AppLayout() {
             <Icon name="card" />
             <span className="side-label">Plan</span>
           </NavLink>
+          <NavLink to="/app/settings" data-tip="Settings">
+            <Icon name="sliders" />
+            <span className="side-label">Settings</span>
+          </NavLink>
         </nav>
         {plan && <TrialMeter plan={plan} />}
         <div className="sidebar-foot">

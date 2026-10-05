@@ -10,7 +10,7 @@ export class ApiError extends Error {
 }
 
 // Signing in or up leaves the demo and talks to the real server.
-const SIGN_IN = /^\/api\/(candidate\/)?auth\/(login|signup)$/;
+const SIGN_IN = /^\/api\/(candidate\/)?auth\/(login|signup|login\/verify)$/;
 // The demo's "talk to us" form is the one call it really sends.
 const REAL_IN_DEMO = /^\/api\/leads$/;
 

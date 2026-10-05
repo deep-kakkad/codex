@@ -14,6 +14,9 @@ import { SUBMIT_GRACE_MS } from '../server/candidateFlow';
 import { localFileStore } from '../server/files';
 import { type DB, fromPgPool } from '../server/db';
 import { openLocalDb } from '../server/localDb';
+import { codeAt, stepAt } from '../server/totp';
+import { readFileSync } from 'node:fs';
+import { CONTENT_SECURITY_POLICY } from '../server/security';
 
 /**
  * PGlite by default. Set TEST_DATABASE_URL to run against a real Postgres
@@ -30,7 +33,8 @@ async function testDb(): Promise<DB> {
   await sharedPg.query(
     `TRUNCATE orgs, users, sessions, candidate_accounts, candidate_sessions, assessments, candidates,
        responses, audio_parts, ai_reviews, transcripts, verifications, custom_families, candidate_stars,
-       review_notes, score_overrides, ai_usage, upgrade_requests, candidate_extras, demo_leads CASCADE`,
+       review_notes, score_overrides, ai_usage, upgrade_requests, candidate_extras, demo_leads,
+       login_challenges, auth_throttle, audit_log, error_events CASCADE`,
   );
   return sharedPg;
 }
@@ -1533,5 +1537,126 @@ describe('demo leads', () => {
         .send({ email: `person${n}@example.com`, source: 'candidate-tour' });
     for (let i = 0; i < 5; i++) expect((await send(i)).status).toBe(201);
     expect((await send(5)).status).toBe(429);
+  });
+});
+
+describe('sign-in security', () => {
+  it('slows down password guessing for an address', async () => {
+    await signup();
+    const guess = () => request(app).post('/api/auth/login').send({ email: 'maya@acme.test', password: 'wrong-guess' });
+    for (let i = 0; i < 8; i++) expect((await guess()).status).toBe(401);
+    const blocked = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'maya@acme.test', password: 'correct-horse' });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error).toMatch(/try again in 15 minutes/);
+    clock += 15 * 60 * 1000;
+    await request(app).post('/api/auth/login').send({ email: 'maya@acme.test', password: 'correct-horse' }).expect(200);
+  });
+
+  it('asks for an authenticator code once two-factor sign-in is on', async () => {
+    const manager = await signup();
+    const { body: setupBody } = await manager.post('/api/auth/2fa/setup').expect(200);
+    expect(setupBody.qr).toMatch(/^data:image\/svg\+xml;base64,/);
+    await manager.post('/api/auth/2fa/enable').send({ code: '000000' }).expect(400);
+    const { body: enabled } = await manager
+      .post('/api/auth/2fa/enable')
+      .send({ code: codeAt(setupBody.secret, stepAt(clock)) })
+      .expect(200);
+    expect(enabled.recoveryCodes).toHaveLength(10);
+    expect(enabled.security).toEqual({ twoFactor: true, recoveryCodesLeft: 10 });
+
+    // The password alone no longer signs in.
+    const agent = request.agent(app);
+    const { body: first } = await agent
+      .post('/api/auth/login')
+      .send({ email: 'maya@acme.test', password: 'correct-horse' })
+      .expect(200);
+    expect(first.twoFactor).toBe(true);
+    expect((await agent.get('/api/auth/me')).body.user).toBeNull();
+    await agent.post('/api/auth/login/verify').send({ challenge: first.challenge, code: '111111' }).expect(401);
+    // The code used to turn it on can't be used again.
+    await agent
+      .post('/api/auth/login/verify')
+      .send({ challenge: first.challenge, code: codeAt(setupBody.secret, stepAt(clock)) })
+      .expect(401);
+    clock += 30_000;
+    await agent
+      .post('/api/auth/login/verify')
+      .send({ challenge: first.challenge, code: codeAt(setupBody.secret, stepAt(clock)) })
+      .expect(200);
+    expect((await agent.get('/api/auth/me')).body.user.email).toBe('maya@acme.test');
+
+    // A recovery code works once.
+    const phoneless = request.agent(app);
+    const login = async () =>
+      (await phoneless.post('/api/auth/login').send({ email: 'maya@acme.test', password: 'correct-horse' })).body
+        .challenge as string;
+    const firstTry = await login();
+    await phoneless
+      .post('/api/auth/login/verify')
+      .send({ challenge: firstTry, code: enabled.recoveryCodes[0].toUpperCase() })
+      .expect(200);
+    const secondTry = await login();
+    await phoneless
+      .post('/api/auth/login/verify')
+      .send({ challenge: secondTry, code: enabled.recoveryCodes[0] })
+      .expect(401);
+    expect((await phoneless.get('/api/auth/security')).body.recoveryCodesLeft).toBe(9);
+
+    // Signing out other devices leaves this one signed in.
+    const { body: out } = await phoneless.post('/api/auth/sessions/sign-out-others').expect(200);
+    expect(out.signedOut).toBe(2);
+    expect((await agent.get('/api/auth/me')).body.user).toBeNull();
+    expect((await phoneless.get('/api/auth/me')).body.user.email).toBe('maya@acme.test');
+
+    const { body: activity } = await phoneless.get('/api/audit').expect(200);
+    const actions = activity.events.map((e: { action: string }) => e.action);
+    expect(actions).toEqual(
+      expect.arrayContaining([
+        'created the workspace',
+        'turned on two-factor sign-in',
+        'signed in',
+        'signed out other devices',
+      ]),
+    );
+  });
+
+  it('keeps a workspace activity log of invitations and decisions', async () => {
+    const { manager, candidate } = await setup();
+    await as(candidate.token)
+      .post(`${c(candidate.token)}/start`)
+      .send({ idName: 'Asha Rao', consent: true })
+      .expect(200);
+    await completeAll(candidate.token);
+    await manager.put(`/api/candidates/${candidate.id}/decision`).send({ decision: 'advance' }).expect(200);
+    const { body } = await manager.get('/api/audit').expect(200);
+    expect(body.events.map((e: { action: string; target: string }) => `${e.action} ${e.target}`)).toEqual(
+      expect.arrayContaining([
+        'created an assessment Growth Marketer, Bengaluru',
+        'invited a candidate Asha Rao',
+        'decided: advance Asha Rao',
+      ]),
+    );
+    // Another workspace sees none of it.
+    const other = await signup('Other Co', 'lee@other.test');
+    const { body: theirs } = await other.get('/api/audit').expect(200);
+    expect(theirs.events.every((e: { actor: string }) => e.actor === 'lee@other.test')).toBe(true);
+  });
+
+  it('records browser errors and sends security headers', async () => {
+    const res = await request(app)
+      .post('/api/client-errors')
+      .send({ message: 'TypeError: x is undefined', stack: 'at Foo', path: '/app' })
+      .expect(204);
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['x-frame-options']).toBe('DENY');
+    const { rows } = await db.query<{ source: string; message: string }>('SELECT source, message FROM error_events');
+    expect(rows).toEqual([{ source: 'browser', message: 'TypeError: x is undefined' }]);
+  });
+
+  it('sends the same content security policy from Netlify as from the local server', () => {
+    const toml = readFileSync(path.resolve(__dirname, '../netlify.toml'), 'utf8');
+    expect(toml).toContain(`Content-Security-Policy = "${CONTENT_SECURITY_POLICY}"`);
   });
 });

@@ -25,7 +25,19 @@ export const badRequest = (message: string) => new HttpError(400, message);
 export const notFound = (message = 'Not found') => new HttpError(404, message);
 export const conflict = (message: string) => new HttpError(409, message);
 
-export function errorHandler(error: unknown, _req: Request, res: Response, _next: NextFunction) {
+/** Turns errors into JSON. Unexpected ones (500s) also go to `report`, e.g. the error log. */
+export function errorHandler(report?: (error: unknown, req: Request) => void) {
+  return (error: unknown, req: Request, res: Response, next: NextFunction) =>
+    handleError(error, req, res, next, report);
+}
+
+function handleError(
+  error: unknown,
+  req: Request,
+  res: Response,
+  _next: NextFunction,
+  report?: (error: unknown, req: Request) => void,
+) {
   if (error instanceof HttpError) {
     res.status(error.status).json({ error: error.message });
     return;
@@ -38,6 +50,7 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
     return;
   }
   console.error(error);
+  report?.(error, req);
   res.status(500).json({ error: 'Something went wrong' });
 }
 
