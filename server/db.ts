@@ -97,6 +97,9 @@ export interface AssessmentRow {
   archived: number;
   /** Activities the recruiter chose; null means all. */
   stage_ids_json: string | null;
+  /** The public apply link's secret, made the first time it is opened. */
+  apply_token: string | null;
+  apply_open: number;
 }
 
 export interface CandidateRow {
@@ -119,6 +122,7 @@ export interface CandidateRow {
   consent_at: number | null;
   consent_version: string | null;
   recordings_deleted_at: number | null;
+  source: 'invited' | 'applied';
 }
 
 export interface ResponseRow {

@@ -133,6 +133,7 @@ export async function candidateList(db: DB, assessment: AssessmentRow, viewerId:
         verification: verification ? { identity: verification.identity, consistency: verification.consistency } : null,
         decision: candidate.decision as Decision | null,
         starred: starred.has(candidate.id),
+        applied: candidate.source === 'applied',
       };
     }),
   );

@@ -2,6 +2,7 @@ import { type FormEvent, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import type {
   AiReviewStatus,
+  ApplyLink,
   AssessmentDetail,
   AssessmentFunnel,
   BulkInviteResult,
@@ -56,6 +57,7 @@ export function AssessmentPage() {
   const { data: funnel } = useApi<AssessmentFunnel>(`/api/assessments/${id}/funnel`);
   const [selected, setSelected] = useState<string[]>([]);
   const [onlyStarred, setOnlyStarred] = useState(false);
+  const [order, setOrder] = useState<'newest' | 'score'>('newest');
 
   if (error) return <ErrorNote error={error} />;
   if (!data) return <p className="muted">Loading…</p>;
@@ -119,6 +121,8 @@ export function AssessmentPage() {
       {user?.role === 'manager' && (
         <InviteForm
           ctx={inviteCtx}
+          applyLink={data.applyLink}
+          onApplyLink={(applyLink) => setData({ ...data, applyLink })}
           onInvited={(added) => setData({ ...data, candidates: [...[...added].reverse(), ...candidates] })}
         />
       )}
@@ -157,9 +161,19 @@ export function AssessmentPage() {
                 </button>
               </div>
             </div>
-            {comparable.length >= 2 && (
-              <span className="small muted">Tick finished candidates to compare them side by side.</span>
-            )}
+            <div className="row-gap">
+              {comparable.length >= 2 && (
+                <span className="small muted">Tick finished candidates to compare them side by side.</span>
+              )}
+              <div className="segmented-filter" role="group" aria-label="Order">
+                <button className={order === 'newest' ? 'is-active' : ''} onClick={() => setOrder('newest')}>
+                  Newest
+                </button>
+                <button className={order === 'score' ? 'is-active' : ''} onClick={() => setOrder('score')}>
+                  Top score
+                </button>
+              </div>
+            </div>
           </div>
           <div className="table-scroll">
             <table className="list-table">
@@ -185,7 +199,7 @@ export function AssessmentPage() {
                     </td>
                   </tr>
                 )}
-                {candidates
+                {ordered(candidates, order)
                   .filter((c) => !onlyStarred || c.starred)
                   .map((c) => {
                     const canCompare = COMPARABLE.includes(c.status);
@@ -232,6 +246,7 @@ export function AssessmentPage() {
                               <div className="tiny muted">
                                 {c.email}
                                 {c.timeMultiplier > 1 && ` · ${c.timeMultiplier}× time`}
+                                {c.applied && <span className="applied-tag">Applied</span>}
                               </div>
                             </div>
                           </div>
@@ -326,6 +341,19 @@ export function AssessmentPage() {
   );
 }
 
+/** Newest first, or best AI score first (scored candidates before everyone else). */
+function ordered(candidates: CandidateListItem[], order: 'newest' | 'score') {
+  if (order === 'newest') return candidates;
+  const score = (c: CandidateListItem) => c.adjustedScore ?? c.aiScore;
+  return [...candidates].sort((a, b) => {
+    const sa = score(a);
+    const sb = score(b);
+    if (sa !== null && sb !== null && sa !== sb) return sb - sa;
+    if ((sa === null) !== (sb === null)) return sa === null ? 1 : -1;
+    return (b.submittedAt ?? b.createdAt) - (a.submittedAt ?? a.createdAt);
+  });
+}
+
 interface InviteContext {
   assessmentId: string;
   title: string;
@@ -346,22 +374,99 @@ function useInviteEmail(ctx: InviteContext) {
     });
 }
 
-function InviteForm({ ctx, onInvited }: { ctx: InviteContext; onInvited: (candidates: CandidateListItem[]) => void }) {
-  const [mode, setMode] = useState<'one' | 'many'>('one');
+function InviteForm({
+  ctx,
+  applyLink,
+  onApplyLink,
+  onInvited,
+}: {
+  ctx: InviteContext;
+  applyLink: ApplyLink;
+  onApplyLink: (link: ApplyLink) => void;
+  onInvited: (candidates: CandidateListItem[]) => void;
+}) {
+  const [mode, setMode] = useState<'one' | 'many' | 'link'>(applyLink.open ? 'link' : 'one');
   return (
     <div className="card invite-card">
       <div className="row-between">
         <h2 className="section-title">Invite candidates</h2>
-        <div className="segmented-filter" role="group" aria-label="How many">
+        <div className="segmented-filter" role="group" aria-label="How to invite">
           <button className={mode === 'one' ? 'is-active' : ''} onClick={() => setMode('one')}>
             One person
           </button>
           <button className={mode === 'many' ? 'is-active' : ''} onClick={() => setMode('many')}>
             Many at once
           </button>
+          <button className={mode === 'link' ? 'is-active' : ''} onClick={() => setMode('link')}>
+            Anyone with the link
+            {applyLink.open && <span className="apply-dot" aria-label="(open)" />}
+          </button>
         </div>
       </div>
-      {mode === 'one' ? <InviteOne ctx={ctx} onInvited={onInvited} /> : <InviteMany ctx={ctx} onInvited={onInvited} />}
+      {mode === 'one' && <InviteOne ctx={ctx} onInvited={onInvited} />}
+      {mode === 'many' && <InviteMany ctx={ctx} onInvited={onInvited} />}
+      {mode === 'link' && <ApplyLinkPanel ctx={ctx} link={applyLink} onChange={onApplyLink} />}
+    </div>
+  );
+}
+
+const applyUrl = (token: string) => `${window.location.origin}/apply/${token}`;
+
+/** A public link to post on a job ad: people apply with their name and email and start straight away. */
+function ApplyLinkPanel({
+  ctx,
+  link,
+  onChange,
+}: {
+  ctx: InviteContext;
+  link: ApplyLink;
+  onChange: (link: ApplyLink) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function set(open: boolean) {
+    setBusy(true);
+    setError(null);
+    try {
+      onChange(await api.put<ApplyLink>(`/api/assessments/${ctx.assessmentId}/apply-link`, { open }));
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="apply-panel">
+      <p className="small muted">
+        Post one link on your job ad or careers page. People enter their name and email, get their own private link and
+        can start straight away. Everyone who finishes is reviewed and ranked below by score. Each finished candidate
+        uses a review from <Link to="/app/plan">your plan</Link>.
+      </p>
+      {link.open && link.token ? (
+        <div className="apply-live">
+          <span className="badge badge-good">Open</span>
+          <code className="link-code">{applyUrl(link.token)}</code>
+          <div className="row-gap">
+            <CopyButton text={applyUrl(link.token)} />
+            <a className="btn btn-ghost btn-sm" href={`/apply/${link.token}`} target="_blank" rel="noopener">
+              See the page
+            </a>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => void set(false)} disabled={busy}>
+              {busy ? 'Closing…' : 'Close the link'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="row-gap">
+          <button type="button" className="btn btn-primary" onClick={() => void set(true)} disabled={busy}>
+            {busy ? 'Opening…' : link.token ? 'Open the link again' : 'Make a public apply link'}
+          </button>
+          {link.token && <span className="small muted">Closed. Opening it again keeps the same address.</span>}
+        </div>
+      )}
+      <ErrorNote error={error} />
     </div>
   );
 }

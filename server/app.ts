@@ -12,6 +12,7 @@ import { authRoutes } from './routes/auth';
 import { candidateRoutes } from './routes/candidate';
 import { candidateAccountRoutes } from './routes/candidateAccount';
 import { leadRoutes } from './routes/leads';
+import { applyRoutes } from './routes/apply';
 import { auditRoutes, clientErrorRoutes } from './routes/security';
 import { SECURITY_HEADERS, recordError } from './security';
 
@@ -77,6 +78,7 @@ export function createApi(options: AppOptions) {
   router.use('/candidate', jsonBody('32kb'), candidateAccountRoutes(deps));
   router.use('/c', candidateRoutes(deps));
   router.use('/leads', jsonBody('4kb'), leadRoutes(deps));
+  router.use('/apply', jsonBody('4kb'), applyRoutes(deps));
   router.use('/client-errors', jsonBody('16kb'), clientErrorRoutes(deps));
   router.use('/audit', auditRoutes(deps));
   router.use('/admin', jsonBody('16kb'), adminRoutes(deps));

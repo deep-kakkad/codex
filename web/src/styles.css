@@ -8868,3 +8868,115 @@ kbd {
     padding-top: 0;
   }
 }
+
+/* Public apply link ---------------------------------------------------------------- */
+
+.apply-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--good);
+  vertical-align: middle;
+}
+.apply-panel {
+  display: grid;
+  gap: 12px;
+}
+.apply-panel > p {
+  max-width: 78ch;
+  margin: 0;
+}
+.apply-live {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--good) 30%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--good-soft) 55%, var(--surface));
+}
+.apply-live .link-code {
+  flex: 1 1 280px;
+  margin: 0;
+}
+.applied-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 99px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.apply-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 20px;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+.apply-facts li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+.apply-facts li + li {
+  margin-top: 0;
+}
+.apply-facts svg {
+  flex: none;
+  color: var(--accent);
+}
+.apply-form .btn-lg {
+  margin-top: 0.25rem;
+}
+.apply-form p {
+  margin: 0.85rem 0 0;
+}
+.hp-field {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.apply-done {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+  padding-top: 1rem;
+}
+.apply-done h1 {
+  margin-top: 12px;
+}
+.apply-done-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--good-soft);
+  color: var(--good);
+}
+.apply-link-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 6px 0 18px;
+}
+.apply-link-box .link-code {
+  flex: 1 1 260px;
+  margin: 0;
+}
+@media (max-width: 600px) {
+  .apply-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

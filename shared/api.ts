@@ -129,6 +129,8 @@ export interface CandidateListItem {
   decision: Decision | null;
   /** On the viewer's watch list. */
   starred: boolean;
+  /** Came in through the public apply link rather than an invitation. */
+  applied: boolean;
 }
 
 export interface FunnelStage {
@@ -158,6 +160,24 @@ export interface AssessmentDetail {
   assessment: AssessmentSummary;
   family: RoleFamilySummary;
   candidates: CandidateListItem[];
+  /** The public link anyone can apply with; token is null until it is first opened. */
+  applyLink: ApplyLink;
+}
+
+export interface ApplyLink {
+  open: boolean;
+  token: string | null;
+}
+
+/** What the public apply page shows before someone applies. */
+export interface ApplyPreview {
+  orgName: string;
+  title: string;
+  roleFamilyName: string;
+  totalMinutes: number;
+  questions: number;
+  thinkAloud: boolean;
+  aiAllowed: boolean;
 }
 
 export interface StageResponseView {

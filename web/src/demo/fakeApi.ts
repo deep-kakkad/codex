@@ -671,7 +671,11 @@ async function recruiterCall(
         assessment: summaryOf(id),
         family: summaryFor(id),
         candidates: s.candidates[id],
+        applyLink: { open: false, token: null },
       } satisfies AssessmentDetail;
+    }
+    if (sub === 'apply-link') {
+      return fail(409, 'In the demo, the public apply link can’t be opened. Start free to share one for your roles.');
     }
     if (sub === 'funnel') return s.funnels[id] ?? emptyFunnel(id);
     if (sub === 'candidates') {
@@ -709,6 +713,7 @@ async function recruiterCall(
             verification: null,
             decision: null,
             starred: false,
+            applied: false,
           });
         }
       }

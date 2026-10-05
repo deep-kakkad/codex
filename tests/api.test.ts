@@ -1967,3 +1967,79 @@ describe('privacy and deletion', () => {
     await request(app).get(c(candidate.token)).expect(200);
   });
 });
+
+describe('public apply link', () => {
+  async function withLink() {
+    const manager = await signup();
+    const { body: created } = await manager
+      .post('/api/assessments')
+      .send({ title: 'Growth Marketer', roleFamilyId: 'performance-marketing', currency: 'INR' })
+      .expect(201);
+    const { body: link } = await manager
+      .put(`/api/assessments/${created.id}/apply-link`)
+      .send({ open: true })
+      .expect(200);
+    return { manager, assessmentId: created.id as string, token: link.token as string };
+  }
+
+  it('lets anyone apply while it is open, and gives them their own link', async () => {
+    const { manager, assessmentId, token } = await withLink();
+    await request(app).get('/api/apply/not-a-real-link').expect(404);
+    const { body: preview } = await request(app).get(`/api/apply/${token}`).expect(200);
+    expect(preview).toMatchObject({ orgName: 'Acme', title: 'Growth Marketer', thinkAloud: true });
+
+    await request(app)
+      .post(`/api/apply/${token}`)
+      .send({ name: 'Bot', email: 'bot@x.com', website: 'spam' })
+      .expect(400);
+    const { body: applied } = await request(app)
+      .post(`/api/apply/${token}`)
+      .send({ name: 'Kiran Rao', email: 'kiran@example.com' })
+      .expect(201);
+    const session = (await request(app).get(c(applied.token)).expect(200)).body as CandidateSession;
+    expect(session.candidate).toMatchObject({ name: 'Kiran Rao', email: 'kiran@example.com' });
+    // The same person can't apply twice, and nobody learns their link by trying.
+    const again = await request(app)
+      .post(`/api/apply/${token}`)
+      .send({ name: 'Kiran', email: 'KIRAN@example.com' })
+      .expect(409);
+    expect(JSON.stringify(again.body)).not.toContain(applied.token);
+
+    const { body: detail } = await manager.get(`/api/assessments/${assessmentId}`).expect(200);
+    expect(detail.applyLink).toEqual({ open: true, token });
+    expect(detail.candidates).toHaveLength(1);
+    expect(detail.candidates[0]).toMatchObject({ name: 'Kiran Rao', applied: true });
+    const { body: activity } = await manager.get('/api/audit').expect(200);
+    expect(activity.events[0]).toMatchObject({ actor: 'Apply link', target: 'Kiran Rao' });
+  });
+
+  it('stops taking applications once closed, keeping the same address', async () => {
+    const { manager, assessmentId, token } = await withLink();
+    const { body: closed } = await manager
+      .put(`/api/assessments/${assessmentId}/apply-link`)
+      .send({ open: false })
+      .expect(200);
+    expect(closed).toEqual({ open: false, token });
+    await request(app).get(`/api/apply/${token}`).expect(410);
+    await request(app).post(`/api/apply/${token}`).send({ name: 'Late', email: 'late@example.com' }).expect(410);
+    const { body: reopened } = await manager
+      .put(`/api/assessments/${assessmentId}/apply-link`)
+      .send({ open: true })
+      .expect(200);
+    expect(reopened.token).toBe(token);
+    // Only the workspace's own managers can change it.
+    const other = await signup('Other Co', 'lee@other.test');
+    await other.put(`/api/assessments/${assessmentId}/apply-link`).send({ open: false }).expect(404);
+  });
+
+  it('slows down one network address sending many applications', async () => {
+    const { token } = await withLink();
+    for (let i = 0; i < 10; i++) {
+      await request(app)
+        .post(`/api/apply/${token}`)
+        .send({ name: `P ${i}`, email: `p${i}@example.com` })
+        .expect(201);
+    }
+    await request(app).post(`/api/apply/${token}`).send({ name: 'P 10', email: 'p10@example.com' }).expect(429);
+  });
+});

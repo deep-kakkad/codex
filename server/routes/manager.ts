@@ -6,7 +6,7 @@ import { type BillingCycle, PLAN_NAMES, PLAN_OFFERS } from '../../shared/plans';
 
 const BILLING_CYCLES: readonly BillingCycle[] = ['monthly', 'annual'];
 import type { Currency } from '../../shared/types';
-import { generateVariant, randomSeed } from '../../shared/variants';
+import { randomSeed } from '../../shared/variants';
 import type { AppDeps } from '../app';
 import { audioParts } from '../candidateFlow';
 import { type SessionUser, createUser, currentUser, randomToken, requireManager, requireUser } from '../auth';
@@ -31,6 +31,7 @@ import { planView, referralView, requestUpgrade } from '../plans';
 import { candidateExport, eraseCandidate, privacySettings } from '../privacy';
 import { RECORDING_DAY_OPTIONS } from '../../shared/privacy';
 import { audit, clientIp } from '../security';
+import { createCandidate } from '../invites';
 
 const CURRENCIES = ['INR', 'USD'] as const;
 const TIME_MULTIPLIERS = [1, 1.25, 1.5, 2];
@@ -208,7 +209,25 @@ export function managerRoutes(deps: AppDeps) {
       assessment: await assessmentSummary(db, assessment),
       family: familySummary(await familyFor(db, assessment)),
       candidates: await candidateList(db, assessment, user.id),
+      applyLink: { open: Boolean(assessment.apply_open), token: assessment.apply_token },
     });
+  });
+
+  // Opens or closes the public apply link. Its address stays the same across both.
+  router.put('/assessments/:id/apply-link', async (req, res) => {
+    const user = requireManager(res);
+    const assessment = await loadAssessment(db, user, req.params.id);
+    if (typeof req.body.open !== 'boolean') throw badRequest('open must be true or false');
+    const token = assessment.apply_token ?? randomToken(12);
+    await run(
+      db,
+      'UPDATE assessments SET apply_open = ?, apply_token = ? WHERE id = ?',
+      req.body.open ? 1 : 0,
+      token,
+      assessment.id,
+    );
+    await log(req, user, req.body.open ? 'opened the apply link for' : 'closed the apply link for', assessment.title);
+    res.json({ open: req.body.open, token });
   });
 
   router.get('/assessments/:id/funnel', async (req, res) => {
@@ -222,25 +241,7 @@ export function managerRoutes(deps: AppDeps) {
     family: Awaited<ReturnType<typeof familyFor>>,
     person: { name: string; email: string; multiplier: number },
   ) {
-    const seed = randomSeed();
-    const variant = generateVariant(family, seed, assessment.currency);
-    const id = randomUUID();
-    await run(
-      db,
-      `INSERT INTO candidates (id, org_id, assessment_id, name, email, token, seed, variant_json, time_multiplier, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      id,
-      assessment.org_id,
-      assessment.id,
-      person.name,
-      person.email,
-      randomToken(),
-      seed,
-      JSON.stringify(variant),
-      person.multiplier,
-      now(),
-    );
-    return id;
+    return (await createCandidate(db, assessment, family, person, now())).id;
   }
 
   const timeMultiplier = (value: unknown) => {
