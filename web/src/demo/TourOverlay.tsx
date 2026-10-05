@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { type LeadSource } from '../../../shared/demo';
 import { api, errorMessage } from '../api';
 import { Icon } from '../components/Icon';
-import { setUi, useUi } from '../ui';
 import { useLeaveDemo } from './DemoBanner';
 import { enterDemo, useDemo } from './mode';
 import { type TourId, endTour, goToStep, startTour, useTour } from './tour';
@@ -95,14 +94,6 @@ function Tour({ id, index }: { id: TourId; index: number }) {
   const [missing, setMissing] = useState(false);
   const [place, setPlace] = useState<CSSProperties | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const savedUi = useRef(useUi());
-
-  // The tour points at the current interface; a visitor's saved choice comes back afterwards.
-  useEffect(() => {
-    if (savedUi.current !== 'v1') return;
-    setUi('v2', false);
-    return () => setUi('v1', false);
-  }, []);
 
   // Open the step's page, set it up, then find what to spotlight.
   useEffect(() => {

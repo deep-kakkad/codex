@@ -7,7 +7,6 @@ import { AssessmentPage } from './pages/AssessmentPage';
 import { AuthPage } from './pages/AuthPage';
 import { CandidateHome } from './pages/CandidateHome';
 import { CandidateReportPage } from './pages/CandidateReport';
-import { CandidateReportPageV1 } from './pages/CandidateReportV1';
 import { DemoBanner, DemoStart } from './demo/DemoBanner';
 import { TourOverlay } from './demo/TourOverlay';
 import { ComparePage } from './pages/ComparePage';
@@ -24,19 +23,11 @@ import { Team } from './pages/Team';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/newsreader/opsz.css';
 import './styles.css';
-import { applyUi, useUi } from './ui';
-
-applyUi();
 
 /** A candidate's assessment. The demo walkthrough moves between screens by query, so each one loads afresh. */
 function TakeAssessmentRoute() {
   const { search } = useLocation();
   return <TakeAssessment key={search} />;
-}
-
-/** The review page in whichever interface the recruiter chose in the sidebar. */
-function CandidateReportRoute() {
-  return useUi() === 'v1' ? <CandidateReportPageV1 /> : <CandidateReportPage />;
 }
 
 createRoot(document.getElementById('root')!).render(
@@ -72,7 +63,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="new" element={<NewAssessment />} />
             <Route path="assessments/:id" element={<AssessmentPage />} />
             <Route path="assessments/:id/compare" element={<ComparePage />} />
-            <Route path="candidates/:id" element={<CandidateReportRoute />} />
+            <Route path="candidates/:id" element={<CandidateReportPage />} />
             <Route path="library" element={<RoleLibrary />} />
             <Route path="library/:id" element={<RolePreview />} />
             <Route path="team" element={<Team />} />

@@ -6,7 +6,6 @@ import { Icon } from './Icon';
 import { Logo } from './Logo';
 import { Avatar } from './ReviewBits';
 import { useApi } from '../hooks';
-import { setUi, useUi } from '../ui';
 
 const SIDEBAR_KEY = 'proofwork-sidebar';
 
@@ -23,7 +22,6 @@ export function AppLayout() {
   const navigate = useNavigate();
   // The candidate review is a working canvas: it uses the full width of the screen.
   const wide = useMatch('/app/candidates/:id') !== null;
-  const ui = useUi();
   const { pathname } = useLocation();
   const { data: plan, reload: reloadPlan } = useApi<PlanView>('/api/plan');
   // Usage changes as candidates finish; check again on each page.
@@ -88,28 +86,6 @@ export function AppLayout() {
           </NavLink>
         </nav>
         {plan && <TrialMeter plan={plan} />}
-        <div className="ui-switch" role="group" aria-label="Interface">
-          <span className="ui-switch-label">Interface</span>
-          <div className="ui-switch-buttons">
-            {(
-              [
-                ['v1', 'UI 1'],
-                ['v2', 'UI 2'],
-              ] as const
-            ).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={ui === value ? 'is-on' : ''}
-                aria-pressed={ui === value}
-                title={value === 'v1' ? 'The earlier design' : 'The current design'}
-                onClick={() => setUi(value)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="sidebar-foot">
           {user && (
             <>
