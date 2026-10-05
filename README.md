@@ -47,7 +47,7 @@ Visitors can try the product without an account. `/demo/recruiter` is a guided t
 ## Public site and search
 
 - The landing page, `/roles` (all 27 roles) and one page per role, four comparison pages (`/compare/testgorilla`, `/compare/hirevue`, `/compare/hackerrank`, `/compare/take-home`), the ROI calculator (`/roi`), `/trust`, `/privacy` and `/dpa` are rendered to static HTML at build time (`server/prerender.tsx`, run by `npm run build`) with their own title, description, canonical link and link-preview tags; the app takes over in the browser. Every other route gets the plain app shell (`app.html`).
-- The build also writes `sitemap.xml`, `robots.txt` (which keeps the app, admin, API and candidate links out of search) and `_redirects`, which points each public path at its file ahead of the catch-all in `netlify.toml`.
+- Each page is written as `<path>.html`, which Netlify serves at the bare path (no trailing-slash redirect) ahead of the catch-all in `netlify.toml`. The build also writes `sitemap.xml` and `robots.txt` (which keeps the app, admin, API and candidate links out of search).
 - Role pages use the same public summaries as the demo's role library; what each question checks for stays off them. Titles, descriptions and comparison copy live in `web/src/marketing/content.ts`; the site address is `SITE_URL` there.
 
 ## Plans, referrals and the admin console

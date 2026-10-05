@@ -66,7 +66,7 @@ if (isProduction) {
   const shell = existsSync(path.join(webDir, 'app.html')) ? 'app.html' : 'index.html';
   app.use((req, res, next) => {
     if (req.method !== 'GET') return next();
-    const page = req.path === '/' ? 'index.html' : path.join(req.path.replace(/\/+$/, ''), 'index.html');
+    const page = req.path === '/' ? 'index.html' : `${req.path.replace(/\/+$/, '')}.html`;
     const file = path.join(webDir, page);
     const prerendered = file.startsWith(webDir + path.sep) && existsSync(file);
     res.sendFile(prerendered ? file : path.join(webDir, shell));

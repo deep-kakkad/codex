@@ -1,7 +1,8 @@
 // Renders the public pages to static HTML after `vite build`, so search engines
 // and link previews get each page's content, title and description. In the
 // browser the app takes over and renders the same page. Also writes the
-// sitemap, robots.txt and the rewrites that point each path at its file.
+// sitemap and robots.txt. Each page is <path>.html, which Netlify serves at
+// the bare path without adding a trailing slash.
 //   node --import tsx server/prerender.tsx [dist/web]
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -92,9 +93,9 @@ export const ROBOTS = (sitemapUrl: string) =>
   ].join('\n');
 
 /**
- * Writes every public page as <path>/index.html (the landing page as
- * index.html), keeps the plain app shell as app.html for every other route,
- * and adds the sitemap, robots.txt and rewrites.
+ * Writes every public page as <path>.html (the landing page as index.html),
+ * keeps the plain app shell as app.html for every other route, and adds the
+ * sitemap and robots.txt.
  */
 export function buildSite(dir: string) {
   const shell = readFileSync(path.join(dir, 'index.html'), 'utf8');
@@ -102,17 +103,13 @@ export function buildSite(dir: string) {
     throw new Error('Run vite build first: index.html is not the app shell');
   writeFileSync(path.join(dir, 'app.html'), shell);
   const paths = publicPaths();
-  const rewrites: string[] = [];
   for (const pathname of paths) {
-    const file = pathname === '/' ? 'index.html' : path.join(pathname.slice(1), 'index.html');
+    const file = pathname === '/' ? 'index.html' : `${pathname.slice(1)}.html`;
     mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     writeFileSync(path.join(dir, file), pageHtml(shell, pathname));
-    if (pathname !== '/') rewrites.push(`${pathname} /${file.split(path.sep).join('/')} 200`);
   }
   writeFileSync(path.join(dir, 'sitemap.xml'), sitemap(paths));
   writeFileSync(path.join(dir, 'robots.txt'), ROBOTS(`${SITE_URL}/sitemap.xml`));
-  // Netlify applies these before netlify.toml's catch-all, which serves app.html.
-  writeFileSync(path.join(dir, '_redirects'), `${rewrites.join('\n')}\n`);
   return paths.length;
 }
 
