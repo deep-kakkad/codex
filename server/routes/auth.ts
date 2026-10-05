@@ -20,6 +20,8 @@ import {
 } from '../auth';
 import { one, run, type UserRow } from '../db';
 import { HttpError, email, str } from '../http';
+import { REFERRAL_REVIEWS } from '../../shared/plans';
+import { referrerFor } from '../plans';
 import { audit, checkThrottle, clearThrottle, clientIp, limits, recordAttempt } from '../security';
 import { newRecoveryCodes, newSecret, otpauthUrl, useRecoveryCode, verifyCode } from '../totp';
 
@@ -73,7 +75,14 @@ export function authRoutes({ db, now, secureCookies }: AppDeps) {
   router.get('/me', async (req, res) => {
     const user = await userForSession(db, readCookie(req, SESSION_COOKIE), now());
     const me: Me | null = user
-      ? { id: user.id, name: user.name, email: user.email, role: user.role, orgName: user.orgName }
+      ? {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          orgName: user.orgName,
+          ...(user.operator ? { operator: true } : {}),
+        }
       : null;
     res.json({ user: me });
   });
@@ -91,7 +100,17 @@ export function authRoutes({ db, now, secureCookies }: AppDeps) {
     }
     await recordAttempt(db, limits.signup(ip), now());
     const orgId = randomUUID();
-    await run(db, 'INSERT INTO orgs (id, name, created_at) VALUES (?, ?, ?)', orgId, orgName, now());
+    // Joined through another team's referral link: both get free reviews (the referrer once a candidate finishes).
+    const referrer = await referrerFor(db, req.body.ref);
+    await run(
+      db,
+      'INSERT INTO orgs (id, name, created_at, referred_by, bonus_reviews) VALUES (?, ?, ?, ?, ?)',
+      orgId,
+      orgName,
+      now(),
+      referrer,
+      referrer ? REFERRAL_REVIEWS : 0,
+    );
     let userId: string;
     try {
       userId = await createUser(db, { orgId, name, email: address, password, role: 'manager' }, now());

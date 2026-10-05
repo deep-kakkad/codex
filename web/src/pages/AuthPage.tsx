@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import type { LoginResult } from '../../../shared/api';
+import { REFERRAL_REVIEWS } from '../../../shared/plans';
 import { ApiError, api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Logo } from '../components/Logo';
@@ -30,6 +31,8 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  // Joining through another team's referral link adds free reviews to the new workspace.
+  const ref = /^[a-z0-9]{8}$/.test(params.get('ref') ?? '') ? params.get('ref') : null;
   const next =
     safeNext(params.get('next')) ??
     (location.state as { from?: string } | null)?.from ??
@@ -59,7 +62,7 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
       } else if (type === 'candidate') {
         await api.post(`${base}/signup`, { name: form.name, email: form.email, password: form.password });
       } else {
-        await api.post(`${base}/signup`, form);
+        await api.post(`${base}/signup`, { ...form, ref });
       }
       await refresh();
       navigate(next, { replace: true });
@@ -150,6 +153,11 @@ export function AuthPage({ mode }: { mode: 'login' | 'signup' }) {
                 ? 'Candidate log in'
                 : 'Recruiter log in'}
           </h1>
+          {mode === 'signup' && type === 'recruiter' && ref && (
+            <p className="auth-referral">
+              You were invited by another hiring team: your workspace starts with {REFERRAL_REVIEWS} extra free reviews.
+            </p>
+          )}
           {mode === 'signup' && type === 'recruiter' && (
             <label className="field">
               <span>Company name</span>

@@ -1,7 +1,7 @@
 // Shapes of the JSON the API returns. Shared so the client stays in sync.
 import type { CandidatePhaseView } from './candidateApi';
 import type { CatalogInfo } from './catalog';
-import type { PlanId } from './plans';
+import type { BillingCycle, PlanId } from './plans';
 import type { SignalNote } from './signals';
 import type {
   Block,
@@ -26,6 +26,8 @@ export interface Me {
   email: string;
   role: 'manager' | 'reviewer';
   orgName: string;
+  /** Runs Proofwork itself: can open the admin console. */
+  operator?: boolean;
 }
 
 export interface StageOutline {
@@ -358,7 +360,23 @@ export interface PlanView {
   credits: number | null;
   /** Finished candidates whose review waits for an upgrade. */
   locked: number;
-  upgradeRequest: { plan: string; createdAt: number } | null;
+  upgradeRequest: { plan: string; billing: BillingCycle; createdAt: number } | null;
+  billing: BillingCycle;
+  /** When the current paid period ends, if set. */
+  paidUntil: number | null;
+  /** Free reviews from referrals, used once the plan's own run out. */
+  bonusReviews: number;
+  /** Reviews this month beyond the plan, billed at the extra-review price. */
+  extras: number;
+}
+
+/** A workspace's referral link and how it is doing. */
+export interface ReferralView {
+  code: string;
+  joined: number;
+  rewarded: number;
+  rewardEach: number;
+  cap: number;
 }
 
 export interface BulkInviteResult {
@@ -423,5 +441,86 @@ export interface AuditEvent {
   action: string;
   target: string | null;
   detail: string | null;
+  createdAt: number;
+}
+
+// Admin console (people who run Proofwork) ------------------------------------------
+
+export interface AdminOverview {
+  workspaces: number;
+  newLast7: number;
+  newLast30: number;
+  activeLast30: number;
+  candidatesInvitedThisMonth: number;
+  candidatesFinishedThisMonth: number;
+  /** Reviews started this month, by what paid for them. */
+  reviewsThisMonth: Record<'plan' | 'bonus' | 'credit' | 'extra', number>;
+  aiCostThisMonthUsd: number;
+  /** From plans set in the console (payments aren't connected): subscriptions plus this month's extras. */
+  estimatedMrrInr: number;
+  leadsLast30: number;
+  openRequests: number;
+  errorsLast7: number;
+  /** Signups per day for the last 30 days, oldest first. */
+  signupsByDay: { day: string; count: number }[];
+}
+
+export interface AdminWorkspace {
+  id: string;
+  name: string;
+  createdAt: number;
+  owner: string | null;
+  plan: PlanId;
+  billing: BillingCycle;
+  paidUntil: number | null;
+  credits: number;
+  bonusReviews: number;
+  referredBy: string | null;
+  seats: number;
+  assessments: number;
+  candidates: number;
+  reviewsThisMonth: number;
+  extrasThisMonth: number;
+  locked: number;
+  aiCostThisMonthUsd: number;
+  lastActivity: number | null;
+  askedFor: { plan: string; billing: BillingCycle; createdAt: number } | null;
+}
+
+export interface AdminRequest {
+  id: string;
+  workspace: string;
+  orgId: string;
+  email: string;
+  plan: string;
+  billing: BillingCycle;
+  note: string;
+  createdAt: number;
+  handledAt: number | null;
+}
+
+export interface AdminLead {
+  email: string;
+  source: string;
+  createdAt: number;
+}
+
+export interface AdminError {
+  message: string;
+  source: string;
+  count: number;
+  lastSeen: number;
+  path: string | null;
+  detail: string | null;
+}
+
+export interface AdminActivity {
+  id: string;
+  workspace: string | null;
+  actor: string;
+  action: string;
+  target: string | null;
+  detail: string | null;
+  ip: string | null;
   createdAt: number;
 }

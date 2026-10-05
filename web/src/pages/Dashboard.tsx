@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import type { AssessmentSummary } from '../../../shared/api';
 import { useAuth } from '../auth';
 import { Icon } from '../components/Icon';
@@ -7,7 +7,11 @@ import { formatDate, useApi } from '../hooks';
 
 export function Dashboard() {
   const { user } = useAuth();
-  const { data, error, loading } = useApi<{ assessments: AssessmentSummary[] }>('/api/assessments');
+  const { data, error, loading } = useApi<{ assessments: AssessmentSummary[] }>(
+    user?.operator ? null : '/api/assessments',
+  );
+  // People who run Proofwork don't hire with it: their home is the admin console.
+  if (user?.operator) return <Navigate to="/admin" replace />;
   const assessments = data?.assessments ?? [];
   const total = (pick: (a: AssessmentSummary) => number) => assessments.reduce((sum, a) => sum + pick(a), 0);
   const toReview = total((a) => a.counts.submitted + a.counts.reviewed);

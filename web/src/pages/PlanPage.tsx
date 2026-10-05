@@ -1,6 +1,14 @@
 import { useState } from 'react';
-import type { PlanView } from '../../../shared/api';
-import { EXTRA_REVIEW_PRICE, PLAN_NAMES, PLAN_OFFERS, type PlanId, TRIAL_REVIEWS } from '../../../shared/plans';
+import type { PlanView, ReferralView } from '../../../shared/api';
+import {
+  type BillingCycle,
+  EXTRA_REVIEW_PRICE,
+  PLAN_NAMES,
+  PLAN_OFFERS,
+  type PlanId,
+  REFERRAL_REVIEWS,
+  TRIAL_REVIEWS,
+} from '../../../shared/plans';
 import { api, errorMessage } from '../api';
 import { useAuth } from '../auth';
 import { Icon } from '../components/Icon';
@@ -15,12 +23,13 @@ export function PlanPage() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [billing, setBilling] = useState<BillingCycle>('annual');
 
   async function ask(id: string) {
     setBusy(id);
     setSendError(null);
     try {
-      setData(await api.post<PlanView>('/api/plan/upgrade-request', { plan: id, note }));
+      setData(await api.post<PlanView>('/api/plan/upgrade-request', { plan: id, billing, note }));
     } catch (e) {
       setSendError(errorMessage(e));
     } finally {
@@ -47,7 +56,13 @@ export function PlanPage() {
         <div className="plan-usage-head">
           <div>
             <span className="plan-eyebrow">Current plan</span>
-            <h2 className="plan-name">{plan.name}</h2>
+            <h2 className="plan-name">
+              {plan.name}
+              {(plan.plan === 'starter' || plan.plan === 'growth') && (
+                <span className="plan-cycle">{plan.billing === 'annual' ? 'billed yearly' : 'billed monthly'}</span>
+              )}
+            </h2>
+            {plan.paidUntil && <span className="small muted">Paid until {formatDay(plan.paidUntil)}</span>}
           </div>
           {plan.included !== null && (
             <div className="plan-count">
@@ -72,10 +87,15 @@ export function PlanPage() {
             wait safely until you choose a plan.
           </p>
         )}
-        {plan.period === 'month' && plan.included !== null && plan.used > plan.included && (
+        {plan.extras > 0 && (
           <p className="small muted">
-            {plan.used - plan.included} extra review{plan.used - plan.included === 1 ? '' : 's'} this month, at{' '}
-            {EXTRA_REVIEW_PRICE} each.
+            {plan.extras} extra review{plan.extras === 1 ? '' : 's'} this month, at {EXTRA_REVIEW_PRICE} each.
+          </p>
+        )}
+        {plan.bonusReviews > 0 && (
+          <p className="plan-bonus">
+            <Icon name="sparkle" size={14} filled /> {plan.bonusReviews} free review{plan.bonusReviews === 1 ? '' : 's'}{' '}
+            from referrals, used once your plan’s run out.
           </p>
         )}
         {plan.locked > 0 && (
@@ -95,7 +115,8 @@ export function PlanPage() {
         <div className="callout callout-info plan-asked">
           <Icon name="check" size={16} />
           <span>
-            You asked for <strong>{PLAN_NAMES[asked.plan as PlanId] ?? asked.plan}</strong> on{' '}
+            You asked for <strong>{PLAN_NAMES[asked.plan as PlanId] ?? asked.plan}</strong>
+            {asked.plan !== 'payg' && (asked.billing === 'annual' ? ', billed yearly,' : ', billed monthly,')} on{' '}
             {formatDate(asked.createdAt)}.{' '}
             {demo
               ? "In the demo nothing is sent. Start free to set up your own account; we'll help you choose a plan."
@@ -104,15 +125,47 @@ export function PlanPage() {
         </div>
       )}
 
+      <div className="plan-billing">
+        <div className="segmented" role="radiogroup" aria-label="Billing">
+          {(
+            [
+              ['monthly', 'Monthly'],
+              ['annual', 'Yearly'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={billing === value}
+              className={billing === value ? 'active' : ''}
+              onClick={() => setBilling(value)}
+            >
+              {label}
+              {value === 'annual' && <span className="plan-save">2 months free</span>}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="plan-grid">
         {PLAN_OFFERS.map((offer) => {
-          const current = plan.plan === offer.id;
+          const current = plan.plan === offer.id && (offer.id === 'payg' || plan.billing === billing);
+          const yearly = billing === 'annual' && offer.annual;
           return (
             <section key={offer.id} className={`card plan-card ${offer.id === 'starter' ? 'is-featured' : ''}`}>
               {offer.id === 'starter' && <span className="plan-flag">Most teams start here</span>}
               <h3>{offer.name}</h3>
               <p className="plan-price">
-                <span className="num">{offer.price}</span> <span className="muted">{offer.per}</span>
+                <span className="num">{yearly ? offer.annual!.perMonth : offer.price}</span>{' '}
+                <span className="muted">{offer.per}</span>
+              </p>
+              <p className="plan-price-note small muted">
+                {yearly
+                  ? `${offer.annual!.price} billed yearly`
+                  : offer.annual
+                    ? `or ${offer.annual.perMonth} a month billed yearly`
+                    : 'Credits last 12 months'}
               </p>
               <p className="small muted">{offer.blurb}</p>
               <ul className="plan-features">
@@ -139,6 +192,8 @@ export function PlanPage() {
         })}
       </div>
 
+      {manager && !demo && <Referral />}
+
       {manager && (
         <section className="card plan-note">
           <label className="field">
@@ -159,5 +214,50 @@ export function PlanPage() {
         </section>
       )}
     </>
+  );
+}
+
+const formatDay = (ts: number) =>
+  new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+
+/** Give 10 reviews, get 10: the workspace's link and how it is doing. */
+function Referral() {
+  const { data } = useApi<ReferralView>('/api/referral');
+  const [copied, setCopied] = useState(false);
+  if (!data) return null;
+  const link = `${window.location.origin}/signup?ref=${data.code}`;
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard blocked: the link is selectable in the box.
+    }
+  };
+  return (
+    <section className="card referral-card">
+      <div className="referral-copy">
+        <span className="plan-eyebrow">Refer a team</span>
+        <h2>
+          Give {REFERRAL_REVIEWS} reviews, get {REFERRAL_REVIEWS}
+        </h2>
+        <p className="muted small">
+          Teams who sign up with your link start with {REFERRAL_REVIEWS} extra free reviews. When their first candidate
+          finishes, you get {REFERRAL_REVIEWS} too, for up to {data.cap} teams.
+        </p>
+      </div>
+      <div className="referral-link">
+        <input readOnly value={link} aria-label="Your referral link" onFocus={(e) => e.target.select()} />
+        <button type="button" className="btn btn-primary" onClick={copy}>
+          <Icon name={copied ? 'check' : 'copy'} size={15} /> {copied ? 'Copied' : 'Copy link'}
+        </button>
+      </div>
+      <p className="small muted referral-stats">
+        {data.joined === 0
+          ? 'No teams have joined with your link yet.'
+          : `${data.joined} team${data.joined === 1 ? '' : 's'} joined · ${data.rewarded} earned you ${REFERRAL_REVIEWS} reviews each`}
+      </p>
+    </section>
   );
 }

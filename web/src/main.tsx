@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { AuthProvider, RequireAuth, RequireCandidate } from './auth';
 import { AppLayout } from './components/AppLayout';
+import { AdminPage } from './pages/AdminPage';
 import { AssessmentPage } from './pages/AssessmentPage';
 import { AuthPage } from './pages/AuthPage';
 import { CandidateHome } from './pages/CandidateHome';
@@ -47,6 +48,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/login" element={<AuthPage mode="login" />} />
           <Route path="/signup" element={<AuthPage mode="signup" />} />
           <Route path="/c/:token" element={<TakeAssessmentRoute />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route
             path="/candidate"
             element={

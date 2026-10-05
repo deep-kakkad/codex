@@ -68,6 +68,12 @@ export function AppLayout() {
           </Link>
         )}
         <nav className="side-nav" aria-label="Main">
+          {user?.operator && (
+            <NavLink to="/admin" data-tip="Admin console">
+              <Icon name="shield" />
+              <span className="side-label">Admin console</span>
+            </NavLink>
+          )}
           <NavLink to="/app" end data-tip="Assessments">
             <Icon name="assessments" />
             <span className="side-label">Assessments</span>
@@ -129,7 +135,7 @@ function TrialMeter({ plan }: { plan: PlanView }) {
   if (plan.plan === 'trial' && plan.included !== null) {
     const left = Math.max(0, plan.included - plan.used);
     return (
-      <Link to="/app/plan" className={`trial-meter ${left === 0 ? 'is-out' : ''}`}>
+      <Link to="/app/plan" className={`trial-meter ${left + plan.bonusReviews === 0 ? 'is-out' : ''}`}>
         <span className="trial-meter-label">Free trial</span>
         <span className="trial-meter-count">
           {left === 0 ? 'No free reviews left' : `${left} of ${plan.included} free reviews left`}
@@ -137,6 +143,7 @@ function TrialMeter({ plan }: { plan: PlanView }) {
         <span className="trial-meter-bar" aria-hidden="true">
           <span style={{ width: `${(left / plan.included) * 100}%` }} />
         </span>
+        <BonusLine reviews={plan.bonusReviews} />
         {plan.locked > 0 && (
           <span className="trial-meter-locked">
             {plan.locked} review{plan.locked === 1 ? '' : 's'} waiting
@@ -148,14 +155,25 @@ function TrialMeter({ plan }: { plan: PlanView }) {
   }
   if (plan.plan === 'payg' && plan.credits !== null) {
     return (
-      <Link to="/app/plan" className={`trial-meter ${plan.credits === 0 ? 'is-out' : ''}`}>
+      <Link to="/app/plan" className={`trial-meter ${plan.credits + plan.bonusReviews === 0 ? 'is-out' : ''}`}>
         <span className="trial-meter-label">Pay as you go</span>
         <span className="trial-meter-count">
           {plan.credits} review credit{plan.credits === 1 ? '' : 's'} left
         </span>
+        <BonusLine reviews={plan.bonusReviews} />
         {plan.locked > 0 && <span className="trial-meter-locked">{plan.locked} waiting</span>}
       </Link>
     );
   }
   return null;
+}
+
+/** Free reviews earned by referral, used once the plan's own run out. */
+function BonusLine({ reviews }: { reviews: number }) {
+  if (reviews <= 0) return null;
+  return (
+    <span className="trial-meter-bonus">
+      + {reviews} bonus review{reviews === 1 ? '' : 's'}
+    </span>
+  );
 }

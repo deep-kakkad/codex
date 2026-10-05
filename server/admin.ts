@@ -2,28 +2,30 @@
 // directory in DATA_DIR). Payments aren't built yet, so plans change here.
 //   npm run admin -- costs [days]             what AI cost, per workspace and job
 //   npm run admin -- requests                 upgrade requests and current plans
-//   npm run admin -- plan <email> <plan> [credits]
+//   npm run admin -- plan <email> <plan> [credits] [--annual]
 //        set the plan of the workspace that <email> belongs to; queues held reviews
 //   npm run admin -- leads [days]             work emails left at the end of the guided demo
+//   npm run admin -- operator <email> <name> <password-file>
+//        make an admin console login (its own small workspace); it must turn on two-factor sign-in
 //   npm run admin -- backup <out-file>        save a copy of the database now (gzipped JSON)
 //   npm run admin -- restore <file>           load a backup into an EMPTY database (a new Neon branch)
 //   npm run admin -- password <email> <file>  set a recruiter's password to the contents of <file>
 //        (read from a file so the password never appears in the shell history or output)
 import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { neon } from '@neondatabase/serverless';
-import { PLAN_NAMES, type PlanId } from '../shared/plans';
-import { hashPassword } from './auth';
+import { PLAN_NAMES, type PlanId, USD_TO_INR } from '../shared/plans';
+import { randomUUID } from 'node:crypto';
+import { createUser, hashPassword } from './auth';
 import { dumpDatabase, readBackup, restoreDatabase } from './backup';
 import { type DB, all, fromNeonHttp, one, run } from './db';
 import { openLocalDb } from './localDb';
 import { setPlan } from './plans';
 
-const USD_TO_INR = 88;
-
 async function database(): Promise<DB> {
   if (process.env.DATABASE_URL) return fromNeonHttp(neon(process.env.DATABASE_URL));
-  if (process.env.DATA_DIR) return openLocalDb(process.env.DATA_DIR);
+  if (process.env.DATA_DIR) return openLocalDb(path.join(path.resolve(process.env.DATA_DIR), 'pg'));
   console.error('Set DATABASE_URL (production) or DATA_DIR (local) first.');
   process.exit(1);
 }
@@ -97,7 +99,10 @@ if (command === 'costs') {
     console.error(`No recruiter with the email ${email}`);
     process.exit(1);
   }
-  const unlocked = await setPlan(db, user.org_id, plan as PlanId, credits === undefined ? undefined : Number(credits));
+  const unlocked = await setPlan(db, user.org_id, plan as PlanId, {
+    credits: credits === undefined || credits === '--annual' ? undefined : Number(credits),
+    billing: args.includes('--annual') ? 'annual' : 'monthly',
+  });
   console.log(
     `Set to ${PLAN_NAMES[plan as PlanId]}. ${unlocked} held review${unlocked === 1 ? '' : 's'} queued; ` +
       'the scheduled sweep starts them within 10 minutes.',
@@ -114,6 +119,33 @@ if (command === 'costs') {
     console.log(
       `${new Date(r.created_at).toISOString().slice(0, 16).replace('T', ' ')}  ${r.source.padEnd(15)} ${r.email}`,
     );
+  }
+} else if (command === 'operator') {
+  const [address, name, file] = args;
+  if (!address || !name || !file) {
+    console.error('Usage: operator <email> <name> <file containing the password>');
+    process.exit(1);
+  }
+  const password = readFileSync(file, 'utf8').trim();
+  if (password.length < 12) {
+    console.error('Use a password of at least 12 characters.');
+    process.exit(1);
+  }
+  const existing = await one<{ id: string }>(db, 'SELECT id FROM users WHERE lower(email) = lower(?)', address);
+  if (existing) {
+    await run(db, 'UPDATE users SET operator = 1, password_hash = ? WHERE id = ?', hashPassword(password), existing.id);
+    console.log(`${address} can now open the admin console (after turning on two-factor sign-in).`);
+  } else {
+    const orgId = `operators-${randomUUID()}`;
+    await run(
+      db,
+      "INSERT INTO orgs (id, name, created_at, plan) VALUES (?, 'Proofwork team', ?, 'pilot')",
+      orgId,
+      Date.now(),
+    );
+    const userId = await createUser(db, { orgId, name, email: address, password, role: 'manager' }, Date.now());
+    await run(db, 'UPDATE users SET operator = 1 WHERE id = ?', userId);
+    console.log(`Created the admin login ${address}. Sign in, turn on two-factor sign-in, then open /admin.`);
   }
 } else if (command === 'backup') {
   const [out] = args;
@@ -155,7 +187,7 @@ if (command === 'costs') {
   console.log(`Changed the password for ${address} and signed out its other sessions.`);
 } else {
   console.error(
-    'Commands: costs [days] | requests | plan <email> <plan> [credits] | leads [days] | password <email> <file> | backup <file> | restore <file>',
+    'Commands: costs | requests | plan | leads | password | operator | backup | restore (see the top of server/admin.ts)',
   );
   process.exit(1);
 }

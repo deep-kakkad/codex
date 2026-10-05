@@ -36,6 +36,13 @@ Visitors can try the product without an account. `/demo/recruiter` is a guided t
 - Unexpected server errors and browser crashes are recorded in the `error_events` table.
 - A scheduled function backs up the database to Netlify Blobs every night and keeps 14 days. `npm run admin -- backup <file>` takes a copy on demand; `npm run admin -- restore <file>` loads one into an empty, migrated database (for example a new Neon branch).
 
+## Plans, referrals and the admin console
+
+- Payments aren't connected yet. A recruiter chooses a plan on the Plan page (Starter and Growth can be billed monthly or yearly, where a year costs ten months), which sends a request; someone at Proofwork sets the plan in the admin console (or with `npm run admin -- plan <email> <plan> [--annual]`).
+- A free trial covers 5 reviewed candidates. Beyond that, reviews wait (the candidate never notices) until something pays for them: the plan's monthly allowance, free reviews from referrals, prepaid credits, or on Starter and Growth a billable extra at ₹149.
+- Every workspace has a referral link on its Plan page. A team that signs up with it starts with 10 extra free reviews; when its first candidate finishes, the referring team gets 10 too (for up to 20 teams).
+- The admin console at `/admin` shows every customer workspace (plan, usage, AI cost, waiting reviews), plan requests, demo leads, errors, activity across workspaces and the nightly backups, and lets you set a plan or add free reviews. It opens only for operator accounts with two-factor sign-in on. Create one with `npm run admin -- operator <email> <name> <password-file>`; it gets its own small workspace that is left out of every customer number.
+
 ## What's in it
 
 **Recruiters**
@@ -158,7 +165,7 @@ Create `shared/roleFamilies/<name>.ts` exporting a `RoleFamily`, then register i
 ## Known gaps (next steps)
 
 - No email delivery: recruiters send the candidate link themselves. Links don't expire yet.
-- No password reset, SSO or login rate limiting.
+- No password reset or single sign-on.
 - The local server runs AI reviews in-process; on Netlify they run in background functions. There is no dead-letter alerting yet: failed reviews show in the recruiter's view with a re-run button.
 - No data-retention or deletion tooling for candidate data and recordings yet.
 - AI review quality should be checked against expert human scores on a sample of real candidates before relying on it, and AI-assisted hiring is regulated in some places (for example NYC Local Law 144 and the EU AI Act). Candidates are told that AI reviews their answers and people decide.

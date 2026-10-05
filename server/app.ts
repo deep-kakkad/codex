@@ -6,6 +6,8 @@ import type { ReviewDeps } from './ai/review';
 import type { DB } from './db';
 import type { FileStore } from './files';
 import { errorHandler, jsonBody, notFound } from './http';
+import type { BackupStore } from './backup';
+import { adminRoutes } from './routes/admin';
 import { authRoutes } from './routes/auth';
 import { candidateRoutes } from './routes/candidate';
 import { candidateAccountRoutes } from './routes/candidateAccount';
@@ -24,6 +26,8 @@ import { managerRoutes } from './routes/manager';
 export interface AppOptions {
   db: DB;
   files: FileStore;
+  /** Where nightly database copies live, for the admin console's list. */
+  backups?: BackupStore;
   ai: AiConfig;
   now?: () => number;
   secureCookies?: boolean;
@@ -36,6 +40,7 @@ export interface AppOptions {
 export interface AppDeps {
   db: DB;
   files: FileStore;
+  backups: BackupStore | null;
   now: () => number;
   secureCookies: boolean;
   ai: AiConfig;
@@ -53,6 +58,7 @@ export function createApi(options: AppOptions) {
   const deps: AppDeps = {
     db: options.db,
     files: options.files,
+    backups: options.backups ?? null,
     now,
     secureCookies: options.secureCookies ?? false,
     ai: options.ai,
@@ -73,6 +79,7 @@ export function createApi(options: AppOptions) {
   router.use('/leads', jsonBody('4kb'), leadRoutes(deps));
   router.use('/client-errors', jsonBody('16kb'), clientErrorRoutes(deps));
   router.use('/audit', auditRoutes(deps));
+  router.use('/admin', jsonBody('16kb'), adminRoutes(deps));
   router.use(jsonBody('256kb'), managerRoutes(deps));
   router.use(() => {
     throw notFound('Unknown API route');

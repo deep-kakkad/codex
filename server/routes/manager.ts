@@ -2,7 +2,9 @@ import { randomUUID } from 'node:crypto';
 import { type Request, Router } from 'express';
 import type { BulkInviteResult, CandidateListItem, GenerationView, TeamMember } from '../../shared/api';
 import { buildPreview } from '../../shared/library';
-import { PLAN_OFFERS } from '../../shared/plans';
+import { type BillingCycle, PLAN_NAMES, PLAN_OFFERS } from '../../shared/plans';
+
+const BILLING_CYCLES: readonly BillingCycle[] = ['monthly', 'annual'];
 import type { Currency } from '../../shared/types';
 import { generateVariant, randomSeed } from '../../shared/variants';
 import type { AppDeps } from '../app';
@@ -25,7 +27,7 @@ import {
   loadCandidate,
   reportCore,
 } from '../report';
-import { planView, requestUpgrade } from '../plans';
+import { planView, referralView, requestUpgrade } from '../plans';
 import { audit, clientIp } from '../security';
 
 const CURRENCIES = ['INR', 'USD'] as const;
@@ -564,9 +566,22 @@ export function managerRoutes(deps: AppDeps) {
       PLAN_OFFERS.map((p) => p.id),
     );
     const note = optionalText(req.body.note, 'Note', 2000) ?? '';
-    await requestUpgrade(db, { orgId: user.orgId, userId: user.id, plan, note, now: now() });
-    await log(req, user, 'asked to change plan', plan);
+    // Pay as you go is prepaid credits, so it has no yearly option.
+    const billing = plan === 'payg' ? 'monthly' : oneOf(req.body.billing ?? 'monthly', 'Billing', BILLING_CYCLES);
+    await requestUpgrade(db, { orgId: user.orgId, userId: user.id, plan, billing, note, now: now() });
+    await log(
+      req,
+      user,
+      'asked to change plan to',
+      PLAN_NAMES[plan],
+      plan === 'payg' ? undefined : billing === 'annual' ? 'billed yearly' : 'billed monthly',
+    );
     res.status(201).json(await planView(db, user.orgId, now()));
+  });
+
+  router.get('/referral', async (_req, res) => {
+    const user = requireManager(res);
+    res.json(await referralView(db, user.orgId));
   });
 
   // Team -------------------------------------------------------------------

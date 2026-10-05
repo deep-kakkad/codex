@@ -60,7 +60,7 @@ interface DemoAssessment {
 }
 
 interface State {
-  version: 1;
+  version: 2;
   me: Me;
   team: TeamMember[];
   plan: PlanView;
@@ -96,7 +96,7 @@ function freshState(): State {
     candidates[a.id] = f.details[a.id].candidates;
   }
   return {
-    version: 1,
+    version: 2,
     me: f.me,
     team: f.team,
     plan: {
@@ -108,6 +108,10 @@ function freshState(): State {
       credits: null,
       locked: 0,
       upgradeRequest: null,
+      billing: 'monthly',
+      paidUntil: null,
+      bonusReviews: 0,
+      extras: 0,
     },
     assessments,
     candidates,
@@ -132,7 +136,7 @@ function load(): State {
   } catch {
     state = null;
   }
-  if (!state || state.version !== 1) state = freshState();
+  if (!state || state.version !== 2) state = freshState();
   return state;
 }
 
@@ -550,9 +554,15 @@ async function recruiterCall(
 
   if (area === 'plan' && !id) return s.plan;
   if (area === 'plan' && id === 'upgrade-request' && method === 'POST') {
-    s.plan.upgradeRequest = { plan: String(b.plan), createdAt: now };
+    s.plan.upgradeRequest = {
+      plan: String(b.plan),
+      billing: b.billing === 'annual' && b.plan !== 'payg' ? 'annual' : 'monthly',
+      createdAt: now,
+    };
     return s.plan;
   }
+
+  if (area === 'referral') return { code: 'demo1234', joined: 2, rewarded: 1, rewardEach: 10, cap: 20 };
 
   if (area === 'team') {
     if (method === 'POST') {

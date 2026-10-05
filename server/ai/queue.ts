@@ -1,6 +1,6 @@
 import type { AiReviewResult, AiReviewView } from '../../shared/api';
 import { type AiReviewRow, type DB, all, one, run } from '../db';
-import { mayStartReview } from '../plans';
+import { rewardReferrer, reviewCoverage } from '../plans';
 import { type ReviewDeps, reviewCandidate } from './review';
 import { UsageMeter, meteredAi, saveUsage } from './usage';
 
@@ -37,17 +37,28 @@ async function markPending(db: DB, candidateId: string, now: number) {
  */
 async function startOrLock(db: DB, candidateId: string, now: number): Promise<boolean> {
   const candidate = await one<{ org_id: string }>(db, 'SELECT org_id FROM candidates WHERE id = ?', candidateId);
-  const allowed = candidate ? await mayStartReview(db, candidate.org_id) : false;
+  if (!candidate) return false;
+  // Only the first queueing decides how a review is paid for.
+  if (await one(db, 'SELECT candidate_id FROM ai_reviews WHERE candidate_id = ?', candidateId)) {
+    return (
+      (await one<{ status: string }>(db, 'SELECT status FROM ai_reviews WHERE candidate_id = ?', candidateId))!
+        .status !== 'locked'
+    );
+  }
+  const coverage = await reviewCoverage(db, candidate.org_id, now);
   await run(
     db,
-    `INSERT INTO ai_reviews (candidate_id, status, attempts, created_at, updated_at) VALUES (?, ?, 0, ?, ?)
+    `INSERT INTO ai_reviews (candidate_id, status, attempts, covered_by, created_at, updated_at) VALUES (?, ?, 0, ?, ?, ?)
      ON CONFLICT (candidate_id) DO NOTHING`,
     candidateId,
-    allowed ? 'pending' : 'locked',
+    coverage ? 'pending' : 'locked',
+    coverage,
     now,
     now,
   );
-  return allowed;
+  // A referred workspace's first finished candidate earns the referrer its free reviews.
+  await rewardReferrer(db, candidate.org_id, now);
+  return coverage !== null;
 }
 
 /** Pending reviews to (re)start: queued, stuck, or failed with attempts left; plus old submissions. */

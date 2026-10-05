@@ -14,6 +14,7 @@ export interface SessionUser {
   name: string;
   email: string;
   role: 'manager' | 'reviewer';
+  operator: boolean;
 }
 
 export function hashPassword(password: string): string {
@@ -103,6 +104,7 @@ export async function userForSession(db: DB, token: string | undefined, now: num
     name: row.name,
     email: row.email,
     role: row.role,
+    operator: Boolean((row as { operator?: number }).operator),
   };
 }
 

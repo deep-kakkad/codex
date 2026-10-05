@@ -3,6 +3,7 @@ import serverless from 'serverless-http';
 import { backgroundGenerationQueue } from '../../server/ai/generateFamily';
 import { backgroundFunctionQueue } from '../../server/ai/queue';
 import { createApp } from '../../server/app';
+import { netlifyBackupStore } from '../../server/backup';
 import { DEMO_ORG_ID } from '../../server/demo';
 import { one } from '../../server/db';
 import { GENERATE_PATH, REVIEW_PATH, runtime, siteUrl } from '../lib/runtime';
@@ -27,6 +28,7 @@ async function init(): Promise<LambdaHandler> {
   const { app } = createApp({
     db,
     files,
+    backups: netlifyBackupStore(),
     ai,
     secureCookies: true,
     trustProxy: true,

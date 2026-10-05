@@ -8,6 +8,7 @@ import { seedDemo } from './demo';
 import { type DB, fromPgPool } from './db';
 import { localFileStore } from './files';
 import { SECURITY_HEADERS } from './security';
+import { localBackupStore } from './backup';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const isProduction = process.env.NODE_ENV === 'production';
@@ -36,6 +37,7 @@ if (!ai.client) console.warn('OPENROUTER_API_KEY is not set: AI reviews will fai
 const { router, reviews, generations } = createApi({
   db,
   files,
+  backups: localBackupStore(path.join(dataDir, 'backups')),
   ai,
   secureCookies: isProduction && process.env.INSECURE_COOKIES !== '1',
 });

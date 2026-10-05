@@ -1333,19 +1333,22 @@ describe('plans, costs and AI extras', () => {
       .send({ idName: 'Test Person', consent: true })
       .expect(200);
   /** An assessment with `count` candidates who all finished. */
-  async function finishedPool(count: number) {
-    const manager = await signup();
+  async function finishedPool(count: number, manager?: ReturnType<typeof request.agent>, prefix = 'p') {
+    manager ??= await signup();
     const { body: created } = await manager
       .post('/api/assessments')
       .send({ title: 'Growth Marketer', roleFamilyId: 'performance-marketing', currency: 'INR' })
       .expect(201);
-    const people = Array.from({ length: count }, (_, i) => ({ name: `Person ${i}`, email: `p${i}@example.com` }));
+    const people = Array.from({ length: count }, (_, i) => ({
+      name: `Person ${i}`,
+      email: `${prefix}${i}@example.com`,
+    }));
     const { body: bulk } = await manager
       .post(`/api/assessments/${created.id}/candidates/bulk`)
       .send({ people })
       .expect(201);
     for (const [i, cand] of (bulk.created as { token: string }[]).entries()) {
-      await candidateAccount(cand.token, `p${i}@example.com`, `Person ${i}`);
+      await candidateAccount(cand.token, `${prefix}${i}@example.com`, `Person ${i}`);
       await begin(cand.token);
       await completeAll(cand.token);
     }
@@ -1382,11 +1385,75 @@ describe('plans, costs and AI extras', () => {
     expect((await manager.get('/api/plan')).body).toMatchObject({ plan: 'starter', included: 40, used: 6, locked: 0 });
   });
 
+  it('gives both teams free reviews for a referral, the referrer once a candidate finishes', async () => {
+    const referrer = await signup();
+    const { body: link } = await referrer.get('/api/referral').expect(200);
+    expect(link).toMatchObject({ joined: 0, rewarded: 0, rewardEach: 10, cap: 20 });
+    expect(link.code).toMatch(/^[a-z0-9]{8}$/);
+    expect((await referrer.get('/api/referral')).body.code).toBe(link.code);
+
+    const friend = request.agent(app);
+    await friend
+      .post('/api/auth/signup')
+      .send({ orgName: 'Friend Co', name: 'Lee', email: 'lee@friend.test', password: 'correct-horse', ref: link.code })
+      .expect(201);
+    expect((await friend.get('/api/plan')).body).toMatchObject({ plan: 'trial', bonusReviews: 10 });
+    expect((await referrer.get('/api/plan')).body.bonusReviews).toBe(0);
+    expect((await referrer.get('/api/referral')).body).toMatchObject({ joined: 1, rewarded: 0 });
+
+    // Six finish: five on the trial, one from the referral bonus; the referrer is rewarded once.
+    await finishedPool(6, friend, 'f');
+    expect((await friend.get('/api/plan')).body).toMatchObject({ used: 5, locked: 0, bonusReviews: 9 });
+    expect((await referrer.get('/api/plan')).body.bonusReviews).toBe(10);
+    expect((await referrer.get('/api/referral')).body).toMatchObject({ joined: 1, rewarded: 1 });
+
+    // A made-up code is ignored.
+    await request(app)
+      .post('/api/auth/signup')
+      .send({ orgName: 'Other', name: 'Ola', email: 'ola@other.test', password: 'correct-horse', ref: 'zzzzzzzz' })
+      .expect(201);
+    expect((await referrer.get('/api/referral')).body.joined).toBe(1);
+  });
+
+  it('asks for yearly billing and counts reviews beyond a monthly plan as extras', async () => {
+    const manager = await signup();
+    const { body: asked } = await manager
+      .post('/api/plan/upgrade-request')
+      .send({ plan: 'growth', billing: 'annual' })
+      .expect(201);
+    expect(asked.upgradeRequest).toMatchObject({ plan: 'growth', billing: 'annual' });
+    // Pay as you go is always prepaid.
+    clock += 1000;
+    const { body: payg } = await manager
+      .post('/api/plan/upgrade-request')
+      .send({ plan: 'payg', billing: 'annual' })
+      .expect(201);
+    expect(payg.upgradeRequest.billing).toBe('monthly');
+
+    const { setPlan, reviewCoverage } = await import('../server/plans');
+    const org = (await db.query<{ id: string }>("SELECT id FROM orgs WHERE name = 'Acme'")).rows[0];
+    await setPlan(db, org.id, 'starter', { billing: 'annual', paidUntil: clock + 365 * 864e5, now: clock });
+    const { body: plan } = await manager.get('/api/plan').expect(200);
+    expect(plan).toMatchObject({ plan: 'starter', billing: 'annual', included: 40, upgradeRequest: null });
+    expect(plan.paidUntil).toBeGreaterThan(clock);
+    await db.query('UPDATE orgs SET bonus_reviews = 1 WHERE id = $1', [org.id]);
+    // Pretend the month's allowance is spent: the next review uses the bonus, then becomes an extra.
+    const { MONTHLY_REVIEWS } = await import('../shared/plans');
+    const realStarter = MONTHLY_REVIEWS.starter;
+    MONTHLY_REVIEWS.starter = 0;
+    try {
+      expect(await reviewCoverage(db, org.id, clock)).toBe('bonus');
+      expect(await reviewCoverage(db, org.id, clock)).toBe('extra');
+    } finally {
+      MONTHLY_REVIEWS.starter = realStarter;
+    }
+  });
+
   it('spends a pay-as-you-go credit per review and holds the rest', async () => {
     const manager = await signup();
     const { setPlan } = await import('../server/plans');
     const org = (await db.query<{ id: string }>("SELECT id FROM orgs WHERE name = 'Acme'")).rows[0];
-    await setPlan(db, org.id, 'payg', 1);
+    await setPlan(db, org.id, 'payg', { credits: 1 });
     const { body: created } = await manager
       .post('/api/assessments')
       .send({ title: 'Growth Marketer', roleFamilyId: 'performance-marketing', currency: 'INR' })
@@ -1658,5 +1725,81 @@ describe('sign-in security', () => {
   it('sends the same content security policy from Netlify as from the local server', () => {
     const toml = readFileSync(path.resolve(__dirname, '../netlify.toml'), 'utf8');
     expect(toml).toContain(`Content-Security-Policy = "${CONTENT_SECURITY_POLICY}"`);
+  });
+});
+
+describe('admin console', () => {
+  /** An operator login with two-factor sign-in on, like `npm run admin -- operator` makes. */
+  async function operator() {
+    const agent = await signup('Proofwork team', 'ops@proofwork.test');
+    await db.query("UPDATE users SET operator = 1 WHERE email = 'ops@proofwork.test'");
+    return agent;
+  }
+  async function withTwoFactor(agent: ReturnType<typeof request.agent>) {
+    const { body } = await agent.post('/api/auth/2fa/setup').expect(200);
+    await agent
+      .post('/api/auth/2fa/enable')
+      .send({ code: codeAt(body.secret, stepAt(clock)) })
+      .expect(200);
+  }
+
+  it('is only for operators with two-factor sign-in on', async () => {
+    const customer = await signup();
+    await customer.get('/api/admin/overview').expect(403);
+    const ops = await operator();
+    expect((await ops.get('/api/auth/me')).body.user.operator).toBe(true);
+    expect((await customer.get('/api/auth/me')).body.user.operator).toBeUndefined();
+    const { body } = await ops.get('/api/admin/overview').expect(403);
+    expect(body.error).toMatch(/two-factor/);
+    await withTwoFactor(ops);
+    await ops.get('/api/admin/overview').expect(200);
+    await request(app).get('/api/admin/overview').expect(401);
+  });
+
+  it('shows workspaces and usage, and changes plans', async () => {
+    const customer = await signup();
+    await customer.post('/api/plan/upgrade-request').send({ plan: 'starter', billing: 'annual' }).expect(201);
+    await request(app).post('/api/leads').send({ email: 'cto@lead.test', source: 'recruiter-tour' }).expect(201);
+    const ops = await operator();
+    await withTwoFactor(ops);
+
+    const { body: overview } = await ops.get('/api/admin/overview').expect(200);
+    expect(overview).toMatchObject({ workspaces: 1, newLast7: 1, openRequests: 1, leadsLast30: 1, estimatedMrrInr: 0 });
+    expect(overview.signupsByDay).toHaveLength(30);
+
+    const { body: list } = await ops.get('/api/admin/workspaces').expect(200);
+    expect(list.workspaces).toHaveLength(1);
+    const acme = list.workspaces[0];
+    expect(acme).toMatchObject({
+      name: 'Acme',
+      owner: 'maya@acme.test',
+      plan: 'trial',
+      askedFor: { plan: 'starter', billing: 'annual' },
+    });
+
+    await ops.put(`/api/admin/workspaces/${acme.id}/plan`).send({ plan: 'starter', billing: 'annual' }).expect(200);
+    await ops.post(`/api/admin/workspaces/${acme.id}/bonus`).send({ reviews: 5 }).expect(200);
+    await ops.post(`/api/admin/workspaces/${acme.id}/bonus`).send({ reviews: 0 }).expect(400);
+    expect((await customer.get('/api/plan')).body).toMatchObject({
+      plan: 'starter',
+      billing: 'annual',
+      bonusReviews: 5,
+      upgradeRequest: null,
+    });
+    expect((await ops.get('/api/admin/overview')).body).toMatchObject({ openRequests: 0, estimatedMrrInr: 4166 });
+    const { body: requests } = await ops.get('/api/admin/requests').expect(200);
+    expect(requests.requests[0].handledAt).not.toBeNull();
+    expect((await ops.get('/api/admin/leads')).body.leads).toEqual([
+      expect.objectContaining({ email: 'cto@lead.test' }),
+    ]);
+
+    // The customer sees what Proofwork changed in their own activity log.
+    const { body: activity } = await customer.get('/api/audit').expect(200);
+    expect(activity.events.map((e: { actor: string; action: string }) => `${e.actor} ${e.action}`)).toEqual(
+      expect.arrayContaining(['Proofwork set the plan to', 'Proofwork added free reviews']),
+    );
+    const { body: all } = await ops.get('/api/admin/activity').expect(200);
+    expect(all.events.length).toBeGreaterThan(3);
+    await ops.put('/api/admin/workspaces/not-a-workspace/plan').send({ plan: 'starter' }).expect(404);
   });
 });
